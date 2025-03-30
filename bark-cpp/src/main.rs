@@ -23,7 +23,7 @@ async fn main() -> anyhow::Result<()> {
     };
 
     let opts = CreateOpts {
-        force: false,
+        force: true,
         bitcoin: false,
         signet: true,
         regtest: false,
@@ -32,10 +32,10 @@ async fn main() -> anyhow::Result<()> {
         config,
     };
 
-    // if let Err(e) = create_wallet(&datadir, opts).await {
-    //     error!("Failed to create wallet: {}", e);
-    //     // return Err(e);
-    // }
+    if let Err(e) = create_wallet(&datadir, opts).await {
+        error!("Failed to create wallet: {}", e);
+        // return Err(e);
+    }
 
     println!("Wallet created successfully at {}", datadir.display());
 

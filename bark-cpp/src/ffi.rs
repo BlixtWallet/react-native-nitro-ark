@@ -1,9 +1,11 @@
 use super::*;
 use bip39::Mnemonic;
+use logger::log::{info,error};
 use std::ffi::{c_char, CStr, CString};
 use std::path::Path;
 use std::ptr;
 use std::str::FromStr;
+use logger::Logger;
 
 #[repr(C)]
 pub struct BarkError {
@@ -12,6 +14,7 @@ pub struct BarkError {
 
 impl BarkError {
     fn new(msg: &str) -> Self {
+        info!("Creating BarkError: {}", msg);
         let message = CString::new(msg).unwrap_or_default().into_raw();
         BarkError { message }
     }
@@ -48,6 +51,7 @@ pub struct BarkBalance {
 #[no_mangle]
 pub extern "C" fn bark_free_error(error: *mut BarkError) {
     if !error.is_null() {
+        info!("Freeing BarkError");
         unsafe {
             let err = Box::from_raw(error);
             if !err.message.is_null() {
@@ -60,12 +64,15 @@ pub extern "C" fn bark_free_error(error: *mut BarkError) {
 #[no_mangle]
 pub extern "C" fn bark_error_message(error: *const BarkError) -> *const c_char {
     if error.is_null() {
+        warn!("Attempted to get message from null error");
         return ptr::null();
     }
     unsafe { (*error).message }
 }
 
 fn to_rust_config_opts(c_opts: &BarkConfigOpts) -> ConfigOpts {
+    debug!("Converting C config opts to Rust");
+    
     let asp = c_string_to_option(c_opts.asp);
     let esplora = c_string_to_option(c_opts.esplora);
     let bitcoind = c_string_to_option(c_opts.bitcoind);
@@ -73,6 +80,11 @@ fn to_rust_config_opts(c_opts: &BarkConfigOpts) -> ConfigOpts {
     let bitcoind_user = c_string_to_option(c_opts.bitcoind_user);
     let bitcoind_pass = c_string_to_option(c_opts.bitcoind_pass);
 
+    // Log configuration (without sensitive data)
+    debug!("Config - ASP: {}", asp.is_some());
+    debug!("Config - Esplora: {}", esplora.is_some());
+    debug!("Config - Bitcoind: {}", bitcoind.is_some());
+    
     ConfigOpts {
         asp,
         esplora,
@@ -87,18 +99,37 @@ fn c_string_to_option(s: *const c_char) -> Option<String> {
     if s.is_null() {
         None
     } else {
-        unsafe { CStr::from_ptr(s).to_str().ok().map(String::from) }
+        unsafe { 
+            match CStr::from_ptr(s).to_str() {
+                Ok(str) => {
+                    let result = if !str.is_empty() { Some(String::from(str)) } else { None };
+                    result
+                },
+                Err(e) => {
+                    warn!("Failed to convert C string: {}", e);
+                    None
+                }
+            }
+        }
     }
 }
 
 fn to_rust_create_opts(c_opts: &BarkCreateOpts) -> Result<CreateOpts, anyhow::Error> {
+    debug!("Converting C create opts to Rust");
+    debug!("Create opts - Force: {}, Regtest: {}, Signet: {}, Bitcoin: {}", 
+           c_opts.force, c_opts.regtest, c_opts.signet, c_opts.bitcoin);
+    debug!("Create opts - Birthday height: {}", c_opts.birthday_height);
+    
     let mnemonic = if c_opts.mnemonic.is_null() {
+        debug!("No mnemonic provided");
         None
     } else {
         let mnemonic_str = unsafe { CStr::from_ptr(c_opts.mnemonic).to_str()? };
         if !mnemonic_str.is_empty() {
+            debug!("Converting provided mnemonic");
             Some(Mnemonic::from_str(mnemonic_str)?)
         } else {
+            debug!("Empty mnemonic string provided");
             None
         }
     };
@@ -130,33 +161,65 @@ pub extern "C" fn bark_create_wallet(
     datadir: *const c_char,
     opts: BarkCreateOpts,
 ) -> *mut BarkError {
+    let _logger = Logger::new();
+    info!("bark_create_wallet called datadir={:?}, opts: force={}, regtest={}, signet={}, bitcoin={}, birthday_height={}, asp={:?}, esplora={:?}", 
+    datadir,
+    opts.force, 
+    opts.regtest, 
+    opts.signet,
+    opts.bitcoin,
+    opts.birthday_height,
+    if opts.config.asp.is_null() { "null" } else { unsafe { CStr::from_ptr(opts.config.asp).to_str().unwrap_or("invalid") } },
+    if opts.config.esplora.is_null() { "null" } else { unsafe { CStr::from_ptr(opts.config.esplora).to_str().unwrap_or("invalid") } }
+);
     if datadir.is_null() {
+        error!("Data directory pointer is null");
         return Box::into_raw(Box::new(BarkError::new("datadir is null")));
     }
 
     let datadir_str = match unsafe { CStr::from_ptr(datadir).to_str() } {
-        Ok(s) => s,
-        Err(_) => return Box::into_raw(Box::new(BarkError::new("Invalid UTF-8 in datadir path"))),
+        Ok(s) => {
+            info!("Creating wallet at: {}", s);
+            s
+        },
+        Err(e) => {
+            error!("Invalid UTF-8 in datadir path: {}", e);
+            return Box::into_raw(Box::new(BarkError::new("Invalid UTF-8 in datadir path")));
+        }
     };
 
     let create_opts = match to_rust_create_opts(&opts) {
         Ok(o) => o,
-        Err(e) => return Box::into_raw(Box::new(BarkError::new(&e.to_string()))),
+        Err(e) => {
+            error!("Failed to convert create options: {}", e);
+            return Box::into_raw(Box::new(BarkError::new(&e.to_string())));
+        }
     };
 
     // Create a new runtime for the async function
+    info!("Creating tokio runtime");
     let runtime = match tokio::runtime::Runtime::new() {
         Ok(rt) => rt,
-        Err(e) => return Box::into_raw(Box::new(BarkError::new(&e.to_string()))),
+        Err(e) => {
+            error!("Failed to create tokio runtime: {}", e);
+            return Box::into_raw(Box::new(BarkError::new(&e.to_string())));
+        }
     };
 
     // Run the async function
+    info!("Running create_wallet async function");
     let result =
         runtime.block_on(async { create_wallet(Path::new(datadir_str), create_opts).await });
 
     match result {
-        Ok(_) => ptr::null_mut(),
-        Err(e) => Box::into_raw(Box::new(BarkError::new(&e.to_string()))),
+        Ok(_) => {
+            info!("Wallet created successfully");
+            ptr::null_mut()
+        },
+        Err(e) => {
+            error!("Failed to create wallet: {}", e);
+            Box::into_raw(Box::new(BarkError::new(&e.to_string())))
+        }
     }
 }
 
@@ -172,26 +235,42 @@ pub extern "C" fn bark_get_balance(
     no_sync: bool,
     balance_out: *mut BarkBalance,
 ) -> *mut BarkError {
+    let _logger = Logger::new();
+    info!("bark_get_balance called, no_sync: {}", no_sync);
+
     if datadir.is_null() {
+        error!("Data directory pointer is null");
         return Box::into_raw(Box::new(BarkError::new("datadir is null")));
     }
     
     if balance_out.is_null() {
+        error!("Balance output pointer is null");
         return Box::into_raw(Box::new(BarkError::new("balance_out is null")));
     }
 
     let datadir_str = match unsafe { CStr::from_ptr(datadir).to_str() } {
-        Ok(s) => s,
-        Err(_) => return Box::into_raw(Box::new(BarkError::new("Invalid UTF-8 in datadir path"))),
+        Ok(s) => {
+            info!("Getting balance for wallet at: {}", s);
+            s
+        },
+        Err(e) => {
+            error!("Invalid UTF-8 in datadir path: {}", e);
+            return Box::into_raw(Box::new(BarkError::new("Invalid UTF-8 in datadir path")));
+        }
     };
 
     // Create a new runtime for the async function
+    debug!("Creating tokio runtime");
     let runtime = match tokio::runtime::Runtime::new() {
         Ok(rt) => rt,
-        Err(e) => return Box::into_raw(Box::new(BarkError::new(&e.to_string()))),
+        Err(e) => {
+            error!("Failed to create tokio runtime: {}", e);
+            return Box::into_raw(Box::new(BarkError::new(&e.to_string())));
+        }
     };
 
     // Run the async function
+    info!("Running get_balance async function");
     let result = runtime.block_on(async {
         get_balance(Path::new(datadir_str), no_sync).await
     });
@@ -204,8 +283,13 @@ pub extern "C" fn bark_get_balance(
                 (*balance_out).offchain = balance.offchain;
                 (*balance_out).pending_exit = balance.pending_exit;
             }
+            info!("Balance retrieved successfully: onchain={}, offchain={}, pending_exit={}", 
+                 balance.onchain, balance.offchain, balance.pending_exit);
             ptr::null_mut()
         }
-        Err(e) => Box::into_raw(Box::new(BarkError::new(&e.to_string()))),
+        Err(e) => {
+            error!("Failed to get balance: {}", e);
+            Box::into_raw(Box::new(BarkError::new(&e.to_string())))
+        }
     }
 }

@@ -188,6 +188,10 @@ async fn try_create_wallet(
 
     fs::create_dir_all(datadir).context("can't create dir")?;
 
+    debug!("datadir {:?} ", datadir);
+    debug!("network {:?}", net);
+    debug!("config {} {:?}", config.asp_address, config.esplora_address);
+
     // generate seed
     let mnemonic = mnemonic.unwrap_or_else(|| bip39::Mnemonic::generate(12).expect("12 is valid"));
     fs::write(datadir.join(MNEMONIC_FILE), mnemonic.to_string().as_bytes())

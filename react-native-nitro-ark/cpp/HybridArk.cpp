@@ -1,9 +1,6 @@
 #include "NitroArk.hpp"
 
-namespace margelo::nitro::nitroark
-{
-    double NitroArk::multiply(double a, double b)
-    {
-        return a * b * 2;
-    }
+namespace margelo::nitro::nitroark {
+  // The original multiply function is implemented in the header file
+  // Any additional implementation could go here if needed
 }
