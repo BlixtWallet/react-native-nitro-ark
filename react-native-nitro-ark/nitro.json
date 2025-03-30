@@ -1,0 +1,16 @@
+{
+  "cxxNamespace": ["nitroark"],
+  "ios": {
+    "iosModuleName": "NitroArk"
+  },
+  "android": {
+    "androidNamespace": ["nitroark"],
+    "androidCxxLibName": "NitroArk"
+  },
+  "autolinking": {
+    "NitroArk": {
+      "cpp": "NitroArk"
+    }
+  },
+  "ignorePaths": ["node_modules"]
+}

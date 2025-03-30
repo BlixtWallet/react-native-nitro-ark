@@ -1,0 +1,58 @@
+[package]
+name = "bark-cpp"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bark-client = { git = "https://codeberg.org/ark-bitcoin/bark.git", rev = "1bee5e5120" }
+tokio = { version = "1.35", features = ["full"] }
+bip39 = { version = "2.0.0", features = ["rand", "serde"] }
+anyhow = "1.0.97"
+log = "0.4.27"
+serde = "1.0.219"
+tonic = "0.13.0"
+serde_json = "1.0.140"
+
+[build-dependencies]
+cbindgen = "0.28.0"
+
+[lib]
+crate-type = ["staticlib", "rlib"]
+name = "bark_cpp"
+path = "src/lib.rs"
+
+
+[[bin]]
+name = "bark_cpp"
+path = "src/main.rs"
+
+# Add this section to ensure proper linking on Android
+[target.'cfg(target_os = "android")'.rustflags]
+"-C" = "link-arg=-Wl,--export-dynamic"
+
+# Add these profile configurations
+[profile.release]
+opt-level = 'z'     # Optimize for size
+lto = true          # Enable Link Time Optimization
+codegen-units = 1   # Reduce parallel code generation units
+panic = 'abort'     # Remove panic unwinding code
+strip = true        # Strip symbols from binary
+
+# bdk dep overrides (should be replaced under # bitcoin category later)
+[patch.crates-io.bdk_wallet]
+package = "bdk_wallet"
+version = "1.0.0"
+git = "https://github.com/stevenroose/bdk.git"
+rev = "4b6738b3d43ffcf9e91238eb6a12c293b90d6701"
+[patch.crates-io.bdk_esplora]
+package = "bdk_esplora"
+version = "0.20.1"
+features = ["std", "async-https-rustls", "tokio"]
+default-features = false
+git = "https://github.com/stevenroose/bdk.git"
+rev = "4b6738b3d43ffcf9e91238eb6a12c293b90d6701"
+[patch.crates-io.bdk_bitcoind_rpc]
+package = "bdk_bitcoind_rpc"
+version = "0.17.1"
+git = "https://github.com/stevenroose/bdk.git"
+rev = "4b6738b3d43ffcf9e91238eb6a12c293b90d6701"
