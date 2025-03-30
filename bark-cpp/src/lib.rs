@@ -7,7 +7,7 @@ use bark::Config;
 use bark::SqliteClient;
 use bark::Wallet;
 mod ffi;
-use log::{debug, info, warn};
+use logger::log::{debug, info, warn};
 use std::fs;
 use std::path::Path;
 const DB_FILE: &str = "db.sqlite";
@@ -193,6 +193,8 @@ async fn try_create_wallet(
     fs::write(datadir.join(MNEMONIC_FILE), mnemonic.to_string().as_bytes())
         .context("failed to write mnemonic")?;
 
+    info!("Mnemonic is {:?} ", mnemonic.to_string());
+
     // open db
     let db = SqliteClient::open(datadir.join(DB_FILE))?;
 
@@ -202,3 +204,45 @@ async fn try_create_wallet(
 
     Ok(())
 }
+
+pub struct Balance {
+    pub onchain: u64,
+    pub offchain: u64,
+    pub pending_exit: u64
+}
+
+/// Get offchain and onchain balances
+pub async fn get_balance(datadir: &Path, no_sync: bool) -> anyhow::Result<Balance> {
+    let mut w = open_wallet(&datadir).await.context("error opening wallet")?;
+
+
+    if !no_sync {
+        info!("Syncing wallet...");
+        if let Err(e) = w.sync().await {
+            warn!("Sync error: {}", e)
+        }
+    }
+
+    let onchain = w.onchain.balance().to_sat();
+    let offchain =  w.offchain_balance().await?.to_sat();
+    let pending_exit = w.exit.pending_total().await?.to_sat();
+
+    
+    let balances = Balance { onchain, offchain, pending_exit };
+    Ok(balances)
+}
+
+pub async fn open_wallet(datadir: &Path) -> anyhow::Result<Wallet<SqliteClient>> {
+	debug!("Opening bark wallet in {}", datadir.display());
+
+	// read mnemonic file
+	let mnemonic_path = datadir.join(MNEMONIC_FILE);
+	let mnemonic_str = fs::read_to_string(&mnemonic_path)
+		.with_context(|| format!("failed to read mnemonic file at {}", mnemonic_path.display()))?;
+	let mnemonic = bip39::Mnemonic::from_str(&mnemonic_str).context("broken mnemonic")?;
+
+	let db = SqliteClient::open(datadir.join(DB_FILE))?;
+
+	Wallet::open(&mnemonic, db).await
+}
+

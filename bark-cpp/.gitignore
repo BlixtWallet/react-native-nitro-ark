@@ -1,5 +1,4 @@
+target
 .direnv
 __cmake_systeminformation
 .DS_Store
-target
-libbark_cpp.a

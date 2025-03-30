@@ -5,9 +5,6 @@ use std::path::Path;
 use std::ptr;
 use std::str::FromStr;
 
-// Add cbindgen dependency to Cargo.toml
-// cbindgen = "0.26.0"
-
 #[repr(C)]
 pub struct BarkError {
     message: *mut c_char,
@@ -41,7 +38,14 @@ pub struct BarkCreateOpts {
     config: BarkConfigOpts,
 }
 
-#[unsafe(no_mangle)]
+#[repr(C)]
+pub struct BarkBalance {
+    onchain: u64,
+    offchain: u64,
+    pending_exit: u64,
+}
+
+#[no_mangle]
 pub extern "C" fn bark_free_error(error: *mut BarkError) {
     if !error.is_null() {
         unsafe {
@@ -53,7 +57,7 @@ pub extern "C" fn bark_free_error(error: *mut BarkError) {
     }
 }
 
-#[unsafe(no_mangle)]
+#[no_mangle]
 pub extern "C" fn bark_error_message(error: *const BarkError) -> *const c_char {
     if error.is_null() {
         return ptr::null();
@@ -121,7 +125,7 @@ fn to_rust_create_opts(c_opts: &BarkCreateOpts) -> Result<CreateOpts, anyhow::Er
 /// @param datadir Path to the data directory
 /// @param opts Creation options
 /// @return Error pointer or NULL on success
-#[unsafe(no_mangle)]
+#[no_mangle]
 pub extern "C" fn bark_create_wallet(
     datadir: *const c_char,
     opts: BarkCreateOpts,
@@ -152,6 +156,56 @@ pub extern "C" fn bark_create_wallet(
 
     match result {
         Ok(_) => ptr::null_mut(),
+        Err(e) => Box::into_raw(Box::new(BarkError::new(&e.to_string()))),
+    }
+}
+
+/// Get offchain and onchain balances
+///
+/// @param datadir Path to the data directory
+/// @param no_sync Whether to skip syncing the wallet
+/// @param balance_out Pointer to a BarkBalance struct where the result will be stored
+/// @return Error pointer or NULL on success
+#[no_mangle]
+pub extern "C" fn bark_get_balance(
+    datadir: *const c_char,
+    no_sync: bool,
+    balance_out: *mut BarkBalance,
+) -> *mut BarkError {
+    if datadir.is_null() {
+        return Box::into_raw(Box::new(BarkError::new("datadir is null")));
+    }
+    
+    if balance_out.is_null() {
+        return Box::into_raw(Box::new(BarkError::new("balance_out is null")));
+    }
+
+    let datadir_str = match unsafe { CStr::from_ptr(datadir).to_str() } {
+        Ok(s) => s,
+        Err(_) => return Box::into_raw(Box::new(BarkError::new("Invalid UTF-8 in datadir path"))),
+    };
+
+    // Create a new runtime for the async function
+    let runtime = match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt,
+        Err(e) => return Box::into_raw(Box::new(BarkError::new(&e.to_string()))),
+    };
+
+    // Run the async function
+    let result = runtime.block_on(async {
+        get_balance(Path::new(datadir_str), no_sync).await
+    });
+
+    match result {
+        Ok(balance) => {
+            // Store the result in the output parameter
+            unsafe {
+                (*balance_out).onchain = balance.onchain;
+                (*balance_out).offchain = balance.offchain;
+                (*balance_out).pending_exit = balance.pending_exit;
+            }
+            ptr::null_mut()
+        }
         Err(e) => Box::into_raw(Box::new(BarkError::new(&e.to_string()))),
     }
 }
