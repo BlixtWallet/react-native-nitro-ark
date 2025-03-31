@@ -143,7 +143,6 @@ dependencies = [
 [[package]]
 name = "ark-lib"
 version = "0.0.0-alpha"
-source = "git+https://codeberg.org/ark-bitcoin/bark.git?rev=1bee5e5120#1bee5e51201da7df10a839faf1f9b80ffd607444"
 dependencies = [
  "bark-bitcoin-ext",
  "bitcoin",
@@ -164,7 +163,6 @@ checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 [[package]]
 name = "aspd-rpc"
 version = "0.0.0-alpha"
-source = "git+https://codeberg.org/ark-bitcoin/bark.git?rev=1bee5e5120#1bee5e51201da7df10a839faf1f9b80ffd607444"
 dependencies = [
  "ark-lib",
  "bitcoin",
@@ -329,7 +327,6 @@ dependencies = [
 [[package]]
 name = "bark-bitcoin-ext"
 version = "0.0.0"
-source = "git+https://codeberg.org/ark-bitcoin/bark.git?rev=1bee5e5120#1bee5e51201da7df10a839faf1f9b80ffd607444"
 dependencies = [
  "bdk_wallet",
  "bitcoin",
@@ -339,7 +336,6 @@ dependencies = [
 [[package]]
 name = "bark-client"
 version = "0.0.0-alpha"
-source = "git+https://codeberg.org/ark-bitcoin/bark.git?rev=1bee5e5120#1bee5e51201da7df10a839faf1f9b80ffd607444"
 dependencies = [
  "anyhow",
  "ark-lib",
@@ -361,6 +357,7 @@ dependencies = [
  "lightning-invoice",
  "lnurl-rs",
  "log",
+ "logger",
  "miniscript",
  "prost",
  "rusqlite",
@@ -369,6 +366,7 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tonic 0.12.3",
+ "tower 0.5.2",
 ]
 
 [[package]]
@@ -379,6 +377,8 @@ dependencies = [
  "bark-client",
  "bip39",
  "cbindgen",
+ "env_logger",
+ "log",
  "logger",
  "serde",
  "serde_json",
@@ -389,7 +389,6 @@ dependencies = [
 [[package]]
 name = "bark-json"
 version = "0.0.0"
-source = "git+https://codeberg.org/ark-bitcoin/bark.git?rev=1bee5e5120#1bee5e51201da7df10a839faf1f9b80ffd607444"
 dependencies = [
  "ark-lib",
  "bitcoin",
@@ -3098,6 +3097,7 @@ dependencies = [
  "tower-layer",
  "tower-service",
  "tracing",
+ "webpki-roots 0.26.8",
 ]
 
 [[package]]
