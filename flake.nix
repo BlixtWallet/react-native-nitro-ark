@@ -91,10 +91,10 @@
 
               chmod +x $out/bin/*
 
-              if [ -d "/Applications/Xcode-16.2.0.app" ]; then
-                DEVELOPER_DIR="/Applications/Xcode-16.2.0.app/Contents/Developer"
-              elif [ -d "/Applications/Xcode.app" ]; then
+              if [ -d "/Applications/Xcode.app" ]; then
                 DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
+              elif [ -d "/Applications/Xcode-16.2.0.app" ]; then
+                DEVELOPER_DIR="/Applications/Xcode-16.2.0.app/Contents/Developer"
               else
                 echo "Error: Xcode not found"
                 exit 1
@@ -105,38 +105,6 @@
           };
 
         scripts = pkgs: {
-          setup-ios-env = pkgs.writeScriptBin "setup-ios-env" ''
-            #!${pkgs.stdenv.shell}
-            export XCODE_VERSION="16.2.0"
-            export XCODES_VERSION="1.6.0"
-
-            if [ "$(uname)" = "Darwin" ]; then
-              if [ -d "/Applications/Xcode.app" ]; then
-                XCODE_PATH="/Applications/Xcode.app"
-              elif [ -d "/Applications/Xcode-$XCODE_VERSION.app" ]; then
-                XCODE_PATH="/Applications/Xcode-$XCODE_VERSION.app"
-              else
-                echo "Installing Xcode $XCODE_VERSION..."
-                curl -L -o xcodes.zip "https://github.com/XcodesOrg/xcodes/releases/download/$XCODES_VERSION/xcodes.zip"
-                unzip xcodes.zip
-                ./xcodes install $XCODE_VERSION
-                rm -f xcodes xcodes.zip
-                XCODE_PATH="/Applications/Xcode-$XCODE_VERSION.app"
-              fi
-
-              echo "Switching to Xcode at $XCODE_PATH..."
-              sudo xcode-select --switch "$XCODE_PATH/Contents/Developer"
-              echo "Selected Xcode path: $(xcode-select -p)"
-              echo "Accepting Xcode license..."
-              sudo xcodebuild -license accept
-              echo "Xcode setup completed!"
-              xcodebuild -version
-            else
-              echo "This script only works on macOS"
-              exit 1
-            fi
-          '';
-
           build-ios = pkgs.writeScriptBin "build-ios" ''
             #!${pkgs.stdenv.shell}
             echo "Building for iOS..."
@@ -201,7 +169,6 @@
             darwin.apple_sdk.frameworks.Security
             darwin.apple_sdk.frameworks.SystemConfiguration
             (darwinDerivations.xcode-wrapper pkgs)
-            scripts.setup-ios-env
             scripts.build-ios
             scripts.build-macos
             scripts.build-android

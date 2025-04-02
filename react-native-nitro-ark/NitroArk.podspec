@@ -10,7 +10,7 @@ Pod::Spec.new do |s|
   s.license      = package["license"]
   s.authors      = package["author"]
 
-  s.platforms    = { :ios => "16.6" }
+  s.platforms    = { :ios => min_ios_version_supported }
   s.source       = { :git => "https://github.com/niteshbalusu11/react-native-nitro-ark.git", :tag => "#{s.version}" }
 
   s.source_files = "cpp/**/*.{h,hpp,cpp,c}"
