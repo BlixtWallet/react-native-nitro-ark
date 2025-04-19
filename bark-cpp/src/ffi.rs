@@ -2,7 +2,7 @@ use crate::utils::ConfigOpts;
 
 use super::*;
 use bip39::Mnemonic;
-use logger::log::{error, info};
+use logger::log::error;
 use logger::Logger;
 use std::ffi::{c_char, CStr, CString};
 use std::path::Path;
@@ -16,7 +16,7 @@ pub struct BarkError {
 
 impl BarkError {
     fn new(msg: &str) -> Self {
-        info!("Creating BarkError: {}", msg);
+        debug!("Creating BarkError: {}", msg);
         let message = CString::new(msg).unwrap_or_default().into_raw();
         BarkError { message }
     }
@@ -53,7 +53,7 @@ pub struct BarkBalance {
 #[no_mangle]
 pub extern "C" fn bark_free_error(error: *mut BarkError) {
     if !error.is_null() {
-        info!("Freeing BarkError");
+        debug!("Freeing BarkError");
         unsafe {
             let err = Box::from_raw(error);
             if !err.message.is_null() {
@@ -159,6 +159,31 @@ fn to_rust_create_opts(c_opts: &BarkCreateOpts) -> anyhow::Result<CreateOpts> {
     })
 }
 
+/// Create a new mnemonic
+///
+/// @return The mnemonic string as a C string, or NULL on error
+#[no_mangle]
+pub extern "C" fn bark_create_mnemonic() -> *mut c_char {
+    let _logger = Logger::new();
+    debug!("bark_create_mnemonic called");
+
+    let mnemonic = match create_mnemonic() {
+        Ok(m) => m,
+        Err(e) => {
+            error!("Failed to create mnemonic: {}", e);
+            return ptr::null_mut();
+        }
+    };
+
+    match CString::new(mnemonic) {
+        Ok(c_string) => c_string.into_raw(),
+        Err(e) => {
+            error!("Failed to convert mnemonic to CString: {}", e);
+            ptr::null_mut()
+        }
+    }
+}
+
 /// Create a new wallet at the specified directory
 ///
 /// @param datadir Path to the data directory
@@ -170,7 +195,7 @@ pub extern "C" fn bark_create_wallet(
     opts: BarkCreateOpts,
 ) -> *mut BarkError {
     let _logger = Logger::new();
-    info!("bark_create_wallet called datadir={:?}, opts: force={}, regtest={}, signet={}, bitcoin={}, birthday_height={}, asp={:?}, esplora={:?}",
+    debug!("bark_create_wallet called datadir={:?}, opts: force={}, regtest={}, signet={}, bitcoin={}, birthday_height={}, asp={:?}, esplora={:?}",
     datadir,
     opts.force,
     opts.regtest,
@@ -185,14 +210,11 @@ pub extern "C" fn bark_create_wallet(
         return Box::into_raw(Box::new(BarkError::new("datadir is null")));
     }
 
-    let datadir_str = match unsafe { CStr::from_ptr(datadir).to_str() } {
-        Ok(s) => {
-            info!("Creating wallet at: {}", s);
-            s
-        }
+    let datadir_str = match c_string_to_string(datadir) {
+        Ok(s) => s,
         Err(e) => {
-            error!("Invalid UTF-8 in datadir path: {}", e);
-            return Box::into_raw(Box::new(BarkError::new("Invalid UTF-8 in datadir path")));
+            error!("Failed to convert datadir string: {}", e);
+            return Box::into_raw(Box::new(BarkError::new(&e.to_string())));
         }
     };
 
@@ -205,7 +227,7 @@ pub extern "C" fn bark_create_wallet(
     };
 
     // Create a new runtime for the async function
-    info!("Creating tokio runtime");
+    debug!("Creating tokio runtime");
     let runtime = match tokio::runtime::Runtime::new() {
         Ok(rt) => rt,
         Err(e) => {
@@ -215,13 +237,13 @@ pub extern "C" fn bark_create_wallet(
     };
 
     // Run the async function
-    info!("Running create_wallet async function");
-    let result =
-        runtime.block_on(async { create_wallet(Path::new(datadir_str), create_opts).await });
+    debug!("Running create_wallet async function");
+    let result = runtime
+        .block_on(async { create_wallet(Path::new(datadir_str.as_str()), create_opts).await });
 
     match result {
         Ok(_) => {
-            info!("Wallet created successfully");
+            debug!("Wallet created successfully");
             ptr::null_mut()
         }
         Err(e) => {
@@ -241,31 +263,32 @@ pub extern "C" fn bark_create_wallet(
 pub extern "C" fn bark_get_balance(
     datadir: *const c_char,
     no_sync: bool,
+    mnemonic: *const c_char,
     balance_out: *mut BarkBalance,
 ) -> *mut BarkError {
     let _logger = Logger::new();
-    info!("bark_get_balance called, no_sync: {}", no_sync);
+    debug!("bark_get_balance called, no_sync: {}", no_sync);
 
-    if datadir.is_null() {
-        error!("Data directory pointer is null");
-        return Box::into_raw(Box::new(BarkError::new("datadir is null")));
-    }
+    let datadir_str = match c_string_to_string(datadir) {
+        Ok(s) => s,
+        Err(e) => {
+            error!("Failed to convert datadir string: {}", e);
+            return Box::into_raw(Box::new(BarkError::new(&e.to_string())));
+        }
+    };
+
+    let mnemonic_str = match c_string_to_string(mnemonic) {
+        Ok(s) => s,
+        Err(e) => {
+            error!("Failed to convert mnemonic string: {}", e);
+            return Box::into_raw(Box::new(BarkError::new(&e.to_string())));
+        }
+    };
 
     if balance_out.is_null() {
         error!("Balance output pointer is null");
         return Box::into_raw(Box::new(BarkError::new("balance_out is null")));
     }
-
-    let datadir_str = match unsafe { CStr::from_ptr(datadir).to_str() } {
-        Ok(s) => {
-            info!("Getting balance for wallet at: {}", s);
-            s
-        }
-        Err(e) => {
-            error!("Invalid UTF-8 in datadir path: {}", e);
-            return Box::into_raw(Box::new(BarkError::new("Invalid UTF-8 in datadir path")));
-        }
-    };
 
     // Create a new runtime for the async function
     debug!("Creating tokio runtime");
@@ -278,8 +301,11 @@ pub extern "C" fn bark_get_balance(
     };
 
     // Run the async function
-    info!("Running get_balance async function");
-    let result = runtime.block_on(async { get_balance(Path::new(datadir_str), no_sync).await });
+    debug!("Running get_balance async function");
+
+    let mnemonic = Mnemonic::from_str(mnemonic_str.as_str()).unwrap();
+    let result = runtime
+        .block_on(async { get_balance(Path::new(datadir_str.as_str()), no_sync, mnemonic).await });
 
     match result {
         Ok(balance) => {
@@ -289,7 +315,7 @@ pub extern "C" fn bark_get_balance(
                 (*balance_out).offchain = balance.offchain;
                 (*balance_out).pending_exit = balance.pending_exit;
             }
-            info!(
+            debug!(
                 "Balance retrieved successfully: onchain={}, offchain={}, pending_exit={}",
                 balance.onchain, balance.offchain, balance.pending_exit
             );
@@ -300,4 +326,244 @@ pub extern "C" fn bark_get_balance(
             Box::into_raw(Box::new(BarkError::new(&e.to_string())))
         }
     }
+}
+
+/// Get an onchain address.
+///
+/// The returned address string must be freed by the caller using `bark_free_string`.
+///
+/// @param datadir Path to the data directory
+/// @param mnemonic The wallet mnemonic phrase
+/// @param address_out Pointer to a `*mut c_char` where the address string pointer will be written.
+/// @return Error pointer or NULL on success.
+#[no_mangle]
+pub extern "C" fn bark_get_onchain_address(
+    datadir: *const c_char,
+    mnemonic: *const c_char,
+    address_out: *mut *mut c_char,
+) -> *mut BarkError {
+    let _logger = Logger::new();
+    debug!("bark_get_onchain_address called");
+
+    // --- Input Validation ---
+    if datadir.is_null() || mnemonic.is_null() || address_out.is_null() {
+        error!("Null pointer passed to bark_get_onchain_address (datadir={}, mnemonic={}, address_out={})",
+             datadir.is_null(), mnemonic.is_null(), address_out.is_null());
+        return Box::into_raw(Box::new(BarkError::new("Null pointer argument provided")));
+    }
+    // Initialize output pointer to null
+    unsafe {
+        *address_out = ptr::null_mut();
+    }
+
+    // --- Conversions ---
+    let datadir_str = match c_string_to_string(datadir) {
+        Ok(s) => s,
+        Err(e) => {
+            return Box::into_raw(Box::new(BarkError::new(&format!("Invalid datadir: {}", e))))
+        }
+    };
+    let datadir_path = Path::new(&datadir_str);
+
+    let mnemonic_str = match c_string_to_string(mnemonic) {
+        Ok(s) => s,
+        Err(e) => {
+            return Box::into_raw(Box::new(BarkError::new(&format!(
+                "Invalid mnemonic: {}",
+                e
+            ))))
+        }
+    };
+    let rust_mnemonic = match Mnemonic::from_str(&mnemonic_str) {
+        Ok(m) => m,
+        Err(e) => {
+            return Box::into_raw(Box::new(BarkError::new(&format!(
+                "Failed to parse mnemonic: {}",
+                e
+            ))))
+        }
+    };
+
+    // --- Runtime and Async Execution ---
+    debug!("Creating tokio runtime for get_onchain_address");
+    let runtime = match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt,
+        Err(e) => return Box::into_raw(Box::new(BarkError::new(&format!("Runtime error: {}", e)))),
+    };
+
+    debug!("Running get_onchain_address async function");
+    let result = runtime.block_on(async { get_onchain_address(datadir_path, rust_mnemonic).await });
+
+    // --- Result Handling ---
+    match result {
+        Ok(address) => {
+            debug!("Address retrieved successfully: {}", address);
+            let address_string = address.to_string();
+            match CString::new(address_string) {
+                Ok(c_string) => {
+                    unsafe {
+                        *address_out = c_string.into_raw();
+                    }
+                    debug!("Successfully prepared address C string for return.");
+                    ptr::null_mut() // Success
+                }
+                Err(e) => {
+                    error!("Failed to create CString for address: {}", e);
+                    Box::into_raw(Box::new(BarkError::new(
+                        "Failed to convert address to C string",
+                    )))
+                }
+            }
+        }
+        Err(e) => {
+            error!("Failed to get onchain address: {}", e);
+            error!("Get Address Error Details: {:?}", e);
+            Box::into_raw(Box::new(BarkError::new(&format!(
+                "Failed to get address: {}",
+                e
+            ))))
+        }
+    }
+}
+
+/// Send funds using the onchain wallet.
+///
+/// The returned transaction ID string must be freed by the caller using `bark_free_string`.
+///
+/// @param datadir Path to the data directory
+/// @param mnemonic The wallet mnemonic phrase
+/// @param destination The destination Bitcoin address as a string
+/// @param amount_sat The amount to send in satoshis
+/// @param no_sync Whether to skip syncing the wallet before sending
+/// @param txid_out Pointer to a `*mut c_char` where the transaction ID string pointer will be written.
+/// @return Error pointer or NULL on success.
+#[no_mangle]
+pub extern "C" fn bark_send_onchain(
+    datadir: *const c_char,
+    mnemonic: *const c_char,
+    destination: *const c_char,
+    amount_sat: u64,
+    no_sync: bool,
+    txid_out: *mut *mut c_char,
+) -> *mut BarkError {
+    let _logger = Logger::new();
+    debug!(
+        "bark_send_onchain called: amount_sat={}, no_sync={}",
+        amount_sat, no_sync
+    );
+
+    // --- Input Validation ---
+    if datadir.is_null() || mnemonic.is_null() || destination.is_null() || txid_out.is_null() {
+        error!("Null pointer passed to bark_send_onchain (datadir={}, mnemonic={}, destination={}, txid_out={})",
+             datadir.is_null(), mnemonic.is_null(), destination.is_null(), txid_out.is_null());
+        return Box::into_raw(Box::new(BarkError::new("Null pointer argument provided")));
+    }
+    // Initialize output pointer to null
+    unsafe {
+        *txid_out = ptr::null_mut();
+    }
+
+    // --- Conversions ---
+    let datadir_str = match c_string_to_string(datadir) {
+        Ok(s) => s,
+        Err(e) => {
+            return Box::into_raw(Box::new(BarkError::new(&format!("Invalid datadir: {}", e))))
+        }
+    };
+    let datadir_path = Path::new(&datadir_str);
+
+    let mnemonic_str = match c_string_to_string(mnemonic) {
+        Ok(s) => s,
+        Err(e) => {
+            return Box::into_raw(Box::new(BarkError::new(&format!(
+                "Invalid mnemonic: {}",
+                e
+            ))))
+        }
+    };
+    let rust_mnemonic = match Mnemonic::from_str(&mnemonic_str) {
+        Ok(m) => m,
+        Err(e) => {
+            return Box::into_raw(Box::new(BarkError::new(&format!(
+                "Failed to parse mnemonic: {}",
+                e
+            ))))
+        }
+    };
+
+    let destination_str = match c_string_to_string(destination) {
+        Ok(s) => s,
+        Err(e) => {
+            return Box::into_raw(Box::new(BarkError::new(&format!(
+                "Invalid destination address: {}",
+                e
+            ))))
+        }
+    };
+    debug!("Destination address string: {}", destination_str);
+
+    let amount = Amount::from_sat(amount_sat);
+    debug!("Amount: {}", amount);
+
+    // --- Runtime and Async Execution ---
+    debug!("Creating tokio runtime for send_onchain");
+    let runtime = match tokio::runtime::Runtime::new() {
+        Ok(rt) => rt,
+        Err(e) => return Box::into_raw(Box::new(BarkError::new(&format!("Runtime error: {}", e)))),
+    };
+
+    debug!("Running send_onchain async function");
+    // Pass destination_str, validation happens inside send_onchain
+    let result = runtime.block_on(async {
+        send_onchain(
+            datadir_path,
+            rust_mnemonic,
+            &destination_str,
+            amount,
+            no_sync,
+        )
+        .await
+    });
+
+    // --- Result Handling ---
+    match result {
+        Ok(txid) => {
+            debug!("Send successful, TxID: {}", txid);
+            let txid_string = txid.to_string();
+            match CString::new(txid_string) {
+                Ok(c_string) => {
+                    unsafe {
+                        *txid_out = c_string.into_raw();
+                    }
+                    debug!("Successfully prepared txid C string for return.");
+                    ptr::null_mut() // Success
+                }
+                Err(e) => {
+                    error!("Failed to create CString for txid: {}", e);
+                    Box::into_raw(Box::new(BarkError::new(
+                        "Failed to convert txid to C string",
+                    )))
+                }
+            }
+        }
+        Err(e) => {
+            error!("Failed to send onchain: {}", e);
+            error!("Send Onchain Error Details: {:?}", e);
+            // Provide more context in the error message if possible
+            Box::into_raw(Box::new(BarkError::new(&format!(
+                "Failed to send onchain: {}",
+                e
+            ))))
+        }
+    }
+}
+
+// Extract string from C string
+fn c_string_to_string(s: *const c_char) -> anyhow::Result<String> {
+    if s.is_null() {
+        bail!("C string is null");
+    }
+
+    let s = unsafe { CStr::from_ptr(s).to_str()? };
+    Ok(s.to_string())
 }

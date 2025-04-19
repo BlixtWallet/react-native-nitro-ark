@@ -1,12 +1,18 @@
 use anyhow;
 use anyhow::bail;
 use bark;
+use bark::ark::bitcoin::address;
+use bark::ark::bitcoin::Address;
+use bark::ark::bitcoin::Amount;
 use bark::ark::bitcoin::Network;
+use bark::ark::bitcoin::Txid;
+use bark::ark::ArkInfo;
 use bark::Config;
 use bark::SqliteClient;
 use bark::Wallet;
 mod ffi;
 mod utils;
+use bip39::Mnemonic;
 use logger::log::{debug, info, warn};
 use std::fs;
 use std::path::Path;
@@ -20,7 +26,7 @@ use std::str::FromStr;
 
 use anyhow::Context;
 
-pub async fn create_mnemonic() -> anyhow::Result<String> {
+pub fn create_mnemonic() -> anyhow::Result<String> {
     let mnemonic = bip39::Mnemonic::generate(12).context("failed to generate mnemonic")?;
     Ok(mnemonic.to_string())
 }
@@ -71,8 +77,12 @@ pub struct Balance {
 }
 
 /// Get offchain and onchain balances
-pub async fn get_balance(datadir: &Path, no_sync: bool) -> anyhow::Result<Balance> {
-    let mut w = open_wallet(&datadir)
+pub async fn get_balance(
+    datadir: &Path,
+    no_sync: bool,
+    mnemonic: Mnemonic,
+) -> anyhow::Result<Balance> {
+    let mut w = open_wallet(&datadir, mnemonic)
         .await
         .context("error opening wallet")?;
 
@@ -95,20 +105,93 @@ pub async fn get_balance(datadir: &Path, no_sync: bool) -> anyhow::Result<Balanc
     Ok(balances)
 }
 
-pub async fn open_wallet(datadir: &Path) -> anyhow::Result<Wallet<SqliteClient>> {
+pub async fn open_wallet(
+    datadir: &Path,
+    mnemonic: Mnemonic,
+) -> anyhow::Result<Wallet<SqliteClient>> {
     debug!("Opening bark wallet in {}", datadir.display());
-
-    // read mnemonic file
-    let mnemonic_path = datadir.join(MNEMONIC_FILE);
-    let mnemonic_str = fs::read_to_string(&mnemonic_path).with_context(|| {
-        format!(
-            "failed to read mnemonic file at {}",
-            mnemonic_path.display()
-        )
-    })?;
-    let mnemonic = bip39::Mnemonic::from_str(&mnemonic_str).context("broken mnemonic")?;
 
     let db = SqliteClient::open(datadir.join(DB_FILE))?;
 
     Wallet::open(&mnemonic, db).await
+}
+
+pub async fn get_ark_info(datadir: &Path, mnemonic: Mnemonic) -> anyhow::Result<ArkInfo> {
+    let w = open_wallet(&datadir, mnemonic)
+        .await
+        .context("error opening wallet in get_ark_info")?;
+
+    let info = w.ark_info();
+
+    if let Some(info) = info {
+        Ok(info.clone())
+    } else {
+        bail!("Failed to get ark info")
+    }
+}
+
+/// Get an onchain address from the wallet
+pub async fn get_onchain_address(datadir: &Path, mnemonic: Mnemonic) -> anyhow::Result<Address> {
+    let mut w = open_wallet(&datadir, mnemonic)
+        .await
+        .context("error opening wallet for get_onchain_address")?;
+
+    // Wallet::address() returns Result<Address, Error>
+    let address = w
+        .onchain
+        .address()
+        .context("Wallet failed to generate address")?;
+
+    Ok(address)
+}
+
+/// Send funds using the onchain wallet
+pub async fn send_onchain(
+    datadir: &Path,
+    mnemonic: Mnemonic,
+    destination_str: &str, // Take string to handle validation here
+    amount: Amount,
+    no_sync: bool,
+) -> anyhow::Result<Txid> {
+    let mut w = open_wallet(&datadir, mnemonic)
+        .await
+        .context("error opening wallet for send_onchain")?;
+
+    let net = w.properties()?.network;
+
+    // Parse the address first without network requirement
+    let address_unchecked = Address::<address::NetworkUnchecked>::from_str(destination_str)
+        .with_context(|| format!("invalid destination address format: '{}'", destination_str))?;
+
+    // Now require the network to match the wallet's network
+    let destination_address = address_unchecked.require_network(net).with_context(|| {
+        format!(
+            "address '{}' is not valid for configured network {}",
+            destination_str, net
+        )
+    })?;
+
+    if !no_sync {
+        info!("Syncing onchain wallet before sending...");
+        // Sync only the onchain part as we are doing an onchain send
+        if let Err(e) = w.onchain.sync().await {
+            warn!("Onchain sync error during send: {}", e);
+            // Decide if this should be a hard error or just a warning like the CLI
+            // Let's treat it as a warning for now, but return error might be safer
+            // return Err(e).context("Failed to sync onchain wallet before send");
+        }
+    }
+
+    info!(
+        "Sending {} to onchain address {}",
+        amount, destination_address
+    );
+    let txid = w
+        .onchain
+        .send(destination_address.clone(), amount)
+        .await
+        .with_context(|| format!("failed to send {} to {}", amount, destination_address))?;
+
+    info!("Onchain send successful, TxID: {}", txid);
+    Ok(txid)
 }

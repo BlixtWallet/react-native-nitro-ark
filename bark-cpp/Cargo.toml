@@ -14,7 +14,7 @@ bark-client = { path = "../../temp-bark/bark/bark", features = [
 # bark-client = { path = "../../temp-bark/bark/bark"}
 tokio = { version = "1.35", features = ["full"] }
 bip39 = { version = "2.0.0", features = ["rand", "serde"] }
-anyhow = "1.0.97"
+anyhow = "1.0.98"
 logger = { path = "../logger" }
 serde = "1.0.219"
 tonic = "0.13.0"
