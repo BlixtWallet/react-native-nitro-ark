@@ -11,6 +11,9 @@ edition = "2021"
 bark-client = { path = "../../temp-bark/bark/bark", features = [
     "tls-webpki-roots",
 ] }
+
+# bark-json = { path = "../../temp-bark/bark/bark-json" }
+
 # bark-client = { path = "../../temp-bark/bark/bark"}
 tokio = { version = "1.35", features = ["full"] }
 bip39 = { version = "2.0.0", features = ["rand", "serde"] }

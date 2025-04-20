@@ -1,10 +1,23 @@
 use std::{path::Path, str::FromStr};
 
 use anyhow::{self, bail, Context};
-use bark::{ark::bitcoin::Network, Config, SqliteClient, Wallet};
-use log::{debug, info};
+use bark::{
+    ark::{
+        bitcoin::{secp256k1::PublicKey, Amount, Network},
+        rounds::RoundId,
+        Vtxo, VtxoId,
+    },
+    lightning_invoice::Bolt11Invoice,
+    lnurllib::lightning_address::LightningAddress,
+    vtxo_selection::VtxoFilter,
+    Config, SqliteClient, Wallet,
+};
+use bip39::Mnemonic;
+use log::{debug, info, warn};
 use tokio::fs;
 use tonic::transport::Uri;
+
+use crate::open_wallet;
 
 pub(crate) const DB_FILE: &str = "db.sqlite";
 
@@ -97,6 +110,15 @@ pub struct CreateOpts {
     pub config: ConfigOpts,
 }
 
+pub enum RefreshMode {
+    DefaultThreshold,
+    ThresholdBlocks(u32),
+    ThresholdHours(u32),
+    Counterparty,
+    All,
+    Specific(Vec<VtxoId>),
+}
+
 /// In this method we create the wallet and if it fails, the datadir will be wiped again.
 pub(crate) async fn try_create_wallet(
     datadir: &Path,
@@ -122,4 +144,125 @@ pub(crate) async fn try_create_wallet(
         .await
         .context("error creating wallet")?;
     Ok(())
+}
+
+// Internal function encapsulating refresh logic
+pub async fn refresh_vtxos_internal(
+    datadir: &Path,
+    mnemonic: Mnemonic,
+    mode: RefreshMode,
+    no_sync: bool,
+) -> anyhow::Result<Option<RoundId>> {
+    let mut w = open_wallet(datadir, mnemonic)
+        .await
+        .context("error opening wallet for refresh")?;
+
+    if !no_sync {
+        info!("Syncing wallet before refreshing VTXOs...");
+        if let Err(e) = w.maintenance().await {
+            warn!("Wallet maintenance sync error during refresh: {}", e);
+        }
+    }
+
+    // Determine VTXOs to refresh based on the mode
+    let vtxos_to_refresh: Vec<Vtxo> = match mode {
+        RefreshMode::DefaultThreshold => {
+            let threshold = w.config().vtxo_refresh_threshold;
+            debug!(
+                "Refreshing VTXOs expiring within default threshold: {} blocks",
+                threshold
+            );
+            w.get_expiring_vtxos(threshold).await?
+        }
+        RefreshMode::ThresholdBlocks(blocks) => {
+            debug!("Refreshing VTXOs expiring within {} blocks", blocks);
+            w.get_expiring_vtxos(blocks).await?
+        }
+        RefreshMode::ThresholdHours(hours) => {
+            let blocks = hours.saturating_mul(6); // Approx blocks per hour
+            debug!(
+                "Refreshing VTXOs expiring within {} hours ({} blocks)",
+                hours, blocks
+            );
+            w.get_expiring_vtxos(blocks).await?
+        }
+        RefreshMode::Counterparty => {
+            debug!("Refreshing all VTXOs with counterparty risk");
+            let filter = VtxoFilter::new(&w).counterparty();
+            w.vtxos_with(filter)
+                .context("Failed to get counterparty VTXOs")?
+        }
+        RefreshMode::All => {
+            debug!("Refreshing all VTXOs");
+            w.vtxos().context("Failed to get all VTXOs")?
+        }
+        RefreshMode::Specific(ids) => {
+            if ids.is_empty() {
+                info!("No specific VTXO IDs provided for refresh.");
+                return Ok(None); // Nothing to refresh
+            }
+            debug!("Refreshing {} specific VTXOs", ids.len());
+            // Fetch Vtxo objects for the given ids
+            // Need to handle potential errors if an ID doesn't exist
+            let mut found_vtxos = Vec::with_capacity(ids.len());
+            for id in ids {
+                match w.get_vtxo_by_id(id) {
+                    // Assuming get_vtxo_by_id exists and is async
+                    Ok(vtxo) => found_vtxos.push(vtxo),
+                    Err(e) => {
+                        // Log or potentially error out if strict matching is required
+                        warn!("Could not find VTXO with id {} for refresh: {}", id, e);
+                        // Decide whether to continue or fail; let's continue for now
+                    }
+                }
+            }
+            if found_vtxos.is_empty() {
+                info!("None of the specified VTXO IDs were found.");
+                return Ok(None);
+            }
+            found_vtxos
+        }
+    };
+
+    if vtxos_to_refresh.is_empty() {
+        info!("No VTXOs found matching refresh criteria.");
+        return Ok(None);
+    }
+
+    info!("Attempting to refresh {} VTXOs...", vtxos_to_refresh.len());
+    let round_id: Option<RoundId> = w.refresh_vtxos(vtxos_to_refresh).await?;
+
+    if let Some(id) = &round_id {
+        info!("Participating in refresh round: {}", id);
+    } else {
+        info!("No refresh round participation necessary or possible at this time.");
+    }
+
+    Ok(round_id)
+}
+
+/// Represents the different destinations for the `send` command
+pub enum SendDestination {
+    VtxoPubkey(PublicKey),
+    Bolt11(Bolt11Invoice),
+    LnAddress(LightningAddress),
+    // Potentially add LNURL string later if direct LNURL payment is supported
+}
+
+/// Parses the destination string into a supported type.
+pub fn parse_send_destination(destination: &str) -> anyhow::Result<SendDestination> {
+    if let Ok(pk) = PublicKey::from_str(destination) {
+        Ok(SendDestination::VtxoPubkey(pk))
+    } else if let Ok(invoice) = Bolt11Invoice::from_str(destination) {
+        // Further validation might be needed (e.g., expiry) but basic parsing is enough here
+        Ok(SendDestination::Bolt11(invoice))
+    } else if let Ok(lnaddr) = LightningAddress::from_str(destination) {
+        Ok(SendDestination::LnAddress(lnaddr))
+    } else {
+        // Could check for raw lnurl string here if needed
+        bail!(
+            "Destination is not a valid VTXO pubkey, bolt11 invoice, or lightning address: {}",
+            destination
+        )
+    }
 }

@@ -1,5 +1,4 @@
-use std::env;
-use std::path::PathBuf;
+use std::env::{self, current_dir};
 
 fn main() {
     // Tell cargo to invalidate the built crate whenever the wrapper changes
@@ -9,7 +8,8 @@ fn main() {
 
     let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
     let package_name = env::var("CARGO_PKG_NAME").unwrap();
-    let output_file = target_dir()
+    let output_file = current_dir()
+        .unwrap()
         .join(format!("{}.h", package_name))
         .display()
         .to_string();
@@ -23,9 +23,4 @@ fn main() {
         .generate()
         .expect("Unable to generate bindings")
         .write_to_file(&output_file);
-}
-
-fn target_dir() -> PathBuf {
-    let target_dir = env::var("CARGO_TARGET_DIR").unwrap_or_else(|_| "target".to_string());
-    PathBuf::from(target_dir)
 }
