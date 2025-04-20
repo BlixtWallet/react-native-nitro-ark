@@ -30,6 +30,7 @@ mkdir -p $TARGET_DIR
 echo "Building for iOS (arm64)..."
 cargo build --release \
     --target aarch64-apple-ios \
+    --lib \
     --target-dir $TARGET_DIR
 
 # echo "Building for iOS (x86_64)..."
@@ -41,6 +42,7 @@ cargo build --release \
 echo "Building for iOS (aarch64-sim)..."
 cargo build --release \
     --target aarch64-apple-ios-sim \
+    --lib \
     --target-dir $TARGET_DIR
 
 

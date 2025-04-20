@@ -1,7 +1,9 @@
 use anyhow;
 use bark_cpp::{get_ark_info, get_balance, ConfigOpts, CreateOpts};
 use bip39::Mnemonic;
-use log::{debug, info};
+use logger::Logger;
+
+use logger::log::{debug, info, warn};
 use std::env;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -10,7 +12,9 @@ use tokio::fs;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Initialize with explicit debug level if environment variable isn't set
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug")).init();
+    // env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug")).init();
+
+    let _ = Logger::new();
 
     debug!("Starting wallet application in debug mode");
 

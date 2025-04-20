@@ -63,9 +63,9 @@ checksum = "84521a3cf562bc62942e294181d9eef17eb38ceb8c68677bc49f144e4c3d4f8d"
 
 [[package]]
 name = "android_logger"
-version = "0.14.1"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "05b07e8e73d720a1f2e4b6014766e6039fd2e96a4fa44e2a78d0e1fa2ff49826"
+checksum = "f6f39be698127218cca460cb624878c9aa4e2b47dba3b277963d2bf00bad263b"
 dependencies = [
  "android_log-sys",
  "env_filter",
@@ -375,8 +375,6 @@ dependencies = [
  "bark-client",
  "bip39",
  "cbindgen",
- "env_logger",
- "log",
  "logger",
  "serde",
  "serde_json",
@@ -425,7 +423,7 @@ checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 [[package]]
 name = "bdk_bitcoind_rpc"
 version = "0.17.1"
-source = "git+https://github.com/stevenroose/bdk.git?rev=4b6738b3d43ffcf9e91238eb6a12c293b90d6701#4b6738b3d43ffcf9e91238eb6a12c293b90d6701"
+source = "git+https://github.com/stevenroose/bdk.git?rev=c52dd1b8b06d0669aa7a387fa4138ca6c2fb1da2#c52dd1b8b06d0669aa7a387fa4138ca6c2fb1da2"
 dependencies = [
  "bdk_core",
  "bitcoin",
@@ -435,7 +433,7 @@ dependencies = [
 [[package]]
 name = "bdk_chain"
 version = "0.21.1"
-source = "git+https://github.com/stevenroose/bdk.git?rev=4b6738b3d43ffcf9e91238eb6a12c293b90d6701#4b6738b3d43ffcf9e91238eb6a12c293b90d6701"
+source = "git+https://github.com/stevenroose/bdk.git?rev=c52dd1b8b06d0669aa7a387fa4138ca6c2fb1da2#c52dd1b8b06d0669aa7a387fa4138ca6c2fb1da2"
 dependencies = [
  "bdk_core",
  "bitcoin",
@@ -447,7 +445,7 @@ dependencies = [
 [[package]]
 name = "bdk_core"
 version = "0.4.1"
-source = "git+https://github.com/stevenroose/bdk.git?rev=4b6738b3d43ffcf9e91238eb6a12c293b90d6701#4b6738b3d43ffcf9e91238eb6a12c293b90d6701"
+source = "git+https://github.com/stevenroose/bdk.git?rev=c52dd1b8b06d0669aa7a387fa4138ca6c2fb1da2#c52dd1b8b06d0669aa7a387fa4138ca6c2fb1da2"
 dependencies = [
  "bitcoin",
  "hashbrown 0.14.5",
@@ -457,7 +455,7 @@ dependencies = [
 [[package]]
 name = "bdk_esplora"
 version = "0.20.1"
-source = "git+https://github.com/stevenroose/bdk.git?rev=4b6738b3d43ffcf9e91238eb6a12c293b90d6701#4b6738b3d43ffcf9e91238eb6a12c293b90d6701"
+source = "git+https://github.com/stevenroose/bdk.git?rev=c52dd1b8b06d0669aa7a387fa4138ca6c2fb1da2#c52dd1b8b06d0669aa7a387fa4138ca6c2fb1da2"
 dependencies = [
  "async-trait",
  "bdk_core",
@@ -469,7 +467,7 @@ dependencies = [
 [[package]]
 name = "bdk_wallet"
 version = "1.0.0"
-source = "git+https://github.com/stevenroose/bdk.git?rev=4b6738b3d43ffcf9e91238eb6a12c293b90d6701#4b6738b3d43ffcf9e91238eb6a12c293b90d6701"
+source = "git+https://github.com/stevenroose/bdk.git?rev=c52dd1b8b06d0669aa7a387fa4138ca6c2fb1da2#c52dd1b8b06d0669aa7a387fa4138ca6c2fb1da2"
 dependencies = [
  "bdk_chain",
  "bitcoin",

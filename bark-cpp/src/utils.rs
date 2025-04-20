@@ -13,7 +13,7 @@ use bark::{
     Config, SqliteClient, Wallet,
 };
 use bip39::Mnemonic;
-use log::{debug, info, warn};
+use logger::log::{debug, info, warn};
 use tokio::fs;
 use tonic::transport::Uri;
 

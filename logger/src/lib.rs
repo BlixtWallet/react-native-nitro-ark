@@ -21,7 +21,10 @@ impl Logger {
         }
         #[cfg(not(target_os = "android"))]
         {
-            let _ = logger::try_init();
+            // let _ = logger::try_init();
+            let _ =
+                logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug"))
+                    .try_init();
         }
 
         log_panics::init(); // log panics rather than printing them
