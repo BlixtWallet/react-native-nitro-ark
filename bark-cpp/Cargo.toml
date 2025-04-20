@@ -12,11 +12,8 @@ bark-client = { path = "../../temp-bark/bark/bark", features = [
     "tls-webpki-roots",
 ] }
 
-# bark-json = { path = "../../temp-bark/bark/bark-json" }
-
-# bark-client = { path = "../../temp-bark/bark/bark"}
-tokio = { version = "1.35", features = ["full"] }
-bip39 = { version = "2.0.0", features = ["rand", "serde"] }
+tokio = { version = "1", features = ["full"] }
+bip39 = { version = "2.1.0", features = ["rand", "serde"] }
 anyhow = "1.0.98"
 logger = { path = "../logger" }
 serde = "1.0.219"

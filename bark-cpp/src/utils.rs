@@ -3,7 +3,7 @@ use std::{path::Path, str::FromStr};
 use anyhow::{self, bail, Context};
 use bark::{
     ark::{
-        bitcoin::{secp256k1::PublicKey, Amount, Network},
+        bitcoin::{secp256k1::PublicKey, Network},
         rounds::RoundId,
         Vtxo, VtxoId,
     },

@@ -52,6 +52,7 @@ pub struct BarkBalance {
 }
 
 #[derive(Debug, PartialEq)]
+#[allow(dead_code)]
 #[repr(C)]
 pub enum BarkRefreshModeType {
     DefaultThreshold,

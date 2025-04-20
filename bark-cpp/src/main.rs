@@ -1,7 +1,7 @@
 use anyhow;
-use bark_cpp::{create_wallet, get_ark_info, get_balance, ConfigOpts, CreateOpts};
+use bark_cpp::{get_ark_info, get_balance, ConfigOpts, CreateOpts};
 use bip39::Mnemonic;
-use log::{debug, error, info};
+use log::{debug, info};
 use std::env;
 use std::path::PathBuf;
 use std::str::FromStr;

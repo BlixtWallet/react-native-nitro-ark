@@ -14,7 +14,6 @@ use bark::json::cli::Refresh;
 use bark::json::VtxoInfo;
 use bark::vtxo_selection::VtxoFilter;
 use bark::Config;
-use bark::Offboard;
 use bark::SqliteClient;
 use bark::UtxoInfo;
 use bark::Wallet;
@@ -26,7 +25,6 @@ use std::fs;
 use std::path::Path;
 use utils::try_create_wallet;
 use utils::DB_FILE;
-const MNEMONIC_FILE: &str = "mnemonic";
 
 pub use utils::*;
 
