@@ -1,3 +1,24 @@
 {
-    "cmake.sourceDirectory": "/Users/niteshchowdharybalusu/Documents/bark-cpp/react-native-nitro-ark/android"
+    "cmake.sourceDirectory": "/Users/niteshchowdharybalusu/Documents/bark-cpp/react-native-nitro-ark/android",
+    "[javascript]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[typescript]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[typescriptreact]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[rust]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "rust-lang.rust-analyzer"
+    },
+    "[cpp]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "ms-vscode.cpptools"
+    },
+    "C_Cpp.errorSquiggles": "disabled"
 }

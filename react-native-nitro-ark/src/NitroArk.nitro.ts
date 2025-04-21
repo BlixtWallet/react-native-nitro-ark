@@ -156,7 +156,4 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
     no_sync: boolean
   ): Promise<string>; // Returns JSON status
   exitProgressOnce(datadir: string, mnemonic: string): Promise<string>; // Returns JSON status
-
-  // Original multiply function (Keep if still needed)
-  multiply(a: number, b: number): number;
 }

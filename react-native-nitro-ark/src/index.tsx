@@ -434,19 +434,6 @@ export function exitProgressOnce(
   return NitroArkHybridObject.exitProgressOnce(datadir, mnemonic);
 }
 
-// --- Original Function ---
-
-/**
- * Multiplies two numbers (example function).
- * @param a First number.
- * @param b Second number.
- * @returns The result of the multiplication.
- */
-export function multiply(a: number, b: number): number {
-  // This is synchronous as defined in NitroArk.nitro.ts
-  return NitroArkHybridObject.multiply(a, b);
-}
-
 // --- Re-export types and enums ---
 export type {
   BarkCreateOpts,

@@ -3,7 +3,7 @@ use bark_cpp::{get_ark_info, get_balance, ConfigOpts, CreateOpts};
 use bip39::Mnemonic;
 use logger::Logger;
 
-use logger::log::{debug, info, warn};
+use logger::log::{debug, info};
 use std::env;
 use std::path::PathBuf;
 use std::str::FromStr;

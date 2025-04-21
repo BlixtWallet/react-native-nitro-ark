@@ -34,7 +34,6 @@ namespace margelo::nitro::nitroark {
       prototype.registerHybridMethod("exitStartSpecific", &HybridNitroArkSpec::exitStartSpecific);
       prototype.registerHybridMethod("exitStartAll", &HybridNitroArkSpec::exitStartAll);
       prototype.registerHybridMethod("exitProgressOnce", &HybridNitroArkSpec::exitProgressOnce);
-      prototype.registerHybridMethod("multiply", &HybridNitroArkSpec::multiply);
     });
   }
 

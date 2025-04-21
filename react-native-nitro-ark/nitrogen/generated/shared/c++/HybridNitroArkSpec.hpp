@@ -82,7 +82,6 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<std::string>> exitStartSpecific(const std::string& datadir, const std::string& mnemonic, const std::vector<std::string>& vtxoIds, bool no_sync) = 0;
       virtual std::shared_ptr<Promise<std::string>> exitStartAll(const std::string& datadir, const std::string& mnemonic, bool no_sync) = 0;
       virtual std::shared_ptr<Promise<std::string>> exitProgressOnce(const std::string& datadir, const std::string& mnemonic) = 0;
-      virtual double multiply(double a, double b) = 0;
 
     protected:
       // Hybrid Setup

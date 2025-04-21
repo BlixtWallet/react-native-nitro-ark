@@ -18,6 +18,7 @@ use bark::SqliteClient;
 use bark::UtxoInfo;
 use bark::Wallet;
 mod ffi;
+mod ffi_utils;
 mod utils;
 use bip39::Mnemonic;
 use logger::log::{debug, info, warn};
@@ -155,7 +156,7 @@ pub async fn get_onchain_address(datadir: &Path, mnemonic: Mnemonic) -> anyhow::
 pub async fn send_onchain(
     datadir: &Path,
     mnemonic: Mnemonic,
-    destination_str: &str, // Take string to handle validation here
+    destination_str: &str,
     amount: Amount,
     no_sync: bool,
 ) -> anyhow::Result<Txid> {
@@ -267,7 +268,6 @@ pub async fn send_many_onchain(
     }
 
     info!("Sending onchain transaction with {} outputs", outputs.len());
-    // Note: The CLI asks for confirmation here, we skip that in the library function.
     let txid = w
         .onchain
         .send_many(outputs)
@@ -300,7 +300,6 @@ pub async fn get_onchain_utxos(
         }
     }
 
-    // Get UTXOs from the wallet. `w.onchain.utxos()` returns Vec<bdk::UtxoInfo>
     let utxos = w
         .onchain
         .utxos()
@@ -318,8 +317,6 @@ pub async fn get_onchain_utxos(
 
 /// Get the VTXO public key (OOR Pubkey) as a hex string
 pub async fn get_vtxo_pubkey(datadir: &Path, mnemonic: Mnemonic) -> anyhow::Result<String> {
-    // This might not need to be async if opening the wallet doesn't require async ops
-    // But open_wallet is async, so we keep it async.
     let w = open_wallet(&datadir, mnemonic)
         .await
         .context("error opening wallet for get_vtxo_pubkey")?;
@@ -349,7 +346,6 @@ pub async fn get_vtxos(
         }
     }
 
-    // Get VTXOs from the wallet. `w.vtxos()` returns Result<Vec<Vtxo>, Error>
     let vtxos: Vec<VtxoInfo> = w
         .vtxos()
         .context("Failed to retrieve VTXOs from wallet")?
@@ -443,7 +439,7 @@ pub async fn send_payment(
     datadir: &Path,
     mnemonic: Mnemonic,
     destination_str: &str,
-    amount_sat: Option<u64>, // Amount provided by user (None if not provided)
+    amount_sat: Option<u64>,
     comment: Option<String>,
     no_sync: bool,
 ) -> anyhow::Result<String> {
@@ -480,7 +476,6 @@ pub async fn send_payment(
                 "Attempting to send OOR payment of {} to pubkey {}",
                 amount, pk
             );
-            // Assuming send_oor_payment returns Result<OorPayResult, Error> or similar
             let _oor_result = w.send_oor_payment(pk, amount).await?; // Use result if it contains info
 
             serde_json::json!({
@@ -505,8 +500,8 @@ pub async fn send_payment(
                         inv
                     );
                 }
-                (Some(user), _) => user, // User provided, and matches invoice or invoice had none (checked later)
-                (None, Some(inv)) => inv, // User didn't provide, use invoice amount
+                (Some(user), _) => user,
+                (None, Some(inv)) => inv,
                 (None, None) => {
                     bail!("Amount (amount_sat) is required for invoices without an amount");
                 }
@@ -535,7 +530,6 @@ pub async fn send_payment(
                 "Attempting to send bolt11 payment of {} for invoice {}",
                 final_amount, invoice
             );
-            // Assuming send_bolt11_payment returns Result<Bolt11PayResult, Error> containing preimage
             let bolt11_result = w.send_bolt11_payment(&invoice, user_amount_opt).await?; // Pass user_amount_opt
 
             serde_json::json!({
@@ -566,7 +560,6 @@ pub async fn send_payment(
                 "Attempting to send {} to lightning address {} (comment: {:?})",
                 amount, lnaddr, comment
             );
-            // Assuming send_lnaddr returns Result<LnAddrPayResult, Error> containing invoice and preimage
             let (lnaddr_result, _) = w.send_lnaddr(&lnaddr, amount, comment.as_deref()).await?;
 
             serde_json::json!({
@@ -696,8 +689,6 @@ pub async fn offboard_specific(
         vtxo_ids.len(),
         destination_address_opt
     );
-    // Assuming w.offboard_vtxos returns Result<OffboardResult, Error>
-    // OffboardResult should be directly serializable or easily convertible to bark_cli_json::Offboard
     let offboard_result = w.offboard_vtxos(vtxo_ids, destination_address_opt).await?;
 
     let json_string = serde_json::to_string_pretty(&offboard_result)
@@ -747,7 +738,6 @@ pub async fn offboard_all(
         "Attempting to offboard all VTXOs to {:?}",
         destination_address_opt
     );
-    // Assuming w.offboard_all returns Result<OffboardResult, Error>
     let offboard_result = w.offboard_all(destination_address_opt).await?;
 
     let json_string = serde_json::to_string_pretty(&offboard_result)
@@ -755,8 +745,6 @@ pub async fn offboard_all(
 
     Ok(json_string)
 }
-
-// --- Exit Logic ---
 
 /// Start the exit process for specific VTXOs. Returns simple success JSON.
 pub async fn exit_start_specific(
@@ -781,12 +769,10 @@ pub async fn exit_start_specific(
         warn!("Failed to perform ark sync during exit start: {}", err);
     }
 
-    // Fetch Vtxo objects - TODO: Ensure w.vtxos_with is usable or adapt
-    // The CLI uses a filter on existing VTXOs. Let's replicate that.
     info!("Fetching specific VTXOs for exit...");
     let filter = VtxoFilter::new(&w).include_many(vtxo_ids.clone()); // Clone ids if needed later
     let vtxos_to_exit = w
-        .vtxos_with(filter) // Assuming this syncs or uses cached vtxos
+        .vtxos_with(filter)
         .context("Error finding specified vtxos for exit")?;
 
     if vtxos_to_exit.len() != vtxo_ids.len() {
@@ -800,7 +786,6 @@ pub async fn exit_start_specific(
         "Starting exit process for {} specific VTXOs...",
         vtxos_to_exit.len()
     );
-    // Assuming w.exit.start_exit_for_vtxos takes &Vec<Vtxo>
     w.exit
         .start_exit_for_vtxos(&vtxos_to_exit, &mut w.onchain)
         .await?;
@@ -832,7 +817,6 @@ pub async fn exit_start_all(datadir: &Path, mnemonic: Mnemonic) -> anyhow::Resul
     info!("Starting exit process for entire wallet...");
     w.exit.start_exit_for_entire_wallet(&mut w.onchain).await?;
 
-    // Return simple success JSON
     let success_json = serde_json::json!({ "success": true, "type": "start_all" });
     let json_string = serde_json::to_string_pretty(&success_json)?;
     Ok(json_string)
@@ -859,16 +843,15 @@ pub async fn exit_progress_once(datadir: &Path, mnemonic: Mnemonic) -> anyhow::R
     info!("Wallet sync completed for exit progress");
 
     info!("Attempting to progress exit process...");
-    // Assuming w.exit.progress_exit updates state and handles tx broadcasting etc.
     w.exit
         .progress_exit(&mut w.onchain)
         .await
         .context("Error making progress on exit process")?;
 
     // Check status after progressing
-    let pending_exits = w.exit.list_pending_exits().await?; // Assuming this lists ongoing exits
+    let pending_exits = w.exit.list_pending_exits().await?;
     let done = pending_exits.is_empty();
-    let height = w.exit.all_spendable_at_height().await; // Assuming returns Option<BlockHeight> or similar
+    let height = w.exit.all_spendable_at_height().await;
 
     info!(
         "Exit progress check: Done={}, Spendable Height={:?}",
