@@ -38,7 +38,6 @@ const formatSats = (sats: number): string => {
 
 export default function ArkApp() {
   const [mnemonic, setMnemonic] = useState<string | undefined>(undefined);
-  const [walletCreated, setWalletCreated] = useState(false);
   const [balanceState, setBalanceState] = useState<
     Partial<BarkBalance> & { error?: string }
   >({});
@@ -52,8 +51,6 @@ export default function ArkApp() {
   const [comment, setComment] = useState('');
   const [vtxoIdsInput, setVtxoIdsInput] = useState(''); // Comma separated
   const [optionalAddress, setOptionalAddress] = useState('');
-  const [numA, setNumA] = useState('5');
-  const [numB, setNumB] = useState('4');
 
   // Ensure data directory exists on mount
   useEffect(() => {
@@ -155,7 +152,6 @@ export default function ArkApp() {
     try {
       await AsyncStorage.removeItem(MNEMONIC_STORAGE_KEY);
       setMnemonic(undefined);
-      setWalletCreated(false);
       setResults('Mnemonic cleared successfully');
     } catch (err: any) {
       setError('Failed to clear mnemonic: ' + (err.message || 'Unknown error'));
@@ -184,7 +180,6 @@ export default function ArkApp() {
       'createWallet',
       () => NitroArk.createWallet(ARK_DATA_PATH, opts),
       () => {
-        setWalletCreated(true);
         setResults('Wallet created successfully!');
       }
     );
@@ -478,7 +473,7 @@ export default function ArkApp() {
   };
 
   // --- Render ---
-  const canUseWallet = !!mnemonic && walletCreated;
+  const canUseWallet = !!mnemonic;
   const walletOpsButtonDisabled = isLoading || !canUseWallet;
 
   return (
@@ -496,9 +491,6 @@ export default function ArkApp() {
             </Text>
           </View>
         )}
-        <Text style={styles.statusText}>
-          Wallet Created: {String(walletCreated)}
-        </Text>
 
         {/* --- Management --- */}
         <Text style={styles.sectionHeader}>Management</Text>
@@ -521,7 +513,7 @@ export default function ArkApp() {
           <Button
             title="Create Wallet"
             onPress={handleCreateWallet}
-            disabled={isLoading || !mnemonic || walletCreated} // Disable if no mnemonic or already created
+            disabled={isLoading || !mnemonic} // Disable if no mnemonic or already created
           />
         </View>
 
@@ -810,7 +802,7 @@ const styles = StyleSheet.create({
   },
   container: {
     padding: 15,
-    paddingTop: Platform.OS === 'ios' ? 20 : 15,
+    paddingTop: Platform.OS === 'ios' ? 20 : 35,
   },
   headerText: {
     fontSize: 22,
