@@ -45,7 +45,7 @@
     "lint": "eslint \"**/*.{js,ts,tsx}\"",
     "clean": "del-cli android/build example/android/build example/android/app/build example/ios/build lib",
     "prepare": "bob build",
-    "nitrogen": "nitro-codegen",
+    "nitrogen": "rm -rf nitrogen && nitro-codegen",
     "release": "release-it"
   },
   "keywords": [

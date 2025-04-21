@@ -64,6 +64,21 @@ void bark_free_error(bark_BarkError *error);
 
 const char *bark_error_message(const bark_BarkError *error);
 
+/// Frees a C string allocated by a bark-cpp function.
+///
+/// This function should be called by the C/C++ side on any `char*`
+/// that was returned by functions like `bark_create_mnemonic`,
+/// `bark_get_onchain_address`, `bark_send_onchain`, etc.
+///
+/// # Safety
+///
+/// The pointer `s` must have been previously allocated by Rust using
+/// `CString::into_raw` or a similar mechanism within this library.
+/// Calling this with a null pointer is safe (it does nothing).
+/// Calling this with a pointer not allocated by this library, or calling
+/// it more than once on the same pointer, results in undefined behavior.
+void bark_free_string(char *s);
+
 /// Create a new mnemonic
 ///
 /// @return The mnemonic string as a C string, or NULL on error

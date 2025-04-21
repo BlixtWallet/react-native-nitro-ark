@@ -128,8 +128,10 @@ pub extern "C" fn bark_free_error(error: *mut BarkError) {
         unsafe {
             let err = Box::from_raw(error);
             if !err.message.is_null() {
-                let _ = CString::from_raw(err.message);
+                // Free the message string using the new function
+                bark_free_string(err.message);
             }
+            // Box goes out of scope and frees the BarkError struct itself
         }
     }
 }
@@ -141,6 +143,35 @@ pub extern "C" fn bark_error_message(error: *const BarkError) -> *const c_char {
         return ptr::null();
     }
     unsafe { (*error).message }
+}
+
+/// Frees a C string allocated by a bark-cpp function.
+///
+/// This function should be called by the C/C++ side on any `char*`
+/// that was returned by functions like `bark_create_mnemonic`,
+/// `bark_get_onchain_address`, `bark_send_onchain`, etc.
+///
+/// # Safety
+///
+/// The pointer `s` must have been previously allocated by Rust using
+/// `CString::into_raw` or a similar mechanism within this library.
+/// Calling this with a null pointer is safe (it does nothing).
+/// Calling this with a pointer not allocated by this library, or calling
+/// it more than once on the same pointer, results in undefined behavior.
+#[no_mangle]
+pub extern "C" fn bark_free_string(s: *mut c_char) {
+    if !s.is_null() {
+        debug!("Freeing C string pointer: {:?}", s);
+        unsafe {
+            // Reconstruct the CString from the raw pointer. This takes ownership back.
+            let _ = CString::from_raw(s);
+            // When `_` goes out of scope here, the CString is dropped,
+            // and its memory is deallocated by Rust's allocator.
+        }
+        debug!("Freed C string");
+    } else {
+        debug!("Called bark_free_string with a null pointer, doing nothing.");
+    }
 }
 
 fn to_rust_config_opts(c_opts: &BarkConfigOpts) -> ConfigOpts {

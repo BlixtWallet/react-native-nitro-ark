@@ -24,11 +24,9 @@ serde_json = "1.0.140"
 cbindgen = "0.28.0"
 
 [lib]
-crate-type = ["rlib"]
+crate-type = ["rlib", "staticlib"]
 name = "bark_cpp"
 path = "src/lib.rs"
-[target.'cfg(any(target_os = "android", target_os = "ios"))'.lib]
-crate-type = ["staticlib"]
 
 
 [[bin]]
