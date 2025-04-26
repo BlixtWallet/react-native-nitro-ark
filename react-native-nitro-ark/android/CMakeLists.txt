@@ -13,7 +13,7 @@ set(LIBS_DIR "${ANDROID_DIR}/src/main/jniLibs/${ANDROID_ABI}")
 set(BARK_LIB "${LIBS_DIR}/libbark_cpp.a")
 
 if(NOT EXISTS "${BARK_LIB}")
-    message(FATAL_ERROR "libbark_cpp.a not found at: ${BARK_LIB}")
+  message(FATAL_ERROR "libbark_cpp.a not found at: ${BARK_LIB}")
 endif()
 
 message(STATUS "Using libraries from: ${LIBS_DIR}")
@@ -56,8 +56,8 @@ include(${CMAKE_SOURCE_DIR}/../nitrogen/generated/android/NitroArk+autolinking.c
 # Add our additional libraries after autolinking
 target_link_libraries(
     ${PROJECT_NAME}
-    ${LOG_LIB}
     bark_lib
+    ${LOG_LIB}
     dl
     m
     android
