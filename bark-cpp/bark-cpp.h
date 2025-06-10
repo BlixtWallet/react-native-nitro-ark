@@ -41,7 +41,7 @@ struct bark_BarkCreateOpts {
   bool signet;
   bool bitcoin;
   const char *mnemonic;
-  uint64_t birthday_height;
+  uint32_t birthday_height;
   bark_BarkConfigOpts config;
 };
 
@@ -59,6 +59,11 @@ struct bark_BarkRefreshOpts {
 };
 
 extern "C" {
+
+/// Initializes the logger for the library.
+/// This should be called once when the library is loaded by the C/C++ application,
+/// before any other library functions are used.
+void bark_init_logger();
 
 void bark_free_error(bark_BarkError *error);
 

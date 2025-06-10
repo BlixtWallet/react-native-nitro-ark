@@ -8,7 +8,7 @@ use std::{
 use anyhow::{bail, Context};
 use bark::ark::{bitcoin::Txid, VtxoId};
 use bip39::Mnemonic;
-use logger::log::{debug, error, warn};
+use logger::tracing::{debug, error, warn};
 
 use crate::{
     ffi::{BarkConfigOpts, BarkCreateOpts, BarkError, BarkRefreshModeType, BarkRefreshOpts},

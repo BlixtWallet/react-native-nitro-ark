@@ -3,3 +3,4 @@ __cmake_systeminformation
 .DS_Store
 target
 libbark_cpp.a
+node_modules

@@ -7,12 +7,21 @@ use crate::ffi_utils::{
 use super::*;
 use bark::ark::bitcoin;
 use bip39::Mnemonic;
-use logger::log::error;
-use logger::Logger;
+use logger::tracing::error;
 use std::ffi::{c_char, CStr, CString};
 use std::path::Path;
 use std::str::FromStr;
 use std::{ptr, slice};
+
+/// Initializes the logger for the library.
+/// This should be called once when the library is loaded by the C/C++ application,
+/// before any other library functions are used.
+#[no_mangle]
+pub extern "C" fn bark_init_logger() {
+    // This calls the init_logger function from lib.rs,
+    // which in turn ensures the static LOGGER is accessed and initialized.
+    crate::init_logger();
+}
 
 #[repr(C)]
 pub struct BarkError {
@@ -44,7 +53,7 @@ pub struct BarkCreateOpts {
     pub signet: bool,
     pub bitcoin: bool,
     pub mnemonic: *const c_char,
-    pub birthday_height: u64,
+    pub birthday_height: u32,
     pub config: BarkConfigOpts,
 }
 
@@ -136,7 +145,6 @@ pub extern "C" fn bark_free_string(s: *mut c_char) {
 /// @return The mnemonic string as a C string, or NULL on error
 #[no_mangle]
 pub extern "C" fn bark_create_mnemonic() -> *mut c_char {
-    let _logger = Logger::new();
     debug!("bark_create_mnemonic called");
 
     let mnemonic = match create_mnemonic() {
@@ -166,7 +174,6 @@ pub extern "C" fn bark_create_wallet(
     datadir: *const c_char,
     opts: BarkCreateOpts,
 ) -> *mut BarkError {
-    let _logger = Logger::new();
     debug!("bark_create_wallet called datadir={:?}, opts: force={}, regtest={}, signet={}, bitcoin={}, birthday_height={}, asp={:?}, esplora={:?}",
     datadir,
     opts.force,
@@ -238,7 +245,6 @@ pub extern "C" fn bark_get_balance(
     mnemonic: *const c_char,
     balance_out: *mut BarkBalance,
 ) -> *mut BarkError {
-    let _logger = Logger::new();
     debug!("bark_get_balance called, no_sync: {}", no_sync);
 
     let datadir_str = match c_string_to_string(datadir) {
@@ -314,7 +320,6 @@ pub extern "C" fn bark_get_onchain_address(
     mnemonic: *const c_char,
     address_out: *mut *mut c_char,
 ) -> *mut BarkError {
-    let _logger = Logger::new();
     debug!("bark_get_onchain_address called");
 
     // --- Input Validation ---
@@ -418,7 +423,6 @@ pub extern "C" fn bark_send_onchain(
     no_sync: bool,
     txid_out: *mut *mut c_char,
 ) -> *mut BarkError {
-    let _logger = Logger::new();
     debug!(
         "bark_send_onchain called: amount_sat={}, no_sync={}",
         amount_sat, no_sync
@@ -548,7 +552,6 @@ pub extern "C" fn bark_drain_onchain(
     no_sync: bool,
     txid_out: *mut *mut c_char,
 ) -> *mut BarkError {
-    let _logger = Logger::new();
     debug!("bark_drain_onchain called: no_sync={}", no_sync);
 
     // --- Input Validation ---
@@ -636,7 +639,6 @@ pub extern "C" fn bark_send_many_onchain(
     no_sync: bool,
     txid_out: *mut *mut c_char,
 ) -> *mut BarkError {
-    let _logger = Logger::new();
     debug!(
         "bark_send_many_onchain called: num_outputs={}, no_sync={}",
         num_outputs, no_sync
@@ -774,7 +776,6 @@ pub extern "C" fn bark_get_onchain_utxos(
     no_sync: bool,
     utxos_json_out: *mut *mut c_char,
 ) -> *mut BarkError {
-    let _logger = Logger::new();
     debug!("bark_get_onchain_utxos called: no_sync={}", no_sync);
 
     // --- Input Validation ---
@@ -823,7 +824,6 @@ pub extern "C" fn bark_get_vtxo_pubkey(
     mnemonic: *const c_char,
     pubkey_hex_out: *mut *mut c_char,
 ) -> *mut BarkError {
-    let _logger = Logger::new();
     debug!("bark_get_vtxo_pubkey called");
 
     // --- Input Validation ---
@@ -852,7 +852,8 @@ pub extern "C" fn bark_get_vtxo_pubkey(
         Err(e) => return Box::into_raw(Box::new(BarkError::new(&format!("Runtime error: {}", e)))),
     };
 
-    let result = runtime.block_on(async { get_vtxo_pubkey(&datadir_path, rust_mnemonic).await });
+    let result =
+        runtime.block_on(async { get_vtxo_pubkey(&datadir_path, rust_mnemonic, None).await });
 
     // --- Result Handling ---
     handle_string_result(result, pubkey_hex_out, "get_vtxo_pubkey")
@@ -874,7 +875,6 @@ pub extern "C" fn bark_get_vtxos(
     no_sync: bool,
     vtxos_json_out: *mut *mut c_char,
 ) -> *mut BarkError {
-    let _logger = Logger::new();
     debug!("bark_get_vtxos called: no_sync={}", no_sync);
 
     // --- Input Validation ---
@@ -926,7 +926,6 @@ pub extern "C" fn bark_refresh_vtxos(
     no_sync: bool,
     status_json_out: *mut *mut c_char,
 ) -> *mut BarkError {
-    let _logger = Logger::new();
     debug!(
         "bark_refresh_vtxos called: mode={:?}, threshold={}, num_specific={}, no_sync={}",
         refresh_opts.mode_type,
@@ -1006,7 +1005,6 @@ pub extern "C" fn bark_board_amount(
     no_sync: bool,
     status_json_out: *mut *mut c_char,
 ) -> *mut BarkError {
-    let _logger = Logger::new();
     debug!(
         "bark_board_amount called: amount_sat={}, no_sync={}",
         amount_sat, no_sync
@@ -1065,7 +1063,6 @@ pub extern "C" fn bark_board_all(
     no_sync: bool,
     status_json_out: *mut *mut c_char,
 ) -> *mut BarkError {
-    let _logger = Logger::new();
     debug!("bark_board_all called: no_sync={}", no_sync);
 
     // --- Input Validation ---
@@ -1109,7 +1106,6 @@ pub extern "C" fn bark_send(
     no_sync: bool,
     status_json_out: *mut *mut c_char,
 ) -> *mut BarkError {
-    let _logger = Logger::new();
     // Use a sentinel value like u64::MAX to clearly indicate user did not provide amount
     const AMOUNT_NOT_PROVIDED: u64 = u64::MAX;
     let amount_provided = amount_sat != AMOUNT_NOT_PROVIDED;
@@ -1203,7 +1199,6 @@ pub extern "C" fn bark_send_round_onchain(
     no_sync: bool,
     status_json_out: *mut *mut c_char,
 ) -> *mut BarkError {
-    let _logger = Logger::new();
     debug!(
         "bark_send_round_onchain called: amount_sat={}, no_sync={}",
         amount_sat, no_sync
@@ -1288,7 +1283,6 @@ pub extern "C" fn bark_offboard_specific(
     no_sync: bool,
     status_json_out: *mut *mut c_char,
 ) -> *mut BarkError {
-    let _logger = Logger::new();
     debug!(
         "bark_offboard_specific called: num_vtxos={}, no_sync={}",
         num_specific_vtxo_ids, no_sync
@@ -1372,7 +1366,6 @@ pub extern "C" fn bark_offboard_all(
     no_sync: bool,
     status_json_out: *mut *mut c_char,
 ) -> *mut BarkError {
-    let _logger = Logger::new();
     debug!("bark_offboard_all called: no_sync={}", no_sync);
 
     // --- Input Validation ---
@@ -1429,7 +1422,6 @@ pub extern "C" fn bark_exit_start_specific(
     num_specific_vtxo_ids: usize,
     status_json_out: *mut *mut c_char,
 ) -> *mut BarkError {
-    let _logger = Logger::new();
     debug!(
         "bark_exit_start_specific called: num_vtxos={}",
         num_specific_vtxo_ids
@@ -1478,8 +1470,9 @@ pub extern "C" fn bark_exit_start_specific(
         Err(e) => return Box::into_raw(Box::new(BarkError::new(&format!("Runtime error: {}", e)))),
     };
 
-    let result = runtime
-        .block_on(async { exit_start_specific(&datadir_path, rust_mnemonic, rust_vtxo_ids).await });
+    let result = runtime.block_on(async {
+        start_exit_for_vtxos(&datadir_path, rust_mnemonic, rust_vtxo_ids).await
+    });
 
     // --- Result Handling ---
     handle_string_result(result, status_json_out, "exit_start_specific")
@@ -1499,7 +1492,6 @@ pub extern "C" fn bark_exit_start_all(
     mnemonic: *const c_char,
     status_json_out: *mut *mut c_char,
 ) -> *mut BarkError {
-    let _logger = Logger::new();
     debug!("bark_exit_start_all called");
 
     // --- Input Validation ---
@@ -1527,7 +1519,8 @@ pub extern "C" fn bark_exit_start_all(
         Err(e) => return Box::into_raw(Box::new(BarkError::new(&format!("Runtime error: {}", e)))),
     };
 
-    let result = runtime.block_on(async { exit_start_all(&datadir_path, rust_mnemonic).await });
+    let result = runtime
+        .block_on(async { start_exit_for_entire_wallet(&datadir_path, rust_mnemonic).await });
 
     // --- Result Handling ---
     handle_string_result(result, status_json_out, "exit_start_all")
@@ -1547,7 +1540,6 @@ pub extern "C" fn bark_exit_progress_once(
     mnemonic: *const c_char,
     status_json_out: *mut *mut c_char,
 ) -> *mut BarkError {
-    let _logger = Logger::new();
     debug!("bark_exit_progress_once called");
 
     // --- Input Validation ---

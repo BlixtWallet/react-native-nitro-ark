@@ -9,7 +9,7 @@ use bark::ark::bitcoin::Network;
 use bark::ark::bitcoin::Txid;
 use bark::ark::ArkInfo;
 use bark::ark::VtxoId;
-use bark::json::cli::ExitStatus;
+use bark::json::cli::ExitProgressResponse;
 use bark::json::cli::Refresh;
 use bark::json::VtxoInfo;
 use bark::vtxo_selection::VtxoFilter;
@@ -20,8 +20,29 @@ use bark::Wallet;
 mod ffi;
 mod ffi_utils;
 mod utils;
+
+use logger::tracing::{debug, info, warn};
+use once_cell::sync::Lazy;
+
+// Initialize the logger once for the entire library lifecycle.
+// The logger will be set up when this static is first accessed.
+static LOGGER: Lazy<logger::Logger> = Lazy::new(|| {
+    // This explicit access ensures that LOGGER is initialized when the library loads
+    // or when the first logging macro is called, whichever comes first.
+    // The `logger::Logger::new()` itself prints initialization messages.
+    logger::Logger::new()
+});
+
+// function to explicitly initialize the logger.
+// This should be called once, e.g., by an FFI-exposed init function.
+// Accessing the LAZY static ensures it's initialized.
+pub fn init_logger() {
+    let _ = &*LOGGER;
+    // You can add a log message here to confirm initialization if desired,
+    // e.g., info!("bark-cpp logger explicitly initialized.");
+    // Note: logger::Logger::new() already logs its own initialization messages.
+}
 use bip39::Mnemonic;
-use logger::log::{debug, info, warn};
 use std::fs;
 use std::path::Path;
 use utils::try_create_wallet;
@@ -34,7 +55,9 @@ use std::str::FromStr;
 use anyhow::Context;
 
 pub fn create_mnemonic() -> anyhow::Result<String> {
+    info!("Attempting to create a new mnemonic...");
     let mnemonic = bip39::Mnemonic::generate(12).context("failed to generate mnemonic")?;
+    info!("Successfully created a new mnemonic.");
     Ok(mnemonic.to_string())
 }
 
@@ -101,7 +124,7 @@ pub async fn get_balance(
     }
 
     let onchain = w.onchain.balance().to_sat();
-    let offchain = w.offchain_balance().await?.to_sat();
+    let offchain = w.offchain_balance()?.to_sat();
     let pending_exit = w.exit.pending_total().await?.to_sat();
 
     let balances = Balance {
@@ -112,10 +135,7 @@ pub async fn get_balance(
     Ok(balances)
 }
 
-pub async fn open_wallet(
-    datadir: &Path,
-    mnemonic: Mnemonic,
-) -> anyhow::Result<Wallet<SqliteClient>> {
+pub async fn open_wallet(datadir: &Path, mnemonic: Mnemonic) -> anyhow::Result<Wallet> {
     debug!("Opening bark wallet in {}", datadir.display());
 
     let db = SqliteClient::open(datadir.join(DB_FILE))?;
@@ -316,16 +336,26 @@ pub async fn get_onchain_utxos(
 }
 
 /// Get the VTXO public key (OOR Pubkey) as a hex string
-pub async fn get_vtxo_pubkey(datadir: &Path, mnemonic: Mnemonic) -> anyhow::Result<String> {
+pub async fn get_vtxo_pubkey(
+    datadir: &Path,
+    mnemonic: Mnemonic,
+    index: Option<u32>,
+) -> anyhow::Result<String> {
     let w = open_wallet(&datadir, mnemonic)
         .await
         .context("error opening wallet for get_vtxo_pubkey")?;
 
-    let pubkey = w.oor_pubkey();
-    let pubkey_hex = pubkey.to_string(); // PublicKey's Display impl is hex
-
-    debug!("Retrieved VTXO Pubkey: {}", pubkey_hex);
-    Ok(pubkey_hex)
+    if let Some(index) = index {
+        Ok(w.peak_keypair(bark::KeychainKind::External, index)
+            .context("Failed to get VTXO pubkey")?
+            .public_key()
+            .to_string())
+    } else {
+        Ok(w.derive_store_next_keypair(bark::KeychainKind::External)
+            .context("Failed to get VTXO pubkey")?
+            .public_key()
+            .to_string())
+    }
 }
 
 /// Get the list of VTXOs from the wallet as a JSON string
@@ -476,7 +506,7 @@ pub async fn send_payment(
                 "Attempting to send OOR payment of {} to pubkey {}",
                 amount, pk
             );
-            let _oor_result = w.send_oor_payment(pk, amount).await?; // Use result if it contains info
+            let _oor_result = w.send_arkoor_payment(pk, amount).await?; // Use result if it contains info
 
             serde_json::json!({
                 "type": "oor",
@@ -747,7 +777,7 @@ pub async fn offboard_all(
 }
 
 /// Start the exit process for specific VTXOs. Returns simple success JSON.
-pub async fn exit_start_specific(
+pub async fn start_exit_for_vtxos(
     datadir: &Path,
     mnemonic: Mnemonic,
     vtxo_ids: Vec<VtxoId>,
@@ -797,7 +827,10 @@ pub async fn exit_start_specific(
 }
 
 /// Start the exit process for the entire wallet. Returns simple success JSON.
-pub async fn exit_start_all(datadir: &Path, mnemonic: Mnemonic) -> anyhow::Result<String> {
+pub async fn start_exit_for_entire_wallet(
+    datadir: &Path,
+    mnemonic: Mnemonic,
+) -> anyhow::Result<String> {
     let mut w = open_wallet(datadir, mnemonic)
         .await
         .context("error opening wallet for exit_start_all")?;
@@ -843,24 +876,28 @@ pub async fn exit_progress_once(datadir: &Path, mnemonic: Mnemonic) -> anyhow::R
     info!("Wallet sync completed for exit progress");
 
     info!("Attempting to progress exit process...");
-    w.exit
+    let result = w
+        .exit
         .progress_exit(&mut w.onchain)
         .await
         .context("Error making progress on exit process")?;
 
     // Check status after progressing
-    let pending_exits = w.exit.list_pending_exits().await?;
-    let done = pending_exits.is_empty();
-    let height = w.exit.all_spendable_at_height().await;
+    let has_pending_exits = w.exit.has_pending_exits();
+    let spendable_height = w.exit.all_spendable_at_height().await;
 
     info!(
         "Exit progress check: Done={}, Spendable Height={:?}",
-        done, height
+        has_pending_exits, spendable_height
     );
 
-    let exit_status = ExitStatus { done, height };
+    let exits = result.unwrap_or_default();
 
-    let json_string = serde_json::to_string_pretty(&exit_status)
-        .context("Failed to serialize exit status to JSON")?;
+    let json_string = serde_json::to_string_pretty(&ExitProgressResponse {
+        done: !has_pending_exits,
+        spendable_height,
+        exits,
+    })
+    .context("Failed to serialize exit status to JSON")?;
     Ok(json_string)
 }

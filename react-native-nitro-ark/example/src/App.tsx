@@ -168,12 +168,14 @@ export default function ArkApp() {
     const opts: NitroArk.BarkCreateOpts = {
       mnemonic: mnemonic,
       force: true,
-      regtest: false,
-      signet: true,
+      regtest: true,
+      signet: false,
       bitcoin: false,
       config: {
-        esplora: 'esplora.signet.2nd.dev',
-        asp: 'ark.signet.2nd.dev',
+        bitcoind: 'http://127.0.0.1:18443',
+        asp: 'http://127.0.0.1:3535',
+        bitcoind_user: 'polaruser',
+        bitcoind_pass: 'polarpass',
       },
     };
     runOperation(

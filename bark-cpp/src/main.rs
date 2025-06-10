@@ -1,9 +1,8 @@
 use anyhow;
-use bark_cpp::{get_ark_info, get_balance, ConfigOpts, CreateOpts};
+use bark_cpp::{create_wallet, get_ark_info, get_balance, init_logger, ConfigOpts, CreateOpts};
 use bip39::Mnemonic;
-use logger::Logger;
 
-use logger::log::{debug, info};
+use logger::tracing::{debug, error, info};
 use std::env;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -14,7 +13,7 @@ async fn main() -> anyhow::Result<()> {
     // Initialize with explicit debug level if environment variable isn't set
     // env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug")).init();
 
-    let _ = Logger::new();
+    init_logger();
 
     debug!("Starting wallet application in debug mode");
 
@@ -23,17 +22,17 @@ async fn main() -> anyhow::Result<()> {
     let datadir = PathBuf::from(home).join(".bark");
     debug!("Using data directory: {:?}", datadir);
 
-    fs::create_dir_all(datadir.clone()).await?;
+    // fs::create_dir_all(datadir.clone()).await?;
 
     let mnemonic = Mnemonic::from_str("abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about")?;
 
     let config = ConfigOpts {
-        asp: Some("ark.signet.2nd.dev".to_string()),
-        esplora: Some("esplora.signet.2nd.dev".to_string()),
-        bitcoind: None,
+        asp: Some("http://127.0.0.1:3535".to_string()),
+        esplora: None,
+        bitcoind: Some("http://127.0.0.1:18443".to_string()),
         bitcoind_cookie: None,
-        bitcoind_user: None,
-        bitcoind_pass: None,
+        bitcoind_user: Some("polaruser".to_string()),
+        bitcoind_pass: Some("polarpass".to_string()),
     };
     debug!(
         "Configuration created: asp={:?}, esplora={:?}",
@@ -41,10 +40,10 @@ async fn main() -> anyhow::Result<()> {
     );
 
     let opts = CreateOpts {
-        force: false,
+        force: true,
         bitcoin: false,
-        signet: true,
-        regtest: false,
+        signet: false,
+        regtest: true,
         mnemonic: mnemonic.clone(),
         birthday_height: None,
         config,
@@ -55,10 +54,10 @@ async fn main() -> anyhow::Result<()> {
     );
 
     debug!("Attempting to create wallet...");
-    // if let Err(e) = create_wallet(&datadir, opts).await {
-    //     error!("Failed to create wallet: {}", e);
-    //     return Err(anyhow::anyhow!("Wallet creation failed: {}", e));
-    // }
+    if let Err(e) = create_wallet(&datadir, opts).await {
+        error!("Failed to create wallet: {}", e);
+        return Err(anyhow::anyhow!("Wallet creation failed: {}", e));
+    }
 
     info!("Wallet created successfully at {}", datadir.display());
 

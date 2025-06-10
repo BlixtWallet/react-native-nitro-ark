@@ -13,7 +13,7 @@ use bark::{
     Config, SqliteClient, Wallet,
 };
 use bip39::Mnemonic;
-use logger::log::{debug, info, warn};
+use logger::tracing::{debug, info, warn};
 use tokio::fs;
 use tonic::transport::Uri;
 
@@ -105,7 +105,7 @@ pub struct CreateOpts {
     pub mnemonic: bip39::Mnemonic,
 
     /// The wallet/mnemonic's birthday blockheight to start syncing when recovering.
-    pub birthday_height: Option<u64>,
+    pub birthday_height: Option<u32>,
 
     pub config: ConfigOpts,
 }
@@ -125,7 +125,7 @@ pub(crate) async fn try_create_wallet(
     net: Network,
     config: Config,
     mnemonic: bip39::Mnemonic,
-    birthday: Option<u64>,
+    birthday: Option<u32>,
 ) -> anyhow::Result<()> {
     info!("Creating new bark Wallet at {}", datadir.display());
 
@@ -167,7 +167,8 @@ pub async fn refresh_vtxos_internal(
     // Determine VTXOs to refresh based on the mode
     let vtxos_to_refresh: Vec<Vtxo> = match mode {
         RefreshMode::DefaultThreshold => {
-            let threshold = w.config().vtxo_refresh_threshold;
+            let threshold = w.config().vtxo_refresh_expiry_threshold;
+
             debug!(
                 "Refreshing VTXOs expiring within default threshold: {} blocks",
                 threshold
@@ -207,7 +208,7 @@ pub async fn refresh_vtxos_internal(
             let mut found_vtxos = Vec::with_capacity(ids.len());
             for id in ids {
                 match w.get_vtxo_by_id(id) {
-                    // Assuming get_vtxo_by_id exists and is async
+                    // Assuming get_vtxo_by_id exists and is synchronous as per current code
                     Ok(vtxo) => found_vtxos.push(vtxo),
                     Err(e) => {
                         // Log or potentially error out if strict matching is required
@@ -230,7 +231,7 @@ pub async fn refresh_vtxos_internal(
     }
 
     info!("Attempting to refresh {} VTXOs...", vtxos_to_refresh.len());
-    let round_id: Option<RoundId> = w.refresh_vtxos(vtxos_to_refresh).await?;
+    let round_id: Option<RoundId> = w.refresh(&vtxos_to_refresh, true).await?;
 
     if let Some(id) = &round_id {
         info!("Participating in refresh round: {}", id);
