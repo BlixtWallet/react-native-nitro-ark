@@ -160,6 +160,7 @@
             libtool
             openssl
             rustup
+            protobuf 
           ];
 
           darwinPackages = with pkgs; [

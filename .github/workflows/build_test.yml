@@ -15,6 +15,9 @@ jobs:
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
 
+      - name: Enable Nix Magic Cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
+
       - name: Check formatting (bark-cpp)
         run: nix develop .# --command bash -c "cd bark-cpp && cargo fmt -- --check"
 
@@ -31,11 +34,11 @@ jobs:
 
       - name: Install example app dependencies
         working-directory: ./react-native-nitro-ark/example
-        run: yarn install
+        run: yarn install # Using yarn as per user's provided file
 
       - name: Build example Android app
         working-directory: ./react-native-nitro-ark/example
-        run: yarn build:android
+        run: yarn build:android # Using yarn as per user's provided file
 
   ios_build:
     runs-on: macos-latest # iOS builds require macOS
@@ -45,6 +48,9 @@ jobs:
 
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Enable Nix Magic Cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
 
       - name: Build bark-cpp for iOS
         run: nix develop .# --command bash -c "cd bark-cpp && ./build-ios.sh"
