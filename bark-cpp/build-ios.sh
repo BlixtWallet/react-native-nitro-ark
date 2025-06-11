@@ -5,7 +5,7 @@ set -e
 
 # --- Configuration ---
 # IMPORTANT: Change this to the name of your crate as defined in your Cargo.toml
-CRATE_NAME="bark_cpp" 
+CRATE_NAME="bark-cpp" 
 TARGET_DIR="target/ios"
 BINARY_NAME="lib${CRATE_NAME}.a"
 FRAMEWORK_NAME="Ark.xcframework"
