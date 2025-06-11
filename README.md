@@ -5,7 +5,7 @@ This directory contains the React Native module that bridges your React Native a
 ## Installing the react-native-nitro-ark module
 
 - To install the `react-native-nitro-ark` module, run the following command in your React Native project directory:
-- For all methods and type definitions refer to the [`react-native-nitro-ark/src/index.ts`](./react-native-nitro-ark/src/index.ts) file.
+- For all methods and type definitions refer to the [`react-native-nitro-ark/src/index.tsx`](./react-native-nitro-ark/src/index.tsx) file.
 
 ```bash
 npm install react-native-nitro-ark react-native-nitro-modules
