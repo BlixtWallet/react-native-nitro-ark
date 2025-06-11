@@ -4,8 +4,7 @@ on:
   push:
     branches:
       - master
-  pull_request_review:
-    types: [submitted]
+  pull_request: # Changed back from pull_request_review
     branches:
       - 'master'
 
@@ -15,7 +14,6 @@ env:
 jobs:
   rust_android_checks_and_build:
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || (github.event_name == 'pull_request_review' && github.event.review.state == 'approved')
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -35,7 +33,7 @@ jobs:
       - name: Build bark-cpp for Android
         run: nix develop .# --command bash -c "cd bark-cpp && ./build-android.sh"
 
-      - name: Install example app dependencies
+      - name: Install example app dependencies (Android Job)
         run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install"
 
       - name: Build example Android app
@@ -43,7 +41,6 @@ jobs:
 
   ios_build:
     runs-on: macos-latest # iOS builds require macOS
-    if: github.event_name == 'push' || (github.event_name == 'pull_request_review' && github.event.review.state == 'approved')
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -56,3 +53,9 @@ jobs:
 
       - name: Build bark-cpp for iOS
         run: nix develop .# --command bash -c "cd bark-cpp && ./build-ios.sh"
+
+      - name: Install example app dependencies (iOS Job)
+        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install"
+
+      - name: Build example iOS app
+        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn example build:ios"

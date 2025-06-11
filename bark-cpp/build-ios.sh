@@ -35,7 +35,6 @@ cargo build --release \
 
 # echo "Building for iOS (x86_64)..."
 # cargo build --release \
-#     --manifest-path="$MANIFEST_PATH" \
 #     --target x86_64-apple-ios \
 #     --target-dir "$TARGET_DIR"
 
@@ -67,6 +66,12 @@ DEST_XCFRAMEWORK_DIR="../../react-native-nitro-ark/react-native-nitro-ark/Ark.xc
 echo "Copying Ark.xcframework to $DEST_XCFRAMEWORK_DIR"
 rm -rf "$DEST_XCFRAMEWORK_DIR" # Remove existing framework if any
 cp -R "target/Ark.xcframework" "$DEST_XCFRAMEWORK_DIR"
+
+# Also copy the XCFramework to the example app's iOS directory
+DEST_XCFRAMEWORK_EXAMPLE_DIR="../../react-native-nitro-ark/react-native-nitro-ark/example/ios/Ark.xcframework"
+echo "Copying Ark.xcframework to $DEST_XCFRAMEWORK_EXAMPLE_DIR"
+rm -rf "$DEST_XCFRAMEWORK_EXAMPLE_DIR" # Remove existing framework if any
+cp -R "target/Ark.xcframework" "$DEST_XCFRAMEWORK_EXAMPLE_DIR"
 
 unset PLATFORM_NAME
 unset DEVELOPER_DIR
