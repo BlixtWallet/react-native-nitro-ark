@@ -3,6 +3,16 @@
 # Exit on error
 set -e
 
+# Unset any iOS/macOS specific variables that might interfere
+unset SDKROOT
+unset PLATFORM_NAME
+unset IPHONEOS_DEPLOYMENT_TARGET
+unset TVOS_DEPLOYMENT_TARGET
+unset XROS_DEPLOYMENT_TARGET
+export PLATFORM_NAME=iphoneos
+export DEVELOPER_DIR="$(xcode-select -p)"
+export SDKROOT="$DEVELOPER_DIR/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk"
+
 # --- Configuration ---
 # IMPORTANT: Change this to the name of your crate as defined in your Cargo.toml
 CRATE_NAME="bark-cpp" 
@@ -11,8 +21,6 @@ BINARY_NAME="libbark_cpp.a"
 FRAMEWORK_NAME="Ark.xcframework"
 
 # --- Clean only the specific package artifacts ---
-# This is much faster than `rm -rf` as it preserves dependency caches.
-# We clean before each platform build to be safe.
 echo "Cleaning previous build artifacts for '$CRATE_NAME'..."
 cargo clean --target-dir "$TARGET_DIR" -p "$CRATE_NAME"
 
@@ -59,8 +67,6 @@ rm -rf "target/$FRAMEWORK_NAME"
 
 HEADERS_DIR_PLACEHOLDER="$TARGET_DIR/headers"
 mkdir -p "$HEADERS_DIR_PLACEHOLDER"
-# If you use cbindgen, you would copy your header here, e.g.:
-# cbindgen --config cbindgen.toml --crate $CRATE_NAME --output $HEADERS_DIR_PLACEHOLDER/bark.h
 
 xcodebuild -create-xcframework \
   -library "$TARGET_DIR/aarch64-apple-ios/release/$BINARY_NAME" \
