@@ -162,6 +162,7 @@
             rustup
             protobuf
             nodejs_22
+            iconv
           ];
 
           darwinPackages = with pkgs; [
