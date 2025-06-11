@@ -1,10 +1,10 @@
-name: Nix CI
+name: Nix CI, builds Rust, iOS and Android.
 
 on:
   push:
     branches:
       - master
-  pull_request: # Changed back from pull_request_review
+  pull_request:
     branches:
       - 'master'
 
