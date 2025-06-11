@@ -1,6 +1,13 @@
 name: Nix CI
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - master
+  pull_request_review:
+    types: [submitted]
+    branches:
+      - 'master'
 
 env:
   CARGO_TERM_COLOR: always
@@ -8,6 +15,7 @@ env:
 jobs:
   rust_android_checks_and_build:
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' || (github.event_name == 'pull_request_review' && github.event.review.state == 'approved')
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -35,6 +43,7 @@ jobs:
 
   ios_build:
     runs-on: macos-latest # iOS builds require macOS
+    if: github.event_name == 'push' || (github.event_name == 'pull_request_review' && github.event.review.state == 'approved')
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
