@@ -160,7 +160,8 @@
             libtool
             openssl
             rustup
-            protobuf 
+            protobuf
+            nodejs_22
           ];
 
           darwinPackages = with pkgs; [

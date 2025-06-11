@@ -22,23 +22,16 @@ jobs:
         run: nix develop .# --command bash -c "cd bark-cpp && cargo fmt -- --check"
 
       - name: Run tests (bark-cpp)
-        run: nix develop .# --command bash -c "cd bark-cpp && cargo test --verbose"
+        run: nix develop .# --command bash -c "cd bark-cpp && cargo test"
 
       - name: Build bark-cpp for Android
         run: nix develop .# --command bash -c "cd bark-cpp && ./build-android.sh"
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18' # As per react-native-nitro-ark/example/package.json
-
       - name: Install example app dependencies
-        working-directory: ./react-native-nitro-ark/example
-        run: yarn install # Using yarn as per user's provided file
+        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install"
 
       - name: Build example Android app
-        working-directory: ./react-native-nitro-ark/example
-        run: yarn build:android # Using yarn as per user's provided file
+        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn example build:android"
 
   ios_build:
     runs-on: macos-latest # iOS builds require macOS
