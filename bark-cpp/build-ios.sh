@@ -7,7 +7,7 @@ set -e
 # IMPORTANT: Change this to the name of your crate as defined in your Cargo.toml
 CRATE_NAME="bark-cpp" 
 TARGET_DIR="target/ios"
-BINARY_NAME="lib${CRATE_NAME}.a"
+BINARY_NAME="libbark_cpp.a"
 FRAMEWORK_NAME="Ark.xcframework"
 
 # --- Clean only the specific package artifacts ---
