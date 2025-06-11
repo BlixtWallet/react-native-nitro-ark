@@ -1,5 +1,5 @@
 {
-    "cmake.sourceDirectory": "/Users/niteshchowdharybalusu/Documents/bark-cpp/react-native-nitro-ark/android",
+    "cmake.sourceDirectory": "/Users/niteshchowdharybalusu/Documents/react-native-nitro-ark/react-native-nitro-ark/android",
     "[javascript]": {
         "editor.formatOnSave": true,
         "editor.defaultFormatter": "esbenp.prettier-vscode"

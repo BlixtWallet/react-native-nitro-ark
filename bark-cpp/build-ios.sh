@@ -62,6 +62,12 @@ xcodebuild -create-xcframework \
   -headers $HEADERS_DIR_IOS_SIM \
   -output target/Ark.xcframework
 
+# Copy the XCFramework to the react-native-nitro-ark directory
+DEST_XCFRAMEWORK_DIR="../../react-native-nitro-ark/react-native-nitro-ark/Ark.xcframework"
+echo "Copying Ark.xcframework to $DEST_XCFRAMEWORK_DIR"
+rm -rf "$DEST_XCFRAMEWORK_DIR" # Remove existing framework if any
+cp -R "target/Ark.xcframework" "$DEST_XCFRAMEWORK_DIR"
+
 unset PLATFORM_NAME
 unset DEVELOPER_DIR
 unset SDKROOT

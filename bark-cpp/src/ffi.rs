@@ -59,9 +59,9 @@ pub struct BarkCreateOpts {
 
 #[repr(C)]
 pub struct BarkBalance {
-    onchain: u64,
-    offchain: u64,
-    pending_exit: u64,
+    pub onchain: u64,
+    pub offchain: u64,
+    pub pending_exit: u64,
 }
 
 #[derive(Debug, PartialEq)]
