@@ -6,7 +6,6 @@ use logger::tracing::{debug, error, info};
 use std::env;
 use std::path::PathBuf;
 use std::str::FromStr;
-use tokio::fs;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

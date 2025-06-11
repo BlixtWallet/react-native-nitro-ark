@@ -11,20 +11,7 @@ npm install react-native-nitro-ark react-native-nitro-modules
 ```
 
 ## Usage
-
-
-```js
-import { multiply } from 'react-native-nitro-ark';
-
-// ...
-
-const result = multiply(3, 7);
-```
-
-
-## Contributing
-
-See the [contributing guide](CONTRIBUTING.md) to learn how to contribute to the repository and the development workflow.
+- Please check the [`src/index.tsx`](./src/index.tsx) file for all methods and type definitions.
 
 ## License
 

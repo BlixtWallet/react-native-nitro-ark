@@ -1,0 +1,61 @@
+name: Nix CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request: # Changed back from pull_request_review
+    branches:
+      - 'master'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust_android_checks_and_build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Enable Nix Magic Cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Check formatting (bark-cpp)
+        run: nix develop .# --command bash -c "cd bark-cpp && cargo fmt -- --check"
+
+      - name: Run tests (bark-cpp)
+        run: nix develop .# --command bash -c "cd bark-cpp && cargo test"
+
+      - name: Build bark-cpp for Android
+        run: nix develop .# --command bash -c "cd bark-cpp && ./build-android.sh"
+
+      - name: Install example app dependencies (Android Job)
+        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install"
+
+      - name: Build example Android app
+        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn example build:android"
+
+  ios_build:
+    runs-on: macos-latest # iOS builds require macOS
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Enable Nix Magic Cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - name: Build bark-cpp for iOS
+        run: nix develop .# --command bash -c "cd bark-cpp && ./build-ios.sh"
+
+      - name: Install example app dependencies (iOS Job)
+        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install"
+
+      - name: Build example iOS app
+        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn example build:ios"

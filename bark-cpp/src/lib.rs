@@ -19,6 +19,8 @@ use bark::UtxoInfo;
 use bark::Wallet;
 mod ffi;
 mod ffi_utils;
+#[cfg(test)]
+mod tests;
 mod utils;
 
 use logger::tracing::{debug, info, warn};

@@ -78,7 +78,8 @@ export OPENSSL_LIB_DIR="$PWD/target/aarch64-linux-android/release/build/openssl-
 cargo build --target=aarch64-linux-android --release --lib
 cp "target/aarch64-linux-android/release/$BINARY_NAME" "$OUTPUT_DIR/arm64-v8a/"
 
-cp -f "target/aarch64-linux-android/release/$BINARY_NAME" "/Users/niteshchowdharybalusu/Documents/bark-cpp/react-native-nitro-ark/android/src/main/jniLibs/arm64-v8a"
-
-
+DEST_JNI_DIR="../../react-native-nitro-ark/react-native-nitro-ark/android/src/main/jniLibs/arm64-v8a"
+mkdir -p "$DEST_JNI_DIR"
+echo "Copying $BINARY_NAME to $DEST_JNI_DIR/"
+cp -f "target/aarch64-linux-android/release/$BINARY_NAME" "$DEST_JNI_DIR/"
 echo "Android build complete!"
