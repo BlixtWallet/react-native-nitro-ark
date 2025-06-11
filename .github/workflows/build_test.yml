@@ -1,4 +1,4 @@
-name: Nix CI
+name: Nix CI, builds Rust, iOS and Android.
 
 on:
   push:
