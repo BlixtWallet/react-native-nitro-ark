@@ -9,6 +9,7 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+# Rust checks, builds and android builds
 jobs:
   rust_android_checks_and_build:
     runs-on: blacksmith-4vcpu-ubuntu-2404
@@ -42,6 +43,7 @@ jobs:
       - name: Build example Android app
         run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn example build:android"
 
+# iOS Builds
   ios_build:
     runs-on: macos-latest
     if: |
