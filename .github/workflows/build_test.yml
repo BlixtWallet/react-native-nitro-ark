@@ -10,7 +10,7 @@ env:
 
 jobs:
   rust_android_checks_and_build:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -37,7 +37,7 @@ jobs:
         run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn example build:android"
 
   ios_build:
-    runs-on: self-hosted
+    runs-on: macos-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
