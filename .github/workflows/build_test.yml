@@ -11,7 +11,7 @@ env:
 
 jobs:
   rust_android_checks_and_build:
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     if: |
       (github.event.issue.pull_request &&
        contains(github.event.comment.body, '/run-ci') &&
