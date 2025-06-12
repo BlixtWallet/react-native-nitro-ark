@@ -1,7 +1,7 @@
-name: CI on PR Approval
+name: CI on Comment
 on:
-  pull_request_review:
-    types: [submitted]
+  issue_comment:
+    types: [created]
   push:
     branches:
       - master
@@ -11,9 +11,11 @@ env:
 
 jobs:
   rust_android_checks_and_build:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     if: |
-      (github.event.review.state == 'approved' && github.event.pull_request) ||
+      (github.event.issue.pull_request &&
+       contains(github.event.comment.body, '/run-ci') &&
+       (github.event.comment.author_association == 'MEMBER' || github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'COLLABORATOR')) ||
       github.ref == 'refs/heads/master'
     steps:
       - name: Checkout code
@@ -43,7 +45,9 @@ jobs:
   ios_build:
     runs-on: macos-latest
     if: |
-      (github.event.review.state == 'approved' && github.event.pull_request) ||
+      (github.event.issue.pull_request &&
+       contains(github.event.comment.body, '/run-ci') &&
+       (github.event.comment.author_association == 'MEMBER' || github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'COLLABORATOR')) ||
       github.ref == 'refs/heads/master'
     steps:
       - name: Checkout code
