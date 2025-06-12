@@ -18,25 +18,8 @@ jobs:
        (github.event.comment.author_association == 'MEMBER' || github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'COLLABORATOR')) ||
       github.ref == 'refs/heads/master'
     steps:
-      - name: Debug context
-        run: |
-          echo "Event name: ${{ github.event_name }}"
-          echo "Is PR: ${{ github.event.issue.pull_request != null }}"
-          echo "Comment body: ${{ github.event.comment.body }}"
-          echo "Author association: ${{ github.event.comment.author_association }}"
-          echo "Contains /run-ci: ${{ contains(github.event.comment.body, '/run-ci') }}"
-      
-      - name: Checkout PR code
+      - name: Checkout code
         uses: actions/checkout@v4
-        if: github.event.issue.pull_request
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          repository: ${{ github.event.repository.full_name }}
-          ref: refs/pull/${{ github.event.issue.number }}/head
-      
-      - name: Checkout master code
-        uses: actions/checkout@v4
-        if: github.ref == 'refs/heads/master'
       
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
@@ -67,25 +50,8 @@ jobs:
        (github.event.comment.author_association == 'MEMBER' || github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'COLLABORATOR')) ||
       github.ref == 'refs/heads/master'
     steps:
-      - name: Debug context
-        run: |
-          echo "Event name: ${{ github.event_name }}"
-          echo "Is PR: ${{ github.event.issue.pull_request != null }}"
-          echo "Comment body: ${{ github.event.comment.body }}"
-          echo "Author association: ${{ github.event.comment.author_association }}"
-          echo "Contains /run-ci: ${{ contains(github.event.comment.body, '/run-ci') }}"
-      
-      - name: Checkout PR code
+      - name: Checkout code
         uses: actions/checkout@v4
-        if: github.event.issue.pull_request
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          repository: ${{ github.event.repository.full_name }}
-          ref: refs/pull/${{ github.event.issue.number }}/head
-      
-      - name: Checkout master code
-        uses: actions/checkout@v4
-        if: github.ref == 'refs/heads/master'
       
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
