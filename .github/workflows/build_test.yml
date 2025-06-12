@@ -11,7 +11,7 @@ env:
 
 jobs:
   rust_android_checks_and_build:
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-16vcpu-ubuntu-2204
     if: |
       (github.event.review.state == 'approved' && github.event.pull_request) ||
       github.ref == 'refs/heads/master'
