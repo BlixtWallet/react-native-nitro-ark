@@ -9,7 +9,6 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
-# Rust checks, builds and android builds
 jobs:
   rust_android_checks_and_build:
     runs-on: blacksmith-4vcpu-ubuntu-2404
@@ -19,8 +18,25 @@ jobs:
        (github.event.comment.author_association == 'MEMBER' || github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'COLLABORATOR')) ||
       github.ref == 'refs/heads/master'
     steps:
-      - name: Checkout code
+      - name: Debug context
+        run: |
+          echo "Event name: ${{ github.event_name }}"
+          echo "Is PR: ${{ github.event.issue.pull_request != null }}"
+          echo "Comment body: ${{ github.event.comment.body }}"
+          echo "Author association: ${{ github.event.comment.author_association }}"
+          echo "Contains /run-ci: ${{ contains(github.event.comment.body, '/run-ci') }}"
+      
+      - name: Checkout PR code
         uses: actions/checkout@v4
+        if: github.event.issue.pull_request
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.event.repository.full_name }}
+          ref: refs/pull/${{ github.event.issue.number }}/head
+      
+      - name: Checkout master code
+        uses: actions/checkout@v4
+        if: github.ref == 'refs/heads/master'
       
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
@@ -43,7 +59,6 @@ jobs:
       - name: Build example Android app
         run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn example build:android"
 
-# iOS Builds
   ios_build:
     runs-on: macos-latest
     if: |
@@ -52,8 +67,25 @@ jobs:
        (github.event.comment.author_association == 'MEMBER' || github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'COLLABORATOR')) ||
       github.ref == 'refs/heads/master'
     steps:
-      - name: Checkout code
+      - name: Debug context
+        run: |
+          echo "Event name: ${{ github.event_name }}"
+          echo "Is PR: ${{ github.event.issue.pull_request != null }}"
+          echo "Comment body: ${{ github.event.comment.body }}"
+          echo "Author association: ${{ github.event.comment.author_association }}"
+          echo "Contains /run-ci: ${{ contains(github.event.comment.body, '/run-ci') }}"
+      
+      - name: Checkout PR code
         uses: actions/checkout@v4
+        if: github.event.issue.pull_request
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.event.repository.full_name }}
+          ref: refs/pull/${{ github.event.issue.number }}/head
+      
+      - name: Checkout master code
+        uses: actions/checkout@v4
+        if: github.ref == 'refs/heads/master'
       
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
