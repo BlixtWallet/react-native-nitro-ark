@@ -1,11 +1,10 @@
-name: Nix CI, builds Rust, iOS and Android.
-
+name: CI on PR Approval
 on:
+  pull_request_review:
+    types: [submitted]
   push:
     branches:
       - master
-  issue_comment:
-    types: [created]
 
 env:
   CARGO_TERM_COLOR: always
@@ -14,81 +13,53 @@ jobs:
   rust_android_checks_and_build:
     runs-on: blacksmith-4vcpu-ubuntu-2404
     if: |
-      github.event.issue.pull_request &&
-      contains(github.event.comment.body, '/run-ci') &&
-      (github.author_association == 'MEMBER' || github.author_association == 'OWNER' || github.author_association == 'COLLABORATOR')
+      (github.event.review.state == 'approved' && github.event.pull_request) ||
+      github.ref == 'refs/heads/master'
     steps:
-      - name: Add reaction to comment
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.reactions.createForIssueComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              comment_id: context.payload.comment.id,
-              content: 'rocket'
-            })
-
-      - name: Checkout PR branch
+      - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.issue.pull_request.url }}
-
+      
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
-
+      
       - name: Enable Nix Magic Cache
         uses: DeterminateSystems/magic-nix-cache-action@main
-
+      
       - name: Check formatting (bark-cpp)
         run: nix develop .# --command bash -c "cd bark-cpp && cargo fmt -- --check"
-
+      
       - name: Run tests (bark-cpp)
         run: nix develop .# --command bash -c "cd bark-cpp && cargo test"
-
+      
       - name: Build bark-cpp for Android
         run: nix develop .# --command bash -c "cd bark-cpp && ./build-android.sh"
-
-      - name: Install example app dependencies (Android Job)
+      
+      - name: Install example app dependencies
         run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install"
-
+      
       - name: Build example Android app
         run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn example build:android"
 
   ios_build:
-    if: |
-      github.event.issue.pull_request &&
-      contains(github.event.comment.body, '/run-ci') &&
-      (github.author_association == 'MEMBER' || github.author_association == 'OWNER' || github.author_association == 'COLLABORATOR')
     runs-on: macos-latest
+    if: |
+      (github.event.review.state == 'approved' && github.event.pull_request) ||
+      github.ref == 'refs/heads/master'
     steps:
-      - name: Add reaction to comment
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.reactions.createForIssueComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              comment_id: context.payload.comment.id,
-              content: 'rocket'
-            })
-
-      - name: Checkout PR branch
+      - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.issue.pull_request.url }}
-
+      
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
-
+      
       - name: Enable Nix Magic Cache
         uses: DeterminateSystems/magic-nix-cache-action@main
-
+      
       - name: Build bark-cpp for iOS
         run: nix develop .# --command bash -c "cd bark-cpp && ./build-ios.sh"
-
-      - name: Install example app dependencies (iOS Job)
+      
+      - name: Install example app dependencies
         run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install"
-
+      
       - name: Build example iOS app
         run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn example build:ios"
