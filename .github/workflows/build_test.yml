@@ -48,7 +48,6 @@ jobs:
       - name: Build example Android app
         run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn example build:android"
 
-
   ios_build:
     runs-on: self-hosted
     steps:
