@@ -143,6 +143,7 @@
         };
       };
 
+      # System-specific shell configuration
       mkShellFor =
         system:
         let
