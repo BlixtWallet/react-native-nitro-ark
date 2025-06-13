@@ -31,7 +31,7 @@ jobs:
           fi
         shell: bash
 
-  rust_checks_and_tests:
+  rust_typescript_checks_and_tests:
     runs-on: self-hosted
     needs: check_if_release_commit
     if: needs.check_if_release_commit.outputs.is_release == 'false'
@@ -50,6 +50,12 @@ jobs:
       
       - name: Run tests (bark-cpp)
         run: nix develop .# --command bash -c "unset SDKROOT && cd bark-cpp && cargo test"
+
+      - name: Install React Native app dependencies
+        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install --frozen-lockfile"
+
+      - name: Prepare React Native package (lint, typecheck, build)
+        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn prepare"
 
   android_build:
     runs-on: self-hosted

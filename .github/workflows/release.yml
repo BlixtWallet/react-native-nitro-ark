@@ -9,7 +9,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  rust_checks_and_tests:
+  rust_typescript_checks_tests:
     runs-on: self-hosted 
     steps:
       - name: Checkout code
@@ -21,9 +21,15 @@ jobs:
       - name: Run tests (bark-cpp)
         run: nix develop .# --command bash -c "unset SDKROOT && cd bark-cpp && cargo test"
 
+      - name: Install React Native app dependencies
+        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install --frozen-lockfile"
+
+      - name: Prepare React Native package (lint, typecheck, build)
+        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn prepare"
+
   build_android_binaries_and_example:
-    runs-on: self-hosted 
-    needs: rust_checks_and_tests
+    runs-on: self-hosted
+    needs: rust_typescript_checks_tests
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -45,7 +51,7 @@ jobs:
 
   build_ios_binaries_and_example:
     runs-on: self-hosted 
-    needs: rust_checks_and_tests
+    needs: rust_typescript_checks_tests
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -86,7 +92,9 @@ jobs:
         run: |
           BRANCH_NAME="release-${{ github.ref_name }}"
           git checkout -b $BRANCH_NAME
-          echo "Checked out to local branch $BRANCH_NAME from tag ${{ github.ref_name }}"
+          # Set a dummy upstream to satisfy release-it checks. This branch doesn't need to exist on the remote.
+          git branch --set-upstream-to=origin/$BRANCH_NAME $BRANCH_NAME
+          echo "Checked out to local branch $BRANCH_NAME from tag ${{ github.ref_name }} and set dummy upstream"
         shell: bash
 
       - name: Create directory for release assets
