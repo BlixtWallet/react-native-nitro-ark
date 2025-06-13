@@ -77,10 +77,17 @@ jobs:
     permissions:
       contents: write # Required to create a release and upload assets
     steps:
-      - name: Checkout code
+      - name: Checkout code and ensure symbolic ref
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.ref }} # Checkout the specific tag
           fetch-depth: 0 # release-it needs full history
+      - name: Create local branch from tag
+        run: |
+          BRANCH_NAME="release-${{ github.ref_name }}"
+          git checkout -b $BRANCH_NAME
+          echo "Checked out to local branch $BRANCH_NAME from tag ${{ github.ref_name }}"
+        shell: bash
 
       - name: Create directory for release assets
         run: mkdir -p release_assets
