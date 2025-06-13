@@ -1,0 +1,116 @@
+name: Release Package
+
+on:
+  push:
+    tags:
+      - 'v*' # Trigger on tags like v1.0.0
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust_checks_and_tests:
+    runs-on: self-hosted 
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Check formatting (bark-cpp)
+        run: nix develop .# --command bash -c "unset SDKROOT && cd bark-cpp && cargo fmt -- --check"
+      
+      - name: Run tests (bark-cpp)
+        run: nix develop .# --command bash -c "unset SDKROOT && cd bark-cpp && cargo test"
+
+  build_android_binaries_and_example:
+    runs-on: self-hosted 
+    needs: rust_checks_and_tests
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Build bark-cpp for Android
+        run: nix develop .# --command bash -c "unset SDKROOT && cd bark-cpp && ./build-android.sh"
+      
+      - name: Upload Android binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: libbark_cpp.a
+          path: bark-cpp/target/jniLibs/arm64-v8a/libbark_cpp.a
+
+      - name: Install React Native app dependencies
+        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install --frozen-lockfile"
+      
+      - name: Build example Android app
+        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn example build:android"
+
+  build_ios_binaries_and_example:
+    runs-on: self-hosted 
+    needs: rust_checks_and_tests
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Build bark-cpp for iOS
+        run: nix develop .# --command bash -c "unset SDKROOT && cd bark-cpp && ./build-ios.sh"
+      
+      - name: Zip iOS Framework
+        run: cd bark-cpp && zip -r target/Ark.xcframework.zip target/Ark.xcframework
+        shell: bash
+
+      - name: Upload iOS binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Ark.xcframework-zip
+          path: bark-cpp/target/Ark.xcframework.zip
+      
+      - name: Install React Native app dependencies and Bundle for iOS example
+        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install --frozen-lockfile && cd example/ios && bundle install"
+      
+      - name: Build example iOS app
+        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn example build:ios"
+
+  publish_npm_and_github_release:
+    runs-on: self-hosted
+    needs:
+      - build_android_binaries_and_example
+      - build_ios_binaries_and_example
+    permissions:
+      contents: write # Required to create a release and upload assets
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # release-it needs full history
+
+      - name: Create directory for release assets
+        run: mkdir -p release_assets
+      
+      - name: Download Android binary artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: libbark_cpp.a
+          path: release_assets/
+      
+      - name: Download iOS binary artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Ark.xcframework-zip
+          path: release_assets/
+
+      - name: List downloaded artifacts
+        run: ls -R release_assets
+
+      - name: Install dependencies for publishing
+        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install --frozen-lockfile"
+
+      - name: Publish to npm and Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }} 
+        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn release --ci"
+
+      - name: Upload binaries to GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          nix develop .# --command bash -c "gh release upload ${{ github.ref_name }} release_assets/libbark_cpp.a release_assets/Ark.xcframework.zip"
