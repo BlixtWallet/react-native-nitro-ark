@@ -100,6 +100,10 @@ jobs:
       - name: List downloaded artifacts
         run: ls -R release_assets
 
+      - name: Configure npm for publishing
+        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > react-native-nitro-ark/.npmrc
+        shell: bash
+
       - name: Install dependencies for publishing
         run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install --frozen-lockfile"
 
