@@ -122,9 +122,3 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn release --ci --no-git"
-
-      - name: Upload binaries to GitHub Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          nix develop .# --command bash -c "gh release upload ${{ github.ref_name }} release_assets/libbark_cpp.a release_assets/Ark.xcframework.zip"

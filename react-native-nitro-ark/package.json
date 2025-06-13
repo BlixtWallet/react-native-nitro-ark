@@ -1,6 +1,6 @@
 {
   "name": "react-native-nitro-ark",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "Pure C++ Nitro Modules for Ark client",
   "source": "./src/index.tsx",
   "main": "./lib/commonjs/index.js",
@@ -122,7 +122,11 @@
       "publish": true
     },
     "github": {
-      "release": true
+      "release": true,
+      "assets": [
+        "../release_assets/libbark_cpp.a",
+        "../release_assets/Ark.xcframework.zip"
+      ]
     },
     "plugins": {
       "@release-it/conventional-changelog": {
