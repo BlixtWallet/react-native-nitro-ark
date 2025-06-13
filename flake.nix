@@ -143,7 +143,6 @@
         };
       };
 
-      # System-specific shell configuration
       mkShellFor =
         system:
         let
@@ -163,9 +162,12 @@
             protobuf
             nodejs_22
             iconv
+            pkg-config
           ];
 
           darwinPackages = with pkgs; [
+            ruby
+            bundler
             darwin.apple_sdk.frameworks.CoreServices
             darwin.apple_sdk.frameworks.CoreFoundation
             darwin.apple_sdk.frameworks.Foundation
