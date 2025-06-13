@@ -121,4 +121,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn release --ci --no-git"
+        run: |
+          TAG_NAME="${{ github.ref_name }}"
+          VERSION="${TAG_NAME#v}" # Strip 'v' prefix if present
+          echo "Releasing version: $VERSION based on tag: $TAG_NAME"
+          nix develop .# --command bash -c "cd react-native-nitro-ark && yarn release $VERSION --ci --no-git"
