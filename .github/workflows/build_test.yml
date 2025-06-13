@@ -22,10 +22,10 @@ jobs:
       #   uses: DeterminateSystems/magic-nix-cache-action@main
       
       - name: Check formatting (bark-cpp)
-        run: nix develop .# --command bash -c "cd bark-cpp && cargo fmt -- --check"
+        run: nix develop .# --command bash -c "unset SDKROOT && cd bark-cpp && cargo fmt -- --check"
       
       - name: Run tests (bark-cpp)
-        run: nix develop .# --command bash -c "cd bark-cpp && cargo test"
+        run: nix develop .# --command bash -c "unset SDKROOT && cd bark-cpp && cargo test"
 
   # android_build:
   #   runs-on: ubuntu-latest
