@@ -103,10 +103,13 @@ jobs:
       - name: Install dependencies for publishing
         run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install --frozen-lockfile"
 
+      - name: Prepare package for release
+        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn prepare"
+
       - name: Publish to npm and Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }} 
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn release --ci"
 
       - name: Upload binaries to GitHub Release
