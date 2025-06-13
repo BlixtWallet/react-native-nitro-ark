@@ -3,8 +3,6 @@ import type {
   NitroArk,
   BarkCreateOpts,
   BarkBalance,
-  BarkConfigOpts,
-  BarkRefreshModeType,
   BarkRefreshOpts,
   BarkSendManyOutput,
 } from './NitroArk.nitro';
