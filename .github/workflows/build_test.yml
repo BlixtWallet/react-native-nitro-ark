@@ -46,7 +46,7 @@ jobs:
   #       run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install"
       
   #     - name: Build example Android app
-  #       run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn example build:android"
+  #       run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn build:android"
 
   ios_build:
     runs-on: mini-3
@@ -64,7 +64,7 @@ jobs:
         run: nix develop .# --command bash -c "unset SDKROOT && cd bark-cpp && ./build-ios.sh"
       
       - name: Install example app dependencies
-        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install && cd react-native-nitro-ark && bundle"
+        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install && bundle"
       
       - name: Build example iOS app
-        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn example build:ios"
+        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn build:ios"
