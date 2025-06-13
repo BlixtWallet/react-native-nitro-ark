@@ -22,7 +22,7 @@ jobs:
         run: nix develop .# --command bash -c "unset SDKROOT && cd bark-cpp && cargo test"
 
       - name: Install React Native app dependencies
-        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install --frozen-lockfile"
+        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install --immutable"
 
       - name: Prepare React Native package (lint, typecheck, build)
         run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn prepare"
@@ -44,7 +44,7 @@ jobs:
           path: bark-cpp/target/jniLibs/arm64-v8a/libbark_cpp.a
 
       - name: Install React Native app dependencies
-        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install --frozen-lockfile"
+        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install --immutable"
       
       - name: Build example Android app
         run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn example build:android"
@@ -70,7 +70,7 @@ jobs:
           path: bark-cpp/target/Ark.xcframework.zip
       
       - name: Install React Native app dependencies and Bundle for iOS example
-        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install --frozen-lockfile && cd example/ios && bundle install"
+        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install --immutable && cd example/ios && bundle install"
       
       - name: Build example iOS app
         run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn example build:ios"
@@ -120,7 +120,7 @@ jobs:
         shell: bash
 
       - name: Install dependencies for publishing
-        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install --frozen-lockfile"
+        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install --immutable"
 
       - name: Prepare package for release
         run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn prepare"

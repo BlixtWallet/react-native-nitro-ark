@@ -52,7 +52,7 @@ jobs:
         run: nix develop .# --command bash -c "unset SDKROOT && cd bark-cpp && cargo test"
 
       - name: Install React Native app dependencies
-        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install --frozen-lockfile"
+        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install --immutable"
 
       - name: Prepare React Native package (lint, typecheck, build)
         run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn prepare"
@@ -75,7 +75,7 @@ jobs:
         run: nix develop .# --command bash -c "unset SDKROOT && cd bark-cpp && ./build-android.sh"
       
       - name: Install example app dependencies
-        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install"
+        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install --immutable"
       
       - name: Build example Android app
         run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn example build:android"
@@ -98,7 +98,7 @@ jobs:
         run: nix develop .# --command bash -c "unset SDKROOT && cd bark-cpp && ./build-ios.sh"
       
       - name: Install example app dependencies
-        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install && cd example && bundle"
+        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install --immutable && cd example && bundle"
       
       - name: Build example iOS app
         run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn example build:ios"
