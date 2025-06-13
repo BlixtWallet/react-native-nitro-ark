@@ -83,19 +83,11 @@ jobs:
     permissions:
       contents: write # Required to create a release and upload assets
     steps:
-      - name: Checkout code and ensure symbolic ref
+      - name: Checkout code at tag
         uses: actions/checkout@v4
         with:
           ref: ${{ github.ref }} # Checkout the specific tag
           fetch-depth: 0 # release-it needs full history
-      - name: Create local branch from tag
-        run: |
-          BRANCH_NAME="release-${{ github.ref_name }}"
-          git checkout -b $BRANCH_NAME
-          # Set a dummy upstream to satisfy release-it checks. This branch doesn't need to exist on the remote.
-          git branch --set-upstream-to=origin/$BRANCH_NAME $BRANCH_NAME
-          echo "Checked out to local branch $BRANCH_NAME from tag ${{ github.ref_name }} and set dummy upstream"
-        shell: bash
 
       - name: Create directory for release assets
         run: mkdir -p release_assets
@@ -129,7 +121,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn release --ci"
+        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn release --ci --no-git"
 
       - name: Upload binaries to GitHub Release
         env:
