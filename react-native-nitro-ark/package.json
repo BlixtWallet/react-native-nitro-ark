@@ -1,6 +1,6 @@
 {
   "name": "react-native-nitro-ark",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "Pure C++ Nitro Modules for Ark client",
   "source": "./src/index.tsx",
   "main": "./lib/module/index.js",
@@ -37,7 +37,7 @@
     "test": "jest",
     "typecheck": "tsc",
     "lint": "eslint \"**/*.{js,ts,tsx}\"",
-    "clean": "del-cli android/build example/android/build example/android/app/build example/ios/build lib",
+    "clean": "del-cli android/build android/.cxx example/android/build example/android/app/build example/android/app/.cxx example/ios/build lib",
     "prepare": "bob build",
     "nitrogen": "rm -rf nitrogen && nitro-codegen",
     "release": "release-it"
