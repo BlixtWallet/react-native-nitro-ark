@@ -3,18 +3,12 @@
   "version": "0.0.7",
   "description": "Pure C++ Nitro Modules for Ark client",
   "source": "./src/index.tsx",
-  "main": "./lib/commonjs/index.js",
+  "main": "./lib/module/index.js",
   "module": "./lib/module/index.js",
   "exports": {
     ".": {
-      "import": {
-        "types": "./lib/typescript/module/src/index.d.ts",
-        "default": "./lib/module/index.js"
-      },
-      "require": {
-        "types": "./lib/typescript/commonjs/src/index.d.ts",
-        "default": "./lib/commonjs/index.js"
-      }
+      "types": "./lib/typescript/src/index.d.ts",
+      "default": "./lib/module/index.js"
     },
     "./package.json": "./package.json"
   },
@@ -75,7 +69,7 @@
     "@react-native/eslint-config": "^0.78.0",
     "@release-it/conventional-changelog": "^9.0.2",
     "@types/jest": "^29.5.5",
-    "@types/react": "^19.0.0",
+    "@types/react": "^19.0.10",
     "commitlint": "^19.6.1",
     "del-cli": "^5.1.0",
     "eslint": "^9.22.0",
@@ -85,8 +79,8 @@
     "nitro-codegen": "^0.26.2",
     "prettier": "^3.0.3",
     "react": "19.0.0",
-    "react-native": "0.78.1",
-    "react-native-builder-bob": "^0.39.0",
+    "react-native": "0.79.3",
+    "react-native-builder-bob": "^0.40.12",
     "react-native-nitro-modules": "^0.26.2",
     "release-it": "^17.10.0",
     "turbo": "^1.10.7",
@@ -157,12 +151,6 @@
       ],
       [
         "module",
-        {
-          "esm": true
-        }
-      ],
-      [
-        "commonjs",
         {
           "esm": true
         }

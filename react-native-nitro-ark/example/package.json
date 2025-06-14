@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "android": "react-native run-android",
-    "ios": "react-native run-ios",
+    "ios:prebuild": "bundle install && cd ios && bundle exec pod install --repo-update",
+    "ios": "yarn ios:prebuild && react-native run-ios",
     "start": "react-native start",
     "build:android": "react-native build-android --extra-params \"--no-daemon --console=plain -PreactNativeArchitectures=arm64-v8a\"",
     "build:ios": "react-native build-ios --scheme NitroArkExample --mode Debug --extra-params \"-sdk iphonesimulator CC=clang CPLUSPLUS=clang++ LD=clang LDPLUSPLUS=clang++ GCC_OPTIMIZATION_LEVEL=0 GCC_PRECOMPILE_PREFIX_HEADER=YES ASSETCATALOG_COMPILER_OPTIMIZATION=time DEBUG_INFORMATION_FORMAT=dwarf COMPILER_INDEX_STORE_ENABLE=NO\""
@@ -13,20 +14,20 @@
     "@dr.pogodin/react-native-fs": "^2.32.1",
     "@react-native-async-storage/async-storage": "^2.1.2",
     "react": "19.0.0",
-    "react-native": "0.78.1",
+    "react-native": "0.79.3",
     "react-native-nitro-modules": "^0.26.2"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@babel/preset-env": "^7.25.3",
     "@babel/runtime": "^7.25.0",
-    "@react-native-community/cli": "15.0.1",
-    "@react-native-community/cli-platform-android": "15.0.1",
-    "@react-native-community/cli-platform-ios": "15.0.1",
-    "@react-native/babel-preset": "0.78.1",
-    "@react-native/metro-config": "0.78.1",
-    "@react-native/typescript-config": "0.78.1",
-    "@types/react": "^19.0.0",
+    "@react-native-community/cli": "18.0.0",
+    "@react-native-community/cli-platform-android": "18.0.0",
+    "@react-native-community/cli-platform-ios": "18.0.0",
+    "@react-native/babel-preset": "0.79.3",
+    "@react-native/metro-config": "0.79.3",
+    "@react-native/typescript-config": "0.79.3",
+    "@types/react": "^19.0.10",
     "react-native-builder-bob": "^0.39.0"
   },
   "engines": {
