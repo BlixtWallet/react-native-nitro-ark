@@ -70,7 +70,7 @@ jobs:
           path: bark-cpp/target/Ark.xcframework.zip
       
       - name: Install React Native app dependencies and Bundle for iOS example
-        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install --immutable && cd example/ios && bundle install"
+        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install --immutable && yarn example ios:prebuild"
       
       - name: Build example iOS app
         run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn example build:ios"

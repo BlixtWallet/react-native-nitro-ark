@@ -98,7 +98,7 @@ jobs:
         run: nix develop .# --command bash -c "unset SDKROOT && cd bark-cpp && ./build-ios.sh"
       
       - name: Install example app dependencies
-        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install --immutable && cd example && bundle"
+        run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install --immutable && yarn ios:prebuild"
       
       - name: Build example iOS app
         run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn example build:ios"
