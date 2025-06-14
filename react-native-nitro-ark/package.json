@@ -1,6 +1,6 @@
 {
   "name": "react-native-nitro-ark",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Pure C++ Nitro Modules for Ark client",
   "source": "./src/index.tsx",
   "main": "./lib/commonjs/index.js",
@@ -27,7 +27,6 @@
     "nitrogen",
     "*.podspec",
     "react-native.config.js",
-    "Ark.xcframework",
     "!ios/build",
     "!android/build",
     "!android/gradle",

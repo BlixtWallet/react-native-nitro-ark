@@ -13,6 +13,9 @@ npm install react-native-nitro-ark react-native-nitro-modules
 yarn add react-native-nitro-ark react-native-nitro-modules
 ```
 
+- Download the Android binary and put it inside `node_modules/react-native-nitro-ark/android/src/main/jniLibs/arm64-v8a`.
+- Download the iOS binary, `unzip` it and put it inside `node_modules/react-native-nitro-ark/Ark.xcframework`.
+
 ## Purpose
 
 The primary goal of this module is to expose the rust functions of the "Ark" Rust project to your React Native application. It provides:
