@@ -110,7 +110,7 @@ jobs:
       - name: Prepare iOS Release Asset
         run: |
           unzip release_assets/Ark.xcframework.zip -d release_assets
-          mv release_assets/Ark.xcframework react-native-nitro-ark/
+          mv release_assets/target/Ark.xcframework react-native-nitro-ark/
         shell: bash
 
       - name: Prepare Android Release Asset
