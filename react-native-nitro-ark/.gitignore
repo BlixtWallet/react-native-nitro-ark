@@ -84,3 +84,4 @@ android/generated
 
 # Ark stuff
 Ark.xcframework
+android/src/main/jniLibs
