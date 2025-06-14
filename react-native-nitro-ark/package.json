@@ -118,6 +118,7 @@
     },
     "github": {
       "release": true,
+      "releaseName": "v${version}",
       "assets": [
         "../release_assets/libbark_cpp.a",
         "../release_assets/Ark.xcframework.zip"
