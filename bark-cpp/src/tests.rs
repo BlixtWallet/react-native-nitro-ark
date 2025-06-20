@@ -50,6 +50,8 @@ fn test_bark_create_wallet_error_on_null_datadir() {
         bitcoind_cookie: ptr::null(),
         bitcoind_user: ptr::null(),
         bitcoind_pass: ptr::null(),
+        vtxo_refresh_expiry_threshold: 144,
+        fallback_fee_rate: ptr::null(),
     };
 
     let create_opts = BarkCreateOpts {
@@ -115,6 +117,8 @@ fn test_bark_create_wallet_expects_network_error_without_server() {
         bitcoind_cookie: ptr::null(),
         bitcoind_user: ptr::null(),
         bitcoind_pass: ptr::null(),
+        vtxo_refresh_expiry_threshold: 144,
+        fallback_fee_rate: ptr::null(),
     };
 
     let create_opts = BarkCreateOpts {
@@ -195,6 +199,8 @@ fn setup_temp_wallet(test_name: &str) -> (PathBuf, CString, CString, *mut BarkEr
         bitcoind_cookie: ptr::null(),
         bitcoind_user: ptr::null(),
         bitcoind_pass: ptr::null(),
+        vtxo_refresh_expiry_threshold: 144,
+        fallback_fee_rate: ptr::null(),
     };
 
     let create_opts = BarkCreateOpts {

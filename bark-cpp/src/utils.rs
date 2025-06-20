@@ -1,9 +1,10 @@
 use std::{path::Path, str::FromStr};
 
+use crate::open_wallet;
 use anyhow::{self, bail, Context};
 use bark::{
     ark::{
-        bitcoin::{secp256k1::PublicKey, Network},
+        bitcoin::{secp256k1::PublicKey, FeeRate, Network},
         rounds::RoundId,
         Vtxo, VtxoId,
     },
@@ -13,11 +14,10 @@ use bark::{
     Config, SqliteClient, Wallet,
 };
 use bip39::Mnemonic;
+use bitcoin_ext::BlockHeight;
 use logger::tracing::{debug, info, warn};
 use tokio::fs;
 use tonic::transport::Uri;
-
-use crate::open_wallet;
 
 pub(crate) const DB_FILE: &str = "db.sqlite";
 
@@ -51,6 +51,12 @@ impl ConfigOpts {
         if cfg.esplora_address.is_none() && cfg.bitcoind_address.is_none() {
             bail!("Provide either an esplora or bitcoind url as chain source.");
         }
+
+        cfg.vtxo_refresh_expiry_threshold = self.vtxo_refresh_expiry_threshold;
+        if self.fallback_fee_rate.is_some() {
+            cfg.fallback_fee_rate = self.fallback_fee_rate;
+        }
+
         Ok(())
     }
 }
@@ -87,6 +93,8 @@ pub struct ConfigOpts {
     pub bitcoind_cookie: Option<String>,
     pub bitcoind_user: Option<String>,
     pub bitcoind_pass: Option<String>,
+    pub vtxo_refresh_expiry_threshold: BlockHeight,
+    pub fallback_fee_rate: Option<FeeRate>,
 }
 pub struct CreateOpts {
     /// Force re-create the wallet even if it already exists.
@@ -135,7 +143,7 @@ pub(crate) async fn try_create_wallet(
 
     debug!("datadir {:?} ", datadir);
     debug!("network {:?}", net);
-    debug!("config {} {:?}", config.asp_address, config.esplora_address);
+    debug!("config {:?}", config);
 
     // open db
     let db = SqliteClient::open(datadir.join(DB_FILE))?;

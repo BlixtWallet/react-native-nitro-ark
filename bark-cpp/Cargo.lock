@@ -125,8 +125,8 @@ dependencies = [
 
 [[package]]
 name = "ark-lib"
-version = "0.0.0-alpha.15"
-source = "git+https://codeberg.org/ark-bitcoin/bark.git?tag=all-0.0.0-alpha.15#fa0d2a0b18cb748585a0ab0347dc02da1c8dbc05"
+version = "0.0.0-alpha.16"
+source = "git+https://codeberg.org/ark-bitcoin/bark.git?tag=all-0.0.0-alpha.16#35a31ea5f959ea669b6b752549666a480d1c276b"
 dependencies = [
  "bark-bitcoin-ext",
  "bitcoin",
@@ -147,8 +147,8 @@ checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 
 [[package]]
 name = "aspd-rpc"
-version = "0.0.0-alpha.15"
-source = "git+https://codeberg.org/ark-bitcoin/bark.git?tag=all-0.0.0-alpha.15#fa0d2a0b18cb748585a0ab0347dc02da1c8dbc05"
+version = "0.0.0-alpha.16"
+source = "git+https://codeberg.org/ark-bitcoin/bark.git?tag=all-0.0.0-alpha.16#35a31ea5f959ea669b6b752549666a480d1c276b"
 dependencies = [
  "ark-lib",
  "bitcoin",
@@ -314,7 +314,7 @@ dependencies = [
 [[package]]
 name = "bark-bitcoin-ext"
 version = "0.0.0"
-source = "git+https://codeberg.org/ark-bitcoin/bark.git?tag=all-0.0.0-alpha.15#fa0d2a0b18cb748585a0ab0347dc02da1c8dbc05"
+source = "git+https://codeberg.org/ark-bitcoin/bark.git?tag=all-0.0.0-alpha.16#35a31ea5f959ea669b6b752549666a480d1c276b"
 dependencies = [
  "async-trait",
  "bdk_bitcoind_rpc",
@@ -330,8 +330,8 @@ dependencies = [
 
 [[package]]
 name = "bark-client"
-version = "0.0.0-alpha.15"
-source = "git+https://codeberg.org/ark-bitcoin/bark.git?tag=all-0.0.0-alpha.15#fa0d2a0b18cb748585a0ab0347dc02da1c8dbc05"
+version = "0.0.0-alpha.16"
+source = "git+https://codeberg.org/ark-bitcoin/bark.git?tag=all-0.0.0-alpha.16#35a31ea5f959ea669b6b752549666a480d1c276b"
 dependencies = [
  "anyhow",
  "ark-lib",
@@ -368,6 +368,7 @@ name = "bark-cpp"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bark-bitcoin-ext",
  "bark-client",
  "bip39",
  "cbindgen",
@@ -382,7 +383,7 @@ dependencies = [
 [[package]]
 name = "bark-json"
 version = "0.0.0"
-source = "git+https://codeberg.org/ark-bitcoin/bark.git?tag=all-0.0.0-alpha.15#fa0d2a0b18cb748585a0ab0347dc02da1c8dbc05"
+source = "git+https://codeberg.org/ark-bitcoin/bark.git?tag=all-0.0.0-alpha.16#35a31ea5f959ea669b6b752549666a480d1c276b"
 dependencies = [
  "ark-lib",
  "bark-bitcoin-ext",

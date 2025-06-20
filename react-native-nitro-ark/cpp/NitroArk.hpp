@@ -7,33 +7,41 @@
 #include <string>
 #include <vector>
 
-namespace margelo::nitro::nitroark {
+namespace margelo::nitro::nitroark
+{
 
-// Helper function to handle potential errors from bark-cpp calls
-inline void check_bark_error(bark::bark_BarkError *error) {
-  if (error != nullptr) {
-    std::string error_message = "Bark-cpp error: Unknown";
-    if (error->message != nullptr) {
-      // Assuming error->message is valid C string allocated correctly
-      error_message = std::string("Bark-cpp error: ") + error->message;
+  // Helper function to handle potential errors from bark-cpp calls
+  inline void check_bark_error(bark::bark_BarkError *error)
+  {
+    if (error != nullptr)
+    {
+      std::string error_message = "Bark-cpp error: Unknown";
+      if (error->message != nullptr)
+      {
+        // Assuming error->message is valid C string allocated correctly
+        error_message = std::string("Bark-cpp error: ") + error->message;
+      }
+      // Use the FFI function to free the error struct and its contents
+      bark::bark_free_error(error);
+      throw std::runtime_error(error_message);
     }
-    // Use the FFI function to free the error struct and its contents
-    bark::bark_free_error(error);
-    throw std::runtime_error(error_message);
-  }
-}
-
-class NitroArk : public HybridNitroArkSpec {
-public:
-  NitroArk() : HybridObject(TAG) {
-    // Initialize the Rust logger once when a NitroArk object is created.
-    bark::bark_init_logger();
   }
 
-  // --- Management ---
+  class NitroArk : public HybridNitroArkSpec
+  {
+  public:
+    NitroArk() : HybridObject(TAG)
+    {
+      // Initialize the Rust logger once when a NitroArk object is created.
+      bark::bark_init_logger();
+    }
 
-  std::shared_ptr<Promise<std::string>> createMnemonic() override {
-    return Promise<std::string>::async([]() {
+    // --- Management ---
+
+    std::shared_ptr<Promise<std::string>> createMnemonic() override
+    {
+      return Promise<std::string>::async([]()
+                                         {
       char *mnemonic_c = bark::bark_create_mnemonic();
       if (mnemonic_c == nullptr) {
         throw std::runtime_error(
@@ -41,14 +49,21 @@ public:
       }
       std::string mnemonic_str(mnemonic_c);
       bark::bark_free_string(mnemonic_c);
-      return mnemonic_str;
-    });
-  }
+      return mnemonic_str; });
+    }
 
-  std::shared_ptr<Promise<void>>
-  createWallet(const std::string &datadir,
-               const BarkCreateOpts &opts) override {
-    return Promise<void>::async([datadir, opts]() {
+    std::shared_ptr<Promise<void>>
+    createWallet(const std::string &datadir,
+                 const BarkCreateOpts &opts) override
+    {
+      return Promise<void>::async([datadir, opts]()
+                                  {
+      // Keep fee rate value alive for the C call
+      std::optional<uint64_t> fallback_fee_rate_val;
+      if (opts.config.has_value() && opts.config->fallback_fee_rate.has_value()) {
+          fallback_fee_rate_val = static_cast<uint64_t>(opts.config->fallback_fee_rate.value());
+      }
+
       bark::bark_BarkConfigOpts config = {
           opts.config.has_value() && opts.config->asp.has_value()
               ? opts.config->asp->c_str()
@@ -67,7 +82,15 @@ public:
               : nullptr,
           opts.config.has_value() && opts.config->bitcoind_pass.has_value()
               ? opts.config->bitcoind_pass->c_str()
-              : nullptr};
+              : nullptr,
+          opts.config.has_value() &&
+                  opts.config->vtxo_refresh_expiry_threshold.has_value()
+              ? static_cast<uint32_t>(
+                    opts.config->vtxo_refresh_expiry_threshold.value())
+              : 0,
+          fallback_fee_rate_val.has_value() ? &fallback_fee_rate_val.value()
+                                            : nullptr
+      };
 
       bark::bark_BarkCreateOpts barkOpts = {
           opts.force.value_or(false),
@@ -82,16 +105,17 @@ public:
 
       bark::bark_BarkError *error =
           bark::bark_create_wallet(datadir.c_str(), barkOpts);
-      check_bark_error(error);
-    });
-  }
+      check_bark_error(error); });
+    }
 
-  // --- Wallet Info ---
+    // --- Wallet Info ---
 
-  std::shared_ptr<Promise<BarkBalance>>
-  getBalance(const std::string &datadir, bool no_sync,
-             const std::string &mnemonic) override {
-    return Promise<BarkBalance>::async([datadir, no_sync, mnemonic]() {
+    std::shared_ptr<Promise<BarkBalance>>
+    getBalance(const std::string &datadir, bool no_sync,
+               const std::string &mnemonic) override
+    {
+      return Promise<BarkBalance>::async([datadir, no_sync, mnemonic]()
+                                         {
       bark::bark_BarkBalance c_balance;
       bark::bark_BarkError *error = bark::bark_get_balance(
           datadir.c_str(), no_sync, mnemonic.c_str(), &c_balance);
@@ -99,14 +123,15 @@ public:
 
       return BarkBalance(static_cast<double>(c_balance.onchain),
                          static_cast<double>(c_balance.offchain),
-                         static_cast<double>(c_balance.pending_exit));
-    });
-  }
+                         static_cast<double>(c_balance.pending_exit)); });
+    }
 
-  std::shared_ptr<Promise<std::string>>
-  getOnchainAddress(const std::string &datadir,
-                    const std::string &mnemonic) override {
-    return Promise<std::string>::async([datadir, mnemonic]() {
+    std::shared_ptr<Promise<std::string>>
+    getOnchainAddress(const std::string &datadir,
+                      const std::string &mnemonic) override
+    {
+      return Promise<std::string>::async([datadir, mnemonic]()
+                                         {
       char *address_c = nullptr;
       bark::bark_BarkError *error = bark::bark_get_onchain_address(
           datadir.c_str(), mnemonic.c_str(), &address_c);
@@ -117,14 +142,15 @@ public:
       }
       std::string address_str(address_c);
       bark::bark_free_string(address_c); // Use helper
-      return address_str;
-    });
-  }
+      return address_str; });
+    }
 
-  std::shared_ptr<Promise<std::string>>
-  getOnchainUtxos(const std::string &datadir, const std::string &mnemonic,
-                  bool no_sync) override {
-    return Promise<std::string>::async([datadir, mnemonic, no_sync]() {
+    std::shared_ptr<Promise<std::string>>
+    getOnchainUtxos(const std::string &datadir, const std::string &mnemonic,
+                    bool no_sync) override
+    {
+      return Promise<std::string>::async([datadir, mnemonic, no_sync]()
+                                         {
       char *json_c = nullptr;
       bark::bark_BarkError *error = bark::bark_get_onchain_utxos(
           datadir.c_str(), mnemonic.c_str(), no_sync, &json_c);
@@ -135,14 +161,15 @@ public:
       }
       std::string json_str(json_c);
       bark::bark_free_string(json_c); // Use helper
-      return json_str;
-    });
-  }
+      return json_str; });
+    }
 
-  std::shared_ptr<Promise<std::string>>
-  getVtxoPubkey(const std::string &datadir,
-                const std::string &mnemonic) override {
-    return Promise<std::string>::async([datadir, mnemonic]() {
+    std::shared_ptr<Promise<std::string>>
+    getVtxoPubkey(const std::string &datadir,
+                  const std::string &mnemonic) override
+    {
+      return Promise<std::string>::async([datadir, mnemonic]()
+                                         {
       char *pubkey_c = nullptr;
       bark::bark_BarkError *error = bark::bark_get_vtxo_pubkey(
           datadir.c_str(), mnemonic.c_str(), &pubkey_c);
@@ -153,14 +180,15 @@ public:
       }
       std::string pubkey_str(pubkey_c);
       bark::bark_free_string(pubkey_c); // Use helper
-      return pubkey_str;
-    });
-  }
+      return pubkey_str; });
+    }
 
-  std::shared_ptr<Promise<std::string>> getVtxos(const std::string &datadir,
-                                                 const std::string &mnemonic,
-                                                 bool no_sync) override {
-    return Promise<std::string>::async([datadir, mnemonic, no_sync]() {
+    std::shared_ptr<Promise<std::string>> getVtxos(const std::string &datadir,
+                                                   const std::string &mnemonic,
+                                                   bool no_sync) override
+    {
+      return Promise<std::string>::async([datadir, mnemonic, no_sync]()
+                                         {
       char *json_c = nullptr;
       bark::bark_BarkError *error = bark::bark_get_vtxos(
           datadir.c_str(), mnemonic.c_str(), no_sync, &json_c);
@@ -171,18 +199,19 @@ public:
       }
       std::string json_str(json_c);
       bark::bark_free_string(json_c); // Use helper
-      return json_str;
-    });
-  }
+      return json_str; });
+    }
 
-  // --- Onchain Operations ---
+    // --- Onchain Operations ---
 
-  std::shared_ptr<Promise<std::string>>
-  sendOnchain(const std::string &datadir, const std::string &mnemonic,
-              const std::string &destination, double amountSat,
-              bool no_sync) override {
-    return Promise<std::string>::async([datadir, mnemonic, destination,
-                                        amountSat, no_sync]() {
+    std::shared_ptr<Promise<std::string>>
+    sendOnchain(const std::string &datadir, const std::string &mnemonic,
+                const std::string &destination, double amountSat,
+                bool no_sync) override
+    {
+      return Promise<std::string>::async([datadir, mnemonic, destination,
+                                          amountSat, no_sync]()
+                                         {
       char *txid_c = nullptr;
       bark::bark_BarkError *error = bark::bark_send_onchain(
           datadir.c_str(), mnemonic.c_str(), destination.c_str(),
@@ -194,35 +223,39 @@ public:
       }
       std::string txid_str(txid_c);
       bark::bark_free_string(txid_c); // Use helper
-      return txid_str;
-    });
-  }
+      return txid_str; });
+    }
 
-  std::shared_ptr<Promise<std::string>>
-  drainOnchain(const std::string &datadir, const std::string &mnemonic,
-               const std::string &destination, bool no_sync) override {
-    return Promise<std::string>::async(
-        [datadir, mnemonic, destination, no_sync]() {
-          char *txid_c = nullptr;
-          bark::bark_BarkError *error =
-              bark::bark_drain_onchain(datadir.c_str(), mnemonic.c_str(),
-                                       destination.c_str(), no_sync, &txid_c);
-          check_bark_error(error);
-          if (txid_c == nullptr) {
-            throw std::runtime_error("Bark-cpp error: drainOnchain returned "
-                                     "success but txid is null");
-          }
-          std::string txid_str(txid_c);
-          bark::bark_free_string(txid_c); // Use helper
-          return txid_str;
-        });
-  }
+    std::shared_ptr<Promise<std::string>>
+    drainOnchain(const std::string &datadir, const std::string &mnemonic,
+                 const std::string &destination, bool no_sync) override
+    {
+      return Promise<std::string>::async(
+          [datadir, mnemonic, destination, no_sync]()
+          {
+            char *txid_c = nullptr;
+            bark::bark_BarkError *error =
+                bark::bark_drain_onchain(datadir.c_str(), mnemonic.c_str(),
+                                         destination.c_str(), no_sync, &txid_c);
+            check_bark_error(error);
+            if (txid_c == nullptr)
+            {
+              throw std::runtime_error("Bark-cpp error: drainOnchain returned "
+                                       "success but txid is null");
+            }
+            std::string txid_str(txid_c);
+            bark::bark_free_string(txid_c); // Use helper
+            return txid_str;
+          });
+    }
 
-  std::shared_ptr<Promise<std::string>>
-  sendManyOnchain(const std::string &datadir, const std::string &mnemonic,
-                  const std::vector<BarkSendManyOutput> &outputs,
-                  bool no_sync) override {
-    return Promise<std::string>::async([datadir, mnemonic, outputs, no_sync]() {
+    std::shared_ptr<Promise<std::string>>
+    sendManyOnchain(const std::string &datadir, const std::string &mnemonic,
+                    const std::vector<BarkSendManyOutput> &outputs,
+                    bool no_sync) override
+    {
+      return Promise<std::string>::async([datadir, mnemonic, outputs, no_sync]()
+                                         {
       size_t num_outputs = outputs.size();
       if (num_outputs == 0) {
         throw std::runtime_error(
@@ -252,17 +285,18 @@ public:
       }
       std::string txid_str(txid_c);
       bark::bark_free_string(txid_c); // Use helper
-      return txid_str;
-    });
-  }
+      return txid_str; });
+    }
 
-  // --- Ark Operations ---
+    // --- Ark Operations ---
 
-  std::shared_ptr<Promise<std::string>>
-  refreshVtxos(const std::string &datadir, const std::string &mnemonic,
-               const BarkRefreshOpts &refreshOpts, bool no_sync) override {
-    return Promise<std::string>::async([datadir, mnemonic, refreshOpts,
-                                        no_sync]() {
+    std::shared_ptr<Promise<std::string>>
+    refreshVtxos(const std::string &datadir, const std::string &mnemonic,
+                 const BarkRefreshOpts &refreshOpts, bool no_sync) override
+    {
+      return Promise<std::string>::async([datadir, mnemonic, refreshOpts,
+                                          no_sync]()
+                                         {
       bark::bark_BarkRefreshOpts c_opts;
       std::vector<const char *> specific_ids_c; // Keep alive for the C call
 
@@ -333,16 +367,17 @@ public:
       }
       std::string status_str(status_c);
       bark::bark_free_string(status_c); // Use helper
-      return status_str;
-    });
-  }
+      return status_str; });
+    }
 
-  std::shared_ptr<Promise<std::string>> boardAmount(const std::string &datadir,
-                                                    const std::string &mnemonic,
-                                                    double amountSat,
-                                                    bool no_sync) override {
-    return Promise<std::string>::async([datadir, mnemonic, amountSat,
-                                        no_sync]() {
+    std::shared_ptr<Promise<std::string>> boardAmount(const std::string &datadir,
+                                                      const std::string &mnemonic,
+                                                      double amountSat,
+                                                      bool no_sync) override
+    {
+      return Promise<std::string>::async([datadir, mnemonic, amountSat,
+                                          no_sync]()
+                                         {
       char *status_c = nullptr;
       bark::bark_BarkError *error = bark::bark_board_amount(
           datadir.c_str(), mnemonic.c_str(), static_cast<uint64_t>(amountSat),
@@ -354,14 +389,15 @@ public:
       }
       std::string status_str(status_c);
       bark::bark_free_string(status_c); // Use helper
-      return status_str;
-    });
-  }
+      return status_str; });
+    }
 
-  std::shared_ptr<Promise<std::string>> boardAll(const std::string &datadir,
-                                                 const std::string &mnemonic,
-                                                 bool no_sync) override {
-    return Promise<std::string>::async([datadir, mnemonic, no_sync]() {
+    std::shared_ptr<Promise<std::string>> boardAll(const std::string &datadir,
+                                                   const std::string &mnemonic,
+                                                   bool no_sync) override
+    {
+      return Promise<std::string>::async([datadir, mnemonic, no_sync]()
+                                         {
       char *status_c = nullptr;
       bark::bark_BarkError *error = bark::bark_board_all(
           datadir.c_str(), mnemonic.c_str(), no_sync, &status_c);
@@ -372,16 +408,17 @@ public:
       }
       std::string status_str(status_c);
       bark::bark_free_string(status_c); // Use helper
-      return status_str;
-    });
-  }
+      return status_str; });
+    }
 
-  std::shared_ptr<Promise<std::string>>
-  send(const std::string &datadir, const std::string &mnemonic,
-       const std::string &destination, double amountSat,
-       const std::optional<std::string> &comment, bool no_sync) override {
-    return Promise<std::string>::async([datadir, mnemonic, destination,
-                                        amountSat, comment, no_sync]() {
+    std::shared_ptr<Promise<std::string>>
+    send(const std::string &datadir, const std::string &mnemonic,
+         const std::string &destination, double amountSat,
+         const std::optional<std::string> &comment, bool no_sync) override
+    {
+      return Promise<std::string>::async([datadir, mnemonic, destination,
+                                          amountSat, comment, no_sync]()
+                                         {
       char *status_c = nullptr;
       const char *comment_c = comment.has_value() ? comment->c_str() : nullptr;
       // NOTE: bark_send in ffi.rs expects u64::MAX if amount is not provided.
@@ -399,73 +436,82 @@ public:
       }
       std::string status_str(status_c);
       bark::bark_free_string(status_c); // Use helper
-      return status_str;
-    });
-  }
+      return status_str; });
+    }
 
-  std::shared_ptr<Promise<std::string>>
-  sendRoundOnchain(const std::string &datadir, const std::string &mnemonic,
-                   const std::string &destination, double amountSat,
-                   bool no_sync) override {
-    return Promise<std::string>::async(
-        [datadir, mnemonic, destination, amountSat, no_sync]() {
-          char *status_c = nullptr;
-          bark::bark_BarkError *error = bark::bark_send_round_onchain(
-              datadir.c_str(), mnemonic.c_str(), destination.c_str(),
-              static_cast<uint64_t>(amountSat), no_sync, &status_c);
-          check_bark_error(error);
-          if (status_c == nullptr) {
-            throw std::runtime_error("Bark-cpp error: sendRoundOnchain "
-                                     "returned success but status is null");
-          }
-          std::string status_str(status_c);
-          bark::bark_free_string(status_c); // Use helper
-          return status_str;
-        });
-  }
+    std::shared_ptr<Promise<std::string>>
+    sendRoundOnchain(const std::string &datadir, const std::string &mnemonic,
+                     const std::string &destination, double amountSat,
+                     bool no_sync) override
+    {
+      return Promise<std::string>::async(
+          [datadir, mnemonic, destination, amountSat, no_sync]()
+          {
+            char *status_c = nullptr;
+            bark::bark_BarkError *error = bark::bark_send_round_onchain(
+                datadir.c_str(), mnemonic.c_str(), destination.c_str(),
+                static_cast<uint64_t>(amountSat), no_sync, &status_c);
+            check_bark_error(error);
+            if (status_c == nullptr)
+            {
+              throw std::runtime_error("Bark-cpp error: sendRoundOnchain "
+                                       "returned success but status is null");
+            }
+            std::string status_str(status_c);
+            bark::bark_free_string(status_c); // Use helper
+            return status_str;
+          });
+    }
 
-  // --- Offboarding / Exiting ---
+    // --- Offboarding / Exiting ---
 
-  std::shared_ptr<Promise<std::string>>
-  offboardSpecific(const std::string &datadir, const std::string &mnemonic,
-                   const std::vector<std::string> &vtxoIds,
-                   const std::optional<std::string> &optionalAddress,
-                   bool no_sync) override {
-    return Promise<std::string>::async(
-        [datadir, mnemonic, vtxoIds, optionalAddress, no_sync]() {
-          if (vtxoIds.empty()) {
-            throw std::runtime_error(
-                "offboardSpecific requires at least one vtxoId");
-          }
-          std::vector<const char *> ids_c;
-          ids_c.reserve(vtxoIds.size());
-          for (const auto &id : vtxoIds) {
-            ids_c.push_back(id.c_str());
-          }
-          const char *addr_c =
-              optionalAddress.has_value() ? optionalAddress->c_str() : nullptr;
-          char *status_c = nullptr;
+    std::shared_ptr<Promise<std::string>>
+    offboardSpecific(const std::string &datadir, const std::string &mnemonic,
+                     const std::vector<std::string> &vtxoIds,
+                     const std::optional<std::string> &optionalAddress,
+                     bool no_sync) override
+    {
+      return Promise<std::string>::async(
+          [datadir, mnemonic, vtxoIds, optionalAddress, no_sync]()
+          {
+            if (vtxoIds.empty())
+            {
+              throw std::runtime_error(
+                  "offboardSpecific requires at least one vtxoId");
+            }
+            std::vector<const char *> ids_c;
+            ids_c.reserve(vtxoIds.size());
+            for (const auto &id : vtxoIds)
+            {
+              ids_c.push_back(id.c_str());
+            }
+            const char *addr_c =
+                optionalAddress.has_value() ? optionalAddress->c_str() : nullptr;
+            char *status_c = nullptr;
 
-          bark::bark_BarkError *error = bark::bark_offboard_specific(
-              datadir.c_str(), mnemonic.c_str(), ids_c.data(), ids_c.size(),
-              addr_c, no_sync, &status_c);
-          check_bark_error(error);
-          if (status_c == nullptr) {
-            throw std::runtime_error("Bark-cpp error: offboardSpecific "
-                                     "returned success but status is null");
-          }
-          std::string status_str(status_c);
-          bark::bark_free_string(status_c); // Use helper
-          return status_str;
-        });
-  }
+            bark::bark_BarkError *error = bark::bark_offboard_specific(
+                datadir.c_str(), mnemonic.c_str(), ids_c.data(), ids_c.size(),
+                addr_c, no_sync, &status_c);
+            check_bark_error(error);
+            if (status_c == nullptr)
+            {
+              throw std::runtime_error("Bark-cpp error: offboardSpecific "
+                                       "returned success but status is null");
+            }
+            std::string status_str(status_c);
+            bark::bark_free_string(status_c); // Use helper
+            return status_str;
+          });
+    }
 
-  std::shared_ptr<Promise<std::string>>
-  offboardAll(const std::string &datadir, const std::string &mnemonic,
-              const std::optional<std::string> &optionalAddress,
-              bool no_sync) override {
-    return Promise<std::string>::async([datadir, mnemonic, optionalAddress,
-                                        no_sync]() {
+    std::shared_ptr<Promise<std::string>>
+    offboardAll(const std::string &datadir, const std::string &mnemonic,
+                const std::optional<std::string> &optionalAddress,
+                bool no_sync) override
+    {
+      return Promise<std::string>::async([datadir, mnemonic, optionalAddress,
+                                          no_sync]()
+                                         {
       const char *addr_c =
           optionalAddress.has_value() ? optionalAddress->c_str() : nullptr;
       char *status_c = nullptr;
@@ -478,15 +524,16 @@ public:
       }
       std::string status_str(status_c);
       bark::bark_free_string(status_c); // Use helper
-      return status_str;
-    });
-  }
+      return status_str; });
+    }
 
-  std::shared_ptr<Promise<std::string>> exitStartSpecific(
-      const std::string &datadir, const std::string &mnemonic,
-      const std::vector<std::string> &vtxoIds,
-      bool no_sync /* Potential C header mismatch noted */) override {
-    return Promise<std::string>::async([datadir, mnemonic, vtxoIds, no_sync]() {
+    std::shared_ptr<Promise<std::string>> exitStartSpecific(
+        const std::string &datadir, const std::string &mnemonic,
+        const std::vector<std::string> &vtxoIds,
+        bool no_sync /* Potential C header mismatch noted */) override
+    {
+      return Promise<std::string>::async([datadir, mnemonic, vtxoIds, no_sync]()
+                                         {
       if (vtxoIds.empty()) {
         throw std::runtime_error(
             "exitStartSpecific requires at least one vtxoId");
@@ -509,14 +556,15 @@ public:
       }
       std::string status_str(status_c);
       bark::bark_free_string(status_c); // Use helper
-      return status_str;
-    });
-  }
+      return status_str; });
+    }
 
-  std::shared_ptr<Promise<std::string>>
-  exitStartAll(const std::string &datadir, const std::string &mnemonic,
-               bool no_sync /* Potential C header mismatch noted */) override {
-    return Promise<std::string>::async([datadir, mnemonic, no_sync]() {
+    std::shared_ptr<Promise<std::string>>
+    exitStartAll(const std::string &datadir, const std::string &mnemonic,
+                 bool no_sync /* Potential C header mismatch noted */) override
+    {
+      return Promise<std::string>::async([datadir, mnemonic, no_sync]()
+                                         {
       char *status_c = nullptr;
       // Call reflects C header (which might be missing no_sync)
       bark::bark_BarkError *error = bark::bark_exit_start_all(
@@ -528,14 +576,15 @@ public:
       }
       std::string status_str(status_c);
       bark::bark_free_string(status_c); // Use helper
-      return status_str;
-    });
-  }
+      return status_str; });
+    }
 
-  std::shared_ptr<Promise<std::string>>
-  exitProgressOnce(const std::string &datadir,
-                   const std::string &mnemonic) override {
-    return Promise<std::string>::async([datadir, mnemonic]() {
+    std::shared_ptr<Promise<std::string>>
+    exitProgressOnce(const std::string &datadir,
+                     const std::string &mnemonic) override
+    {
+      return Promise<std::string>::async([datadir, mnemonic]()
+                                         {
       char *status_c = nullptr;
       bark::bark_BarkError *error = bark::bark_exit_progress_once(
           datadir.c_str(), mnemonic.c_str(), &status_c);
@@ -546,13 +595,12 @@ public:
       }
       std::string status_str(status_c);
       bark::bark_free_string(status_c); // Use helper
-      return status_str;
-    });
-  }
+      return status_str; });
+    }
 
-private:
-  // Tag for logging/debugging within Nitro
-  static constexpr auto TAG = "NitroArk";
-};
+  private:
+    // Tag for logging/debugging within Nitro
+    static constexpr auto TAG = "NitroArk";
+  };
 
 } // namespace margelo::nitro::nitroark

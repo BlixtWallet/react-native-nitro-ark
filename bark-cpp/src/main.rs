@@ -32,6 +32,8 @@ async fn main() -> anyhow::Result<()> {
         bitcoind_cookie: None,
         bitcoind_user: Some("polaruser".to_string()),
         bitcoind_pass: Some("polarpass".to_string()),
+        fallback_fee_rate: None,
+        vtxo_refresh_expiry_threshold: 288,
     };
     debug!(
         "Configuration created: asp={:?}, esplora={:?}",

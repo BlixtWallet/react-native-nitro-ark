@@ -4,9 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bark-client = { git = "https://codeberg.org/ark-bitcoin/bark.git", tag = "all-0.0.0-alpha.15", features = [
+bark-client = { git = "https://codeberg.org/ark-bitcoin/bark.git", tag = "all-0.0.0-alpha.16", features = [
     "tls-webpki-roots",
 ] }
+
+bark-bitcoin-ext = { git = "https://codeberg.org/ark-bitcoin/bark.git", tag = "all-0.0.0-alpha.16" }
 
 tokio = { version = "1" }
 bip39 = { version = "2.1.0", features = ["rand", "serde"] }

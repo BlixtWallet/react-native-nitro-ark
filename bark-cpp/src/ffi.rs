@@ -44,6 +44,8 @@ pub struct BarkConfigOpts {
     pub bitcoind_cookie: *const c_char,
     pub bitcoind_user: *const c_char,
     pub bitcoind_pass: *const c_char,
+    pub vtxo_refresh_expiry_threshold: u32,
+    pub fallback_fee_rate: *const u64,
 }
 
 #[repr(C)]

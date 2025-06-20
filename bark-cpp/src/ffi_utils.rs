@@ -6,7 +6,10 @@ use std::{
 };
 
 use anyhow::{bail, Context};
-use bark::ark::{bitcoin::Txid, VtxoId};
+use bark::ark::{
+    bitcoin::{FeeRate, Txid},
+    VtxoId,
+};
 use bip39::Mnemonic;
 use logger::tracing::{debug, error, warn};
 
@@ -84,6 +87,14 @@ pub(crate) fn to_rust_config_opts(c_opts: &BarkConfigOpts) -> ConfigOpts {
         bitcoind_cookie,
         bitcoind_user,
         bitcoind_pass,
+        vtxo_refresh_expiry_threshold: c_opts.vtxo_refresh_expiry_threshold,
+        fallback_fee_rate: if c_opts.fallback_fee_rate.is_null() {
+            None
+        } else {
+            Some(FeeRate::from_sat_per_kwu(unsafe {
+                *c_opts.fallback_fee_rate
+            }))
+        },
     }
 }
 
