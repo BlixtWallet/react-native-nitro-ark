@@ -33,6 +33,8 @@ struct bark_BarkConfigOpts {
   const char *bitcoind_cookie;
   const char *bitcoind_user;
   const char *bitcoind_pass;
+  uint32_t vtxo_refresh_expiry_threshold;
+  const uint64_t *fallback_fee_rate;
 };
 
 struct bark_BarkCreateOpts {

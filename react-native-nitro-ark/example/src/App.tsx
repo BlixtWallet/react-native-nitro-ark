@@ -176,6 +176,7 @@ export default function ArkApp() {
         asp: 'http://127.0.0.1:3535',
         bitcoind_user: 'polaruser',
         bitcoind_pass: 'polarpass',
+        vtxo_refresh_expiry_threshold: 288,
       },
     };
     runOperation(

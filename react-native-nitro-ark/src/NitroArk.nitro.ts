@@ -19,6 +19,8 @@ export interface BarkConfigOpts {
   bitcoind_cookie?: string;
   bitcoind_user?: string;
   bitcoind_pass?: string;
+  vtxo_refresh_expiry_threshold?: number;
+  fallback_fee_rate?: number;
 }
 
 export interface BarkCreateOpts {
