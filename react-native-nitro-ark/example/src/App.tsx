@@ -172,8 +172,8 @@ export default function ArkApp() {
       signet: false,
       bitcoin: false,
       config: {
-        bitcoind: 'http://127.0.0.1:18443',
-        asp: 'http://127.0.0.1:3535',
+        bitcoind: 'http://192.168.4.253:18443',
+        asp: 'http://192.168.4.253:3535',
         bitcoind_user: 'polaruser',
         bitcoind_pass: 'polarpass',
         vtxo_refresh_expiry_threshold: 288,

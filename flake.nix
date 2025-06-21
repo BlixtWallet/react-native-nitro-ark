@@ -112,33 +112,11 @@
             ./build-ios.sh
           '';
 
-          build-macos = pkgs.writeScriptBin "build-macos" ''
-            #!${pkgs.stdenv.shell}
-            echo "Building for macOS..."
-            chmod +x ./build-macos.sh
-            ./build-macos.sh
-          '';
-
           build-android = pkgs.writeScriptBin "build-android" ''
             #!${pkgs.stdenv.shell}
             echo "Building for Android..."
             chmod +x ./build-android.sh
             ./build-android.sh
-          '';
-
-          build-all = pkgs.writeScriptBin "build-all" ''
-            #!${pkgs.stdenv.shell}
-            echo "Building for Android..."
-            chmod +x ./build-android.sh
-            ./build-android.sh
-
-            echo "Building for iOS..."
-            chmod +x ./build-ios.sh
-            ./build-ios.sh
-
-            echo "Building for macOS..."
-            chmod +x ./build-macos.sh
-            ./build-macos.sh
           '';
         };
       };
@@ -152,8 +130,6 @@
           scripts = darwinDerivations.scripts pkgs;
 
           basePackages = with pkgs; [
-            upx
-            cargo-ndk
             androidSdk
             autoconf
             automake
@@ -176,9 +152,7 @@
             darwin.apple_sdk.frameworks.SystemConfiguration
             (darwinDerivations.xcode-wrapper pkgs)
             scripts.build-ios
-            scripts.build-macos
             scripts.build-android
-            scripts.build-all
           ];
 
           darwinHook = ''

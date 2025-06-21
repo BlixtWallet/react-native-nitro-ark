@@ -1,6 +1,6 @@
 {
   "name": "react-native-nitro-ark",
-  "version": "0.0.11",
+  "version": "0.0.12",
   "description": "Pure C++ Nitro Modules for Ark client",
   "source": "./src/index.tsx",
   "main": "./lib/module/index.js",
@@ -89,7 +89,7 @@
   "peerDependencies": {
     "react": "*",
     "react-native": "*",
-    "react-native-nitro-modules": "^0.25.2"
+    "react-native-nitro-modules": "^0.26.2"
   },
   "workspaces": [
     "example"

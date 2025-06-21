@@ -11,7 +11,12 @@ use logger::tracing::error;
 use std::ffi::{c_char, CStr, CString};
 use std::path::Path;
 use std::str::FromStr;
+use std::sync::LazyLock;
 use std::{ptr, slice};
+use tokio::runtime::Runtime;
+
+static TOKIO_RUNTIME: LazyLock<Runtime> =
+    LazyLock::new(|| Runtime::new().expect("Failed to create Tokio runtime"));
 
 /// Initializes the logger for the library.
 /// This should be called once when the library is loaded by the C/C++ application,
@@ -207,19 +212,9 @@ pub extern "C" fn bark_create_wallet(
         }
     };
 
-    // Create a new runtime for the async function
-    debug!("Creating tokio runtime");
-    let runtime = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => {
-            error!("Failed to create tokio runtime: {}", e);
-            return Box::into_raw(Box::new(BarkError::new(&e.to_string())));
-        }
-    };
-
     // Run the async function
     debug!("Running create_wallet async function");
-    let result = runtime
+    let result = TOKIO_RUNTIME
         .block_on(async { create_wallet(Path::new(datadir_str.as_str()), create_opts).await });
 
     match result {
@@ -270,21 +265,11 @@ pub extern "C" fn bark_get_balance(
         return Box::into_raw(Box::new(BarkError::new("balance_out is null")));
     }
 
-    // Create a new runtime for the async function
-    debug!("Creating tokio runtime");
-    let runtime = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => {
-            error!("Failed to create tokio runtime: {}", e);
-            return Box::into_raw(Box::new(BarkError::new(&e.to_string())));
-        }
-    };
-
     // Run the async function
     debug!("Running get_balance async function");
 
     let mnemonic = Mnemonic::from_str(mnemonic_str.as_str()).unwrap();
-    let result = runtime
+    let result = TOKIO_RUNTIME
         .block_on(async { get_balance(Path::new(datadir_str.as_str()), no_sync, mnemonic).await });
 
     match result {
@@ -364,14 +349,9 @@ pub extern "C" fn bark_get_onchain_address(
     };
 
     // --- Runtime and Async Execution ---
-    debug!("Creating tokio runtime for get_onchain_address");
-    let runtime = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Box::into_raw(Box::new(BarkError::new(&format!("Runtime error: {}", e)))),
-    };
-
     debug!("Running get_onchain_address async function");
-    let result = runtime.block_on(async { get_onchain_address(datadir_path, rust_mnemonic).await });
+    let result =
+        TOKIO_RUNTIME.block_on(async { get_onchain_address(datadir_path, rust_mnemonic).await });
 
     // --- Result Handling ---
     match result {
@@ -484,15 +464,9 @@ pub extern "C" fn bark_send_onchain(
     debug!("Amount: {}", amount);
 
     // --- Runtime and Async Execution ---
-    debug!("Creating tokio runtime for send_onchain");
-    let runtime = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Box::into_raw(Box::new(BarkError::new(&format!("Runtime error: {}", e)))),
-    };
-
     debug!("Running send_onchain async function");
     // Pass destination_str, validation happens inside send_onchain
-    let result = runtime.block_on(async {
+    let result = TOKIO_RUNTIME.block_on(async {
         send_onchain(
             datadir_path,
             rust_mnemonic,
@@ -605,12 +579,7 @@ pub extern "C" fn bark_drain_onchain(
     debug!("Drain destination address string: {}", destination_str);
 
     // --- Runtime and Async Execution ---
-    let runtime = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Box::into_raw(Box::new(BarkError::new(&format!("Runtime error: {}", e)))),
-    };
-
-    let result = runtime.block_on(async {
+    let result = TOKIO_RUNTIME.block_on(async {
         drain_onchain(datadir_path, rust_mnemonic, &destination_str, no_sync).await
     });
 
@@ -665,12 +634,7 @@ pub extern "C" fn bark_send_many_onchain(
 
     // --- Conversions & Core Logic ---
     // This part needs to be inside the async block or use block_on carefully
-    let runtime = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Box::into_raw(Box::new(BarkError::new(&format!("Runtime error: {}", e)))),
-    };
-
-    let result = runtime.block_on(async {
+    let result = TOKIO_RUNTIME.block_on(async {
         // Perform conversions that need the wallet (like network checking) inside async
         let datadir_str = c_string_to_string(datadir)?;
         let mnemonic_str = c_string_to_string(mnemonic)?;
@@ -800,13 +764,8 @@ pub extern "C" fn bark_get_onchain_utxos(
     };
 
     // --- Runtime and Async Execution ---
-    let runtime = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Box::into_raw(Box::new(BarkError::new(&format!("Runtime error: {}", e)))),
-    };
-
-    let result =
-        runtime.block_on(async { get_onchain_utxos(&datadir_path, rust_mnemonic, no_sync).await });
+    let result = TOKIO_RUNTIME
+        .block_on(async { get_onchain_utxos(&datadir_path, rust_mnemonic, no_sync).await });
 
     // --- Result Handling ---
     handle_string_result(result, utxos_json_out, "get_onchain_utxos")
@@ -849,13 +808,8 @@ pub extern "C" fn bark_get_vtxo_pubkey(
 
     // --- Runtime and Async Execution ---
     // `get_vtxo_pubkey` is async because `open_wallet` is async
-    let runtime = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Box::into_raw(Box::new(BarkError::new(&format!("Runtime error: {}", e)))),
-    };
-
     let result =
-        runtime.block_on(async { get_vtxo_pubkey(&datadir_path, rust_mnemonic, None).await });
+        TOKIO_RUNTIME.block_on(async { get_vtxo_pubkey(&datadir_path, rust_mnemonic, None).await });
 
     // --- Result Handling ---
     handle_string_result(result, pubkey_hex_out, "get_vtxo_pubkey")
@@ -899,12 +853,8 @@ pub extern "C" fn bark_get_vtxos(
     };
 
     // --- Runtime and Async Execution ---
-    let runtime = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Box::into_raw(Box::new(BarkError::new(&format!("Runtime error: {}", e)))),
-    };
-
-    let result = runtime.block_on(async { get_vtxos(&datadir_path, rust_mnemonic, no_sync).await });
+    let result =
+        TOKIO_RUNTIME.block_on(async { get_vtxos(&datadir_path, rust_mnemonic, no_sync).await });
 
     // --- Result Handling ---
     handle_string_result(result, vtxos_json_out, "get_vtxos")
@@ -975,12 +925,7 @@ pub extern "C" fn bark_refresh_vtxos(
     };
 
     // --- Runtime and Async Execution ---
-    let runtime = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Box::into_raw(Box::new(BarkError::new(&format!("Runtime error: {}", e)))),
-    };
-
-    let result = runtime
+    let result = TOKIO_RUNTIME
         .block_on(async { refresh_vtxos(&datadir_path, rust_mnemonic, rust_mode, no_sync).await });
 
     // --- Result Handling ---
@@ -1037,12 +982,7 @@ pub extern "C" fn bark_board_amount(
     let amount = Amount::from_sat(amount_sat);
 
     // --- Runtime and Async Execution ---
-    let runtime = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Box::into_raw(Box::new(BarkError::new(&format!("Runtime error: {}", e)))),
-    };
-
-    let result = runtime
+    let result = TOKIO_RUNTIME
         .block_on(async { board_amount(&datadir_path, rust_mnemonic, amount, no_sync).await });
 
     // --- Result Handling ---
@@ -1087,12 +1027,8 @@ pub extern "C" fn bark_board_all(
     };
 
     // --- Runtime and Async Execution ---
-    let runtime = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Box::into_raw(Box::new(BarkError::new(&format!("Runtime error: {}", e)))),
-    };
-
-    let result = runtime.block_on(async { board_all(&datadir_path, rust_mnemonic, no_sync).await });
+    let result =
+        TOKIO_RUNTIME.block_on(async { board_all(&datadir_path, rust_mnemonic, no_sync).await });
 
     // --- Result Handling ---
     handle_string_result(result, status_json_out, "board_all")
@@ -1158,12 +1094,7 @@ pub extern "C" fn bark_send(
     let rust_comment_opt: Option<String> = c_string_to_option(comment);
 
     // --- Runtime and Async Execution ---
-    let runtime = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Box::into_raw(Box::new(BarkError::new(&format!("Runtime error: {}", e)))),
-    };
-
-    let result = runtime.block_on(async {
+    let result = TOKIO_RUNTIME.block_on(async {
         send_payment(
             &datadir_path,
             rust_mnemonic,
@@ -1241,12 +1172,7 @@ pub extern "C" fn bark_send_round_onchain(
     let amount = Amount::from_sat(amount_sat);
 
     // --- Runtime and Async Execution ---
-    let runtime = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Box::into_raw(Box::new(BarkError::new(&format!("Runtime error: {}", e)))),
-    };
-
-    let result = runtime.block_on(async {
+    let result = TOKIO_RUNTIME.block_on(async {
         send_round_onchain(
             &datadir_path,
             rust_mnemonic,
@@ -1330,12 +1256,7 @@ pub extern "C" fn bark_offboard_specific(
     };
 
     // --- Runtime and Async Execution ---
-    let runtime = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Box::into_raw(Box::new(BarkError::new(&format!("Runtime error: {}", e)))),
-    };
-
-    let result = runtime.block_on(async {
+    let result = TOKIO_RUNTIME.block_on(async {
         offboard_specific(
             &datadir_path,
             rust_mnemonic,
@@ -1391,12 +1312,7 @@ pub extern "C" fn bark_offboard_all(
     let rust_address_opt = c_string_to_option(optional_address);
 
     // --- Runtime and Async Execution ---
-    let runtime = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Box::into_raw(Box::new(BarkError::new(&format!("Runtime error: {}", e)))),
-    };
-
-    let result = runtime.block_on(async {
+    let result = TOKIO_RUNTIME.block_on(async {
         offboard_all(&datadir_path, rust_mnemonic, rust_address_opt, no_sync).await
     });
 
@@ -1467,12 +1383,7 @@ pub extern "C" fn bark_exit_start_specific(
     };
 
     // --- Runtime and Async Execution ---
-    let runtime = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Box::into_raw(Box::new(BarkError::new(&format!("Runtime error: {}", e)))),
-    };
-
-    let result = runtime.block_on(async {
+    let result = TOKIO_RUNTIME.block_on(async {
         start_exit_for_vtxos(&datadir_path, rust_mnemonic, rust_vtxo_ids).await
     });
 
@@ -1516,12 +1427,7 @@ pub extern "C" fn bark_exit_start_all(
     };
 
     // --- Runtime and Async Execution ---
-    let runtime = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Box::into_raw(Box::new(BarkError::new(&format!("Runtime error: {}", e)))),
-    };
-
-    let result = runtime
+    let result = TOKIO_RUNTIME
         .block_on(async { start_exit_for_entire_wallet(&datadir_path, rust_mnemonic).await });
 
     // --- Result Handling ---
@@ -1564,12 +1470,8 @@ pub extern "C" fn bark_exit_progress_once(
     };
 
     // --- Runtime and Async Execution ---
-    let runtime = match tokio::runtime::Runtime::new() {
-        Ok(rt) => rt,
-        Err(e) => return Box::into_raw(Box::new(BarkError::new(&format!("Runtime error: {}", e)))),
-    };
-
-    let result = runtime.block_on(async { exit_progress_once(&datadir_path, rust_mnemonic).await });
+    let result =
+        TOKIO_RUNTIME.block_on(async { exit_progress_once(&datadir_path, rust_mnemonic).await });
 
     // --- Result Handling ---
     handle_string_result(result, status_json_out, "exit_progress_once")

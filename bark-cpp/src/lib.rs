@@ -24,11 +24,10 @@ mod tests;
 mod utils;
 
 use logger::tracing::{debug, info, warn};
-use once_cell::sync::Lazy;
 
 // Initialize the logger once for the entire library lifecycle.
 // The logger will be set up when this static is first accessed.
-static LOGGER: Lazy<logger::Logger> = Lazy::new(|| {
+static LOGGER: LazyLock<logger::Logger> = LazyLock::new(|| {
     // This explicit access ensures that LOGGER is initialized when the library loads
     // or when the first logging macro is called, whichever comes first.
     // The `logger::Logger::new()` itself prints initialization messages.
@@ -47,6 +46,7 @@ pub fn init_logger() {
 use bip39::Mnemonic;
 use std::fs;
 use std::path::Path;
+use std::sync::LazyLock;
 use utils::try_create_wallet;
 use utils::DB_FILE;
 
