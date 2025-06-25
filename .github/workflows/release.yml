@@ -3,21 +3,21 @@ name: Release Package
 on:
   push:
     tags:
-      - 'v*' # Trigger on tags like v1.0.0
+      - "v*" # Trigger on tags like v1.0.0
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   rust_typescript_checks_tests:
-    runs-on: self-hosted 
+    runs-on: self-hosted
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Check formatting (bark-cpp)
         run: nix develop .# --command bash -c "unset SDKROOT && cd bark-cpp && cargo fmt -- --check"
-      
+
       - name: Run tests (bark-cpp)
         run: nix develop .# --command bash -c "unset SDKROOT && cd bark-cpp && cargo test"
 
@@ -33,32 +33,36 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Build bark-cpp for Android
         run: nix develop .# --command bash -c "unset SDKROOT && cd bark-cpp && ./build-android.sh"
-      
+
+      - name: Zip Android binaries
+        run: cd bark-cpp/target && zip -r jniLibs.zip jniLibs
+        shell: bash
+
       - name: Upload Android binary artifact
         uses: actions/upload-artifact@v4
         with:
-          name: libbark_cpp.a
-          path: bark-cpp/target/jniLibs/arm64-v8a/libbark_cpp.a
+          name: jniLibs-android-zip
+          path: bark-cpp/target/jniLibs.zip
 
       - name: Install React Native app dependencies
         run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install --immutable"
-      
+
       - name: Build example Android app
         run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn example build:android"
 
   build_ios_binaries_and_example:
-    runs-on: self-hosted 
+    runs-on: self-hosted
     needs: rust_typescript_checks_tests
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       - name: Build bark-cpp for iOS
         run: nix develop .# --command bash -c "unset SDKROOT && cd bark-cpp && ./build-ios.sh"
-      
+
       - name: Zip iOS Framework
         run: cd bark-cpp && zip -r target/Ark.xcframework.zip target/Ark.xcframework
         shell: bash
@@ -68,10 +72,10 @@ jobs:
         with:
           name: Ark.xcframework-zip
           path: bark-cpp/target/Ark.xcframework.zip
-      
+
       - name: Install React Native app dependencies and Bundle for iOS example
         run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install --immutable && yarn example ios:prebuild"
-      
+
       - name: Build example iOS app
         run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn example build:ios"
 
@@ -91,13 +95,13 @@ jobs:
 
       - name: Create directory for release assets
         run: mkdir -p release_assets
-      
+
       - name: Download Android binary artifact
         uses: actions/download-artifact@v4
         with:
-          name: libbark_cpp.a
+          name: jniLibs-android-zip
           path: release_assets/
-      
+
       - name: Download iOS binary artifact
         uses: actions/download-artifact@v4
         with:
