@@ -14,8 +14,19 @@ export DEVELOPER_DIR="$(xcode-select -p)"
 export SDKROOT="$DEVELOPER_DIR/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk"
 
 # --- Configuration ---
+BUILD_TYPE="release"
+CARGO_FLAG="--release"
+
+if [ "$1" == "--debug" ]; then
+  echo "Performing a debug build."
+  BUILD_TYPE="debug"
+  CARGO_FLAG=""
+else
+  echo "Performing a release build."
+fi
+
 # IMPORTANT: Change this to the name of your crate as defined in your Cargo.toml
-CRATE_NAME="bark-cpp" 
+CRATE_NAME="bark-cpp"
 TARGET_DIR="target/ios"
 BINARY_NAME="libbark_cpp.a"
 FRAMEWORK_NAME="Ark.xcframework"
@@ -34,19 +45,19 @@ rustup target add \
 # --- Build for each target architecture ---
 
 echo "Building for iOS Device (aarch64-apple-ios)..."
-cargo build --release \
+cargo build $CARGO_FLAG \
     --target aarch64-apple-ios \
     --lib \
     --target-dir "$TARGET_DIR"
 
 echo "Building for Apple Silicon Simulator (aarch64-apple-ios-sim)..."
-cargo build --release \
+cargo build $CARGO_FLAG \
     --target aarch64-apple-ios-sim \
     --lib \
     --target-dir "$TARGET_DIR"
 
 echo "Building for Intel Simulator (x86_64-apple-ios)..."
-cargo build --release \
+cargo build $CARGO_FLAG \
     --target x86_64-apple-ios \
     --lib \
     --target-dir "$TARGET_DIR"
@@ -57,8 +68,8 @@ SIMULATOR_UNIVERSAL_DIR="$TARGET_DIR/simulator-universal"
 mkdir -p "$SIMULATOR_UNIVERSAL_DIR"
 
 lipo -create \
-  "$TARGET_DIR/aarch64-apple-ios-sim/release/$BINARY_NAME" \
-  "$TARGET_DIR/x86_64-apple-ios/release/$BINARY_NAME" \
+  "$TARGET_DIR/aarch64-apple-ios-sim/$BUILD_TYPE/$BINARY_NAME" \
+  "$TARGET_DIR/x86_64-apple-ios/$BUILD_TYPE/$BINARY_NAME" \
   -output "$SIMULATOR_UNIVERSAL_DIR/$BINARY_NAME"
 
 # --- Create the XCFramework ---
@@ -69,7 +80,7 @@ HEADERS_DIR_PLACEHOLDER="$TARGET_DIR/headers"
 mkdir -p "$HEADERS_DIR_PLACEHOLDER"
 
 xcodebuild -create-xcframework \
-  -library "$TARGET_DIR/aarch64-apple-ios/release/$BINARY_NAME" \
+  -library "$TARGET_DIR/aarch64-apple-ios/$BUILD_TYPE/$BINARY_NAME" \
   -headers "$HEADERS_DIR_PLACEHOLDER" \
   -library "$SIMULATOR_UNIVERSAL_DIR/$BINARY_NAME" \
   -headers "$HEADERS_DIR_PLACEHOLDER" \
