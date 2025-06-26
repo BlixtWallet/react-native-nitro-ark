@@ -11,7 +11,7 @@ use bark::ark::{
     VtxoId,
 };
 use bip39::Mnemonic;
-use logger::tracing::{debug, error, warn};
+use logger::log::{debug, error, warn};
 
 use crate::{
     ffi::{BarkConfigOpts, BarkCreateOpts, BarkError, BarkRefreshModeType, BarkRefreshOpts},

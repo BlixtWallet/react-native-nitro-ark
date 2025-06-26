@@ -23,30 +23,11 @@ mod ffi_utils;
 mod tests;
 mod utils;
 
-use logger::tracing::{debug, info, warn};
-
-// Initialize the logger once for the entire library lifecycle.
-// The logger will be set up when this static is first accessed.
-static LOGGER: LazyLock<logger::Logger> = LazyLock::new(|| {
-    // This explicit access ensures that LOGGER is initialized when the library loads
-    // or when the first logging macro is called, whichever comes first.
-    // The `logger::Logger::new()` itself prints initialization messages.
-    logger::Logger::new()
-});
-
-// function to explicitly initialize the logger.
-// This should be called once, e.g., by an FFI-exposed init function.
-// Accessing the LAZY static ensures it's initialized.
-pub fn init_logger() {
-    let _ = &*LOGGER;
-    // You can add a log message here to confirm initialization if desired,
-    // e.g., info!("bark-cpp logger explicitly initialized.");
-    // Note: logger::Logger::new() already logs its own initialization messages.
-}
 use bip39::Mnemonic;
+use logger::log::{debug, info, warn};
 use std::fs;
 use std::path::Path;
-use std::sync::LazyLock;
+use std::sync::Once;
 use utils::try_create_wallet;
 use utils::DB_FILE;
 
@@ -55,6 +36,19 @@ pub use utils::*;
 use std::str::FromStr;
 
 use anyhow::Context;
+
+// Use a static Once to ensure the logger is initialized only once.
+static LOGGER_INIT: Once = Once::new();
+
+// function to explicitly initialize the logger.
+// This should be called once from your FFI entry point.
+pub fn init_logger() {
+    LOGGER_INIT.call_once(|| {
+        // The logger::Logger::new() function now handles the platform-specific
+        // setup and initialization.
+        logger::Logger::new();
+    });
+}
 
 pub fn create_mnemonic() -> anyhow::Result<String> {
     info!("Attempting to create a new mnemonic...");

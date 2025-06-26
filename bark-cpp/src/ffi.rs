@@ -7,16 +7,16 @@ use crate::ffi_utils::{
 use super::*;
 use bark::ark::bitcoin;
 use bip39::Mnemonic;
-use logger::tracing::error;
+use logger::log::{debug, error, warn};
+use once_cell::sync::Lazy;
 use std::ffi::{c_char, CStr, CString};
 use std::path::Path;
 use std::str::FromStr;
-use std::sync::LazyLock;
 use std::{ptr, slice};
 use tokio::runtime::Runtime;
 
-static TOKIO_RUNTIME: LazyLock<Runtime> =
-    LazyLock::new(|| Runtime::new().expect("Failed to create Tokio runtime"));
+static TOKIO_RUNTIME: Lazy<Runtime> =
+    Lazy::new(|| Runtime::new().expect("Failed to create Tokio runtime"));
 
 /// Initializes the logger for the library.
 /// This should be called once when the library is loaded by the C/C++ application,

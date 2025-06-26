@@ -2,7 +2,7 @@ use anyhow;
 use bark_cpp::{create_wallet, get_ark_info, get_balance, init_logger, ConfigOpts, CreateOpts};
 use bip39::Mnemonic;
 
-use logger::tracing::{debug, error, info};
+use logger::log::{debug, error, info};
 use std::env;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -25,16 +25,28 @@ async fn main() -> anyhow::Result<()> {
 
     let mnemonic = Mnemonic::from_str("abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about")?;
 
+    // let config = ConfigOpts {
+    //     asp: Some("http://127.0.0.1:3535".to_string()),
+    //     esplora: None,
+    //     bitcoind: Some("http://127.0.0.1:18443".to_string()),
+    //     bitcoind_cookie: None,
+    //     bitcoind_user: Some("polaruser".to_string()),
+    //     bitcoind_pass: Some("polarpass".to_string()),
+    //     fallback_fee_rate: None,
+    //     vtxo_refresh_expiry_threshold: 288,
+    // };
+
     let config = ConfigOpts {
-        asp: Some("http://127.0.0.1:3535".to_string()),
-        esplora: None,
-        bitcoind: Some("http://127.0.0.1:18443".to_string()),
+        asp: Some("ark.signet.2nd.dev".to_string()),
+        esplora: Some("esplora.signet.2nd.dev".to_string()),
+        bitcoind: None,
         bitcoind_cookie: None,
-        bitcoind_user: Some("polaruser".to_string()),
-        bitcoind_pass: Some("polarpass".to_string()),
+        bitcoind_user: None,
+        bitcoind_pass: None,
         fallback_fee_rate: None,
         vtxo_refresh_expiry_threshold: 288,
     };
+
     debug!(
         "Configuration created: asp={:?}, esplora={:?}",
         config.asp, config.esplora
@@ -43,8 +55,8 @@ async fn main() -> anyhow::Result<()> {
     let opts = CreateOpts {
         force: true,
         bitcoin: false,
-        signet: false,
-        regtest: true,
+        signet: true,
+        regtest: false,
         mnemonic: mnemonic.clone(),
         birthday_height: None,
         config,

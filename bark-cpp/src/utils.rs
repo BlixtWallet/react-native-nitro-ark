@@ -15,7 +15,7 @@ use bark::{
 };
 use bip39::Mnemonic;
 use bitcoin_ext::BlockHeight;
-use logger::tracing::{debug, info, warn};
+use logger::log::{debug, info, warn};
 use tokio::fs;
 use tonic::transport::Uri;
 

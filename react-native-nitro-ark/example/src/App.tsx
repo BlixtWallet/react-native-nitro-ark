@@ -165,17 +165,30 @@ export default function ArkApp() {
       setError('Mnemonic is required to create a wallet.');
       return;
     }
+    // const opts: NitroArk.BarkCreateOpts = {
+    //   mnemonic: mnemonic,
+    //   force: true,
+    //   regtest: true,
+    //   signet: false,
+    //   bitcoin: false,
+    //   config: {
+    //     bitcoind: 'http://192.168.4.253:18443',
+    //     asp: 'http://192.168.4.253:3535',
+    //     bitcoind_user: 'polaruser',
+    //     bitcoind_pass: 'polarpass',
+    //     vtxo_refresh_expiry_threshold: 288,
+    //   },
+    // };
+
     const opts: NitroArk.BarkCreateOpts = {
       mnemonic: mnemonic,
       force: true,
-      regtest: true,
-      signet: false,
+      regtest: false,
+      signet: true,
       bitcoin: false,
       config: {
-        bitcoind: 'http://192.168.4.253:18443',
-        asp: 'http://192.168.4.253:3535',
-        bitcoind_user: 'polaruser',
-        bitcoind_pass: 'polarpass',
+        esplora: 'esplora.signet.2nd.dev',
+        asp: 'ark.signet.2nd.dev',
         vtxo_refresh_expiry_threshold: 288,
       },
     };

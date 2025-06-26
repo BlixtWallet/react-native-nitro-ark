@@ -7,6 +7,15 @@ use std::ffi::{CStr, CString};
 use std::fs;
 use std::path::PathBuf;
 use std::ptr; // For env!("CARGO_MANIFEST_DIR")
+use std::sync::Once;
+
+static INIT: Once = Once::new();
+
+fn setup() {
+    INIT.call_once(|| {
+        bark_init_logger();
+    });
+}
 
 const VALID_MNEMONIC: &str =
     "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
@@ -18,7 +27,7 @@ fn c_string_for_test(s: &str) -> CString {
 
 #[test]
 fn test_bark_init_logger_call() {
-    bark_init_logger();
+    setup();
 }
 
 #[test]
@@ -131,7 +140,7 @@ fn test_bark_create_wallet_expects_network_error_without_server() {
         config: config_opts,
     };
 
-    bark_init_logger(); // Ensure logger is initialized for debug output
+    setup(); // Ensure logger is initialized for debug output
     let error_ptr = bark_create_wallet(datadir_c.as_ptr(), create_opts);
 
     assert!(
@@ -213,7 +222,7 @@ fn setup_temp_wallet(test_name: &str) -> (PathBuf, CString, CString, *mut BarkEr
         config: config_opts,
     };
 
-    bark_init_logger();
+    setup();
     let error_ptr = bark_create_wallet(datadir_c.as_ptr(), create_opts);
     (temp_dir_path, datadir_c, mnemonic_c, error_ptr)
 }
