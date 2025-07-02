@@ -132,6 +132,18 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
     no_sync: boolean
   ): Promise<string>; // Returns JSON status
 
+  // --- Lightning Operations ---
+  bolt11Invoice(
+    datadir: string,
+    mnemonic: string,
+    amountSat: number
+  ): Promise<string>; // Returns invoice string
+  claimBolt11Payment(
+    datadir: string,
+    mnemonic: string,
+    bolt11: string
+  ): Promise<void>; // Throws on error
+
   // --- Offboarding / Exiting ---
   offboardSpecific(
     datadir: string,

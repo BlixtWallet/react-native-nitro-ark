@@ -371,6 +371,34 @@ namespace bark
                                             const char *mnemonic,
                                             char **status_json_out);
 
+    /// FFI: Creates a BOLT11 invoice for receiving payments.
+    ///
+    /// # Arguments
+    /// * `datadir` - The directory where the wallet data is stored.
+    /// * `mnemonic` - The wallet's mnemonic phrase.
+    /// * `amount_msat` - The amount for the invoice in millisatoshis.
+    /// * `invoice_out` - A pointer to a C string that will be populated with the BOLT11 invoice.
+    ///
+    /// # Returns
+    /// A null pointer on success, or a pointer to a `BarkError` on failure.
+    bark_BarkError *bark_bolt11_invoice(const char *datadir,
+                                        const char *mnemonic,
+                                        uint64_t amount_msat,
+                                        char **invoice_out);
+
+    /// FFI: Claims a BOLT11 payment using an invoice.
+    ///
+    /// # Arguments
+    /// * `datadir` - The directory where the wallet data is stored.
+    /// * `mnemonic` - The wallet's mnemonic phrase.
+    /// * `bolt11` - The BOLT11 invoice to be paid/claimed.
+    ///
+    /// # Returns
+    /// A null pointer on success, or a pointer to a `BarkError` on failure.
+    bark_BarkError *bark_claim_bolt11_payment(const char *datadir,
+                                              const char *mnemonic,
+                                              const char *bolt11);
+
   } // extern "C"
 
 } // namespace bark

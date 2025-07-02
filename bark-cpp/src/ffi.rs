@@ -1476,3 +1476,88 @@ pub extern "C" fn bark_exit_progress_once(
     // --- Result Handling ---
     handle_string_result(result, status_json_out, "exit_progress_once")
 }
+
+/// FFI: Creates a BOLT11 invoice for receiving payments.
+///
+/// # Arguments
+/// * `datadir` - The directory where the wallet data is stored.
+/// * `mnemonic` - The wallet's mnemonic phrase.
+/// * `amount_msat` - The amount for the invoice in millisatoshis.
+/// * `invoice_out` - A pointer to a C string that will be populated with the BOLT11 invoice.
+///
+/// # Returns
+/// A null pointer on success, or a pointer to a `BarkError` on failure.
+#[no_mangle]
+pub extern "C" fn bark_bolt11_invoice(
+    datadir: *const c_char,
+    mnemonic: *const c_char,
+    amount_msat: u64,
+    invoice_out: *mut *mut c_char,
+) -> *mut BarkError {
+    if datadir.is_null() || mnemonic.is_null() || invoice_out.is_null() {
+        return Box::into_raw(Box::new(BarkError::new("Null pointer argument provided")));
+    }
+    unsafe {
+        *invoice_out = ptr::null_mut();
+    }
+
+    let datadir_path = match c_string_to_path(datadir) {
+        Ok(p) => p,
+        Err(e) => return Box::into_raw(Box::new(BarkError::new(&e.to_string()))),
+    };
+    let rust_mnemonic = match c_string_to_mnemonic(mnemonic) {
+        Ok(m) => m,
+        Err(e) => return Box::into_raw(Box::new(BarkError::new(&e.to_string()))),
+    };
+
+    let result = TOKIO_RUNTIME
+        .block_on(async { bolt11_invoice(&datadir_path, rust_mnemonic, amount_msat).await });
+
+    handle_string_result(result, invoice_out, "bolt11_invoice")
+}
+
+/// FFI: Claims a BOLT11 payment using an invoice.
+///
+/// # Arguments
+/// * `datadir` - The directory where the wallet data is stored.
+/// * `mnemonic` - The wallet's mnemonic phrase.
+/// * `bolt11` - The BOLT11 invoice to be paid/claimed.
+///
+/// # Returns
+/// A null pointer on success, or a pointer to a `BarkError` on failure.
+#[no_mangle]
+pub extern "C" fn bark_claim_bolt11_payment(
+    datadir: *const c_char,
+    mnemonic: *const c_char,
+    bolt11: *const c_char,
+) -> *mut BarkError {
+    if datadir.is_null() || mnemonic.is_null() || bolt11.is_null() {
+        return Box::into_raw(Box::new(BarkError::new("Null pointer argument provided")));
+    }
+    let datadir_path = match c_string_to_path(datadir) {
+        Ok(p) => p,
+        Err(e) => return Box::into_raw(Box::new(BarkError::new(&e.to_string()))),
+    };
+    let rust_mnemonic = match c_string_to_mnemonic(mnemonic) {
+        Ok(m) => m,
+        Err(e) => return Box::into_raw(Box::new(BarkError::new(&e.to_string()))),
+    };
+    let rust_bolt11 = match c_string_to_string(bolt11) {
+        Ok(s) => s,
+        Err(e) => return Box::into_raw(Box::new(BarkError::new(&e.to_string()))),
+    };
+
+    let result = TOKIO_RUNTIME
+        .block_on(async { claim_bolt11_payment(&datadir_path, rust_mnemonic, rust_bolt11).await });
+
+    match result {
+        Ok(_) => {
+            debug!("Claimed bolt11 payment successfully");
+            ptr::null_mut()
+        }
+        Err(e) => {
+            error!("Failed to claim bolt11 payment: {}", e);
+            Box::into_raw(Box::new(BarkError::new(&e.to_string())))
+        }
+    }
+}

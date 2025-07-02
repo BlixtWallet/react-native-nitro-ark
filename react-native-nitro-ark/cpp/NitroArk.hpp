@@ -60,8 +60,10 @@ namespace margelo::nitro::nitroark
                                   {
       // Keep fee rate value alive for the C call
       std::optional<uint64_t> fallback_fee_rate_val;
-      if (opts.config.has_value() && opts.config->fallback_fee_rate.has_value()) {
-          fallback_fee_rate_val = static_cast<uint64_t>(opts.config->fallback_fee_rate.value());
+      if (opts.config.has_value() &&
+          opts.config->fallback_fee_rate.has_value()) {
+        fallback_fee_rate_val =
+            static_cast<uint64_t>(opts.config->fallback_fee_rate.value());
       }
 
       bark::bark_BarkConfigOpts config = {
@@ -89,8 +91,7 @@ namespace margelo::nitro::nitroark
                     opts.config->vtxo_refresh_expiry_threshold.value())
               : 0,
           fallback_fee_rate_val.has_value() ? &fallback_fee_rate_val.value()
-                                            : nullptr
-      };
+                                            : nullptr};
 
       bark::bark_BarkCreateOpts barkOpts = {
           opts.force.value_or(false),
@@ -461,6 +462,39 @@ namespace margelo::nitro::nitroark
             bark::bark_free_string(status_c); // Use helper
             return status_str;
           });
+    }
+
+    // --- Lightning Operations ---
+
+    std::shared_ptr<Promise<std::string>>
+    bolt11Invoice(const std::string &datadir, const std::string &mnemonic,
+                  double amountSat) override
+    {
+      return Promise<std::string>::async([datadir, mnemonic, amountSat]()
+                                         {
+      char *invoice_c = nullptr;
+      bark::bark_BarkError *error = bark::bark_bolt11_invoice(
+          datadir.c_str(), mnemonic.c_str(), static_cast<uint64_t>(amountSat),
+          &invoice_c);
+      check_bark_error(error);
+      if (invoice_c == nullptr) {
+        throw std::runtime_error("Bark-cpp error: bolt11Invoice returned "
+                                 "success but invoice is null");
+      }
+      std::string invoice_str(invoice_c);
+      bark::bark_free_string(invoice_c);
+      return invoice_str; });
+    }
+
+    std::shared_ptr<Promise<void>>
+    claimBolt11Payment(const std::string &datadir, const std::string &mnemonic,
+                       const std::string &bolt11) override
+    {
+      return Promise<void>::async([datadir, mnemonic, bolt11]()
+                                  {
+      bark::bark_BarkError *error = bark::bark_claim_bolt11_payment(
+          datadir.c_str(), mnemonic.c_str(), bolt11.c_str());
+      check_bark_error(error); });
     }
 
     // --- Offboarding / Exiting ---

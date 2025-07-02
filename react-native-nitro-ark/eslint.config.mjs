@@ -30,12 +30,11 @@ export default defineConfig([
           useTabs: false,
         },
       ],
+      // turn off warnings for inline styles
+      'react-native/no-inline-styles': 'off',
     },
   },
   {
-    ignores: [
-      'node_modules/',
-      'lib/'
-    ],
+    ignores: ['node_modules/', 'lib/'],
   },
 ]);

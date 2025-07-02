@@ -51,6 +51,8 @@ export default function ArkApp() {
   const [comment, setComment] = useState('');
   const [vtxoIdsInput, setVtxoIdsInput] = useState(''); // Comma separated
   const [optionalAddress, setOptionalAddress] = useState('');
+  const [invoiceAmount, setInvoiceAmount] = useState('1000');
+  const [invoiceToClaim, setInvoiceToClaim] = useState('');
 
   // Ensure data directory exists on mount
   useEffect(() => {
@@ -488,6 +490,45 @@ export default function ArkApp() {
     );
   };
 
+  const handleCreateInvoice = () => {
+    if (!mnemonic) {
+      setError('Mnemonic required');
+      return;
+    }
+    const amount = parseInt(invoiceAmount, 10);
+    if (isNaN(amount) || amount <= 0) {
+      setError('Invalid amount specified.');
+      return;
+    }
+    runOperation(
+      'bolt11Invoice',
+      () => NitroArk.bolt11Invoice(ARK_DATA_PATH, mnemonic, amount),
+      (invoice) => {
+        setResults(`Created Invoice: ${invoice}`);
+        setInvoiceToClaim(invoice);
+      }
+    );
+  };
+
+  const handleClaimPayment = () => {
+    if (!mnemonic) {
+      setError('Mnemonic required');
+      return;
+    }
+    if (!invoiceToClaim) {
+      setError('Invoice to claim is required.');
+      return;
+    }
+    runOperation(
+      'claimBolt11Payment',
+      () =>
+        NitroArk.claimBolt11Payment(ARK_DATA_PATH, mnemonic, invoiceToClaim),
+      () => {
+        setResults('Successfully claimed payment!');
+      }
+    );
+  };
+
   // --- Render ---
   const canUseWallet = !!mnemonic;
   const walletOpsButtonDisabled = isLoading || !canUseWallet;
@@ -699,6 +740,44 @@ export default function ArkApp() {
           <Button
             title="Send Many Onchain (Uses Inputs for One)"
             onPress={() => handleSendManyOnchain(false)} // Default to sync=false
+            disabled={walletOpsButtonDisabled}
+          />
+        </View>
+
+        {/* --- Lightning Operations --- */}
+        <Text style={styles.sectionHeader}>Lightning Operations</Text>
+        <View style={styles.inputContainer}>
+          <Text style={styles.inputLabel}>Invoice Amount (Satoshis):</Text>
+          <TextInput
+            style={styles.input}
+            value={invoiceAmount}
+            onChangeText={setInvoiceAmount}
+            placeholder="e.g., 1000"
+            keyboardType="numeric"
+          />
+        </View>
+        <View style={styles.buttonContainer}>
+          <Button
+            title="Create Invoice"
+            onPress={handleCreateInvoice}
+            disabled={walletOpsButtonDisabled}
+          />
+        </View>
+        <View style={styles.inputContainer}>
+          <Text style={styles.inputLabel}>Invoice to Claim:</Text>
+          <TextInput
+            style={[styles.input, { height: 80 }]}
+            value={invoiceToClaim}
+            onChangeText={setInvoiceToClaim}
+            placeholder="lnbc..."
+            multiline
+            selectTextOnFocus
+          />
+        </View>
+        <View style={styles.buttonContainer}>
+          <Button
+            title="Claim Payment"
+            onPress={handleClaimPayment}
             disabled={walletOpsButtonDisabled}
           />
         </View>

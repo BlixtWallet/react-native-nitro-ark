@@ -3117,3 +3117,125 @@ fn test_bark_exit_progress_once_error_null_status_json_out() {
     }
     cleanup_temp_wallet(&temp_dir);
 }
+
+#[test]
+fn test_bark_bolt11_invoice_error_null_datadir() {
+    setup();
+    let mnemonic = c_string_for_test(VALID_MNEMONIC);
+    let mut invoice_out: *mut c_char = ptr::null_mut();
+
+    let error = bark_bolt11_invoice(ptr::null(), mnemonic.as_ptr(), 1000, &mut invoice_out);
+    assert!(!error.is_null(), "Expected an error for null datadir");
+    let error_message = unsafe { CStr::from_ptr(bark_error_message(error)) };
+    assert!(
+        error_message
+            .to_str()
+            .unwrap()
+            .contains("Null pointer argument provided"),
+        "Unexpected error message"
+    );
+    bark_free_error(error);
+}
+
+#[test]
+fn test_bark_bolt11_invoice_error_null_mnemonic() {
+    setup();
+    let (datadir, _temp_dir, _, _) =
+        setup_temp_wallet("test_bark_bolt11_invoice_error_null_mnemonic");
+    let datadir = c_string_for_test(&datadir.to_string_lossy());
+    let mut invoice_out: *mut c_char = ptr::null_mut();
+
+    let error = bark_bolt11_invoice(datadir.as_ptr(), ptr::null(), 1000, &mut invoice_out);
+    assert!(!error.is_null(), "Expected an error for null mnemonic");
+    let error_message = unsafe { CStr::from_ptr(bark_error_message(error)) };
+    assert!(
+        error_message
+            .to_str()
+            .unwrap()
+            .contains("Null pointer argument provided"),
+        "Unexpected error message"
+    );
+    bark_free_error(error);
+}
+
+#[test]
+fn test_bark_bolt11_invoice_error_null_invoice_out() {
+    setup();
+    let (datadir, _temp_dir, _, _) =
+        setup_temp_wallet("test_bark_bolt11_invoice_error_null_invoice_out");
+    let datadir = c_string_for_test(&datadir.to_string_lossy());
+    let mnemonic = c_string_for_test(VALID_MNEMONIC);
+
+    let error = bark_bolt11_invoice(datadir.as_ptr(), mnemonic.as_ptr(), 1000, ptr::null_mut());
+    assert!(!error.is_null(), "Expected an error for null invoice_out");
+    let error_message = unsafe { CStr::from_ptr(bark_error_message(error)) };
+    assert!(
+        error_message
+            .to_str()
+            .unwrap()
+            .contains("Null pointer argument provided"),
+        "Unexpected error message"
+    );
+    bark_free_error(error);
+}
+
+#[test]
+fn test_bark_claim_bolt11_payment_error_null_datadir() {
+    setup();
+    let mnemonic = c_string_for_test(VALID_MNEMONIC);
+    let bolt11 = c_string_for_test("lnbc100n1pjz3zsp5...");
+
+    let error = bark_claim_bolt11_payment(ptr::null(), mnemonic.as_ptr(), bolt11.as_ptr());
+    assert!(!error.is_null(), "Expected an error for null datadir");
+    let error_message = unsafe { CStr::from_ptr(bark_error_message(error)) };
+    assert!(
+        error_message
+            .to_str()
+            .unwrap()
+            .contains("Null pointer argument provided"),
+        "Unexpected error message"
+    );
+    bark_free_error(error);
+}
+
+#[test]
+fn test_bark_claim_bolt11_payment_error_null_mnemonic() {
+    setup();
+    let (datadir, _temp_dir, _, _) =
+        setup_temp_wallet("test_bark_claim_bolt11_payment_error_null_mnemonic");
+    let datadir = c_string_for_test(&datadir.to_string_lossy());
+    let bolt11 = c_string_for_test("lnbc100n1pjz3zsp5...");
+
+    let error = bark_claim_bolt11_payment(datadir.as_ptr(), ptr::null(), bolt11.as_ptr());
+    assert!(!error.is_null(), "Expected an error for null mnemonic");
+    let error_message = unsafe { CStr::from_ptr(bark_error_message(error)) };
+    assert!(
+        error_message
+            .to_str()
+            .unwrap()
+            .contains("Null pointer argument provided"),
+        "Unexpected error message"
+    );
+    bark_free_error(error);
+}
+
+#[test]
+fn test_bark_claim_bolt11_payment_error_null_bolt11() {
+    setup();
+    let (datadir, _temp_dir, _, _) =
+        setup_temp_wallet("test_bark_claim_bolt11_payment_error_null_bolt11");
+    let datadir = c_string_for_test(&datadir.to_string_lossy());
+    let mnemonic = c_string_for_test(VALID_MNEMONIC);
+
+    let error = bark_claim_bolt11_payment(datadir.as_ptr(), mnemonic.as_ptr(), ptr::null());
+    assert!(!error.is_null(), "Expected an error for null bolt11");
+    let error_message = unsafe { CStr::from_ptr(bark_error_message(error)) };
+    assert!(
+        error_message
+            .to_str()
+            .unwrap()
+            .contains("Null pointer argument provided"),
+        "Unexpected error message"
+    );
+    bark_free_error(error);
+}

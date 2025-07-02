@@ -12,6 +12,7 @@ use bark::ark::VtxoId;
 use bark::json::cli::ExitProgressResponse;
 use bark::json::cli::Refresh;
 use bark::json::VtxoInfo;
+use bark::lightning_invoice::Bolt11Invoice;
 use bark::vtxo_selection::VtxoFilter;
 use bark::Config;
 use bark::SqliteClient;
@@ -352,6 +353,41 @@ pub async fn get_vtxo_pubkey(
             .public_key()
             .to_string())
     }
+}
+
+/// Get a Bolt 11 invoice
+pub async fn bolt11_invoice(
+    datadir: &Path,
+    mnemonic: Mnemonic,
+    amount: u64,
+) -> anyhow::Result<String> {
+    let mut w = open_wallet(&datadir, mnemonic)
+        .await
+        .context("error opening wallet for bolt11_invoice")?;
+
+    let invoice = w
+        .bolt11_invoice(Amount::from_sat(amount))
+        .await
+        .context("Failed to create bolt11_invoice")?;
+    Ok(invoice.to_string())
+}
+
+/// Claim a lightning payment
+pub async fn claim_bolt11_payment(
+    datadir: &Path,
+    mnemonic: Mnemonic,
+    bolt11: String,
+) -> anyhow::Result<()> {
+    let mut w = open_wallet(&datadir, mnemonic)
+        .await
+        .context("error opening wallet for claim_bolt11_payment")?;
+
+    let _ = w
+        .claim_bolt11_payment(Bolt11Invoice::from_str(&bolt11)?)
+        .await
+        .context("Failed to claim bolt11 payment")?;
+
+    Ok(())
 }
 
 /// Get the list of VTXOs from the wallet as a JSON string
@@ -823,6 +859,8 @@ pub async fn start_exit_for_vtxos(
 }
 
 /// Start the exit process for the entire wallet. Returns simple success JSON.
+/// This function starts the exit process for all vtxos in the wallet.
+/// It returns a JSON object indicating success.
 pub async fn start_exit_for_entire_wallet(
     datadir: &Path,
     mnemonic: Mnemonic,
@@ -851,7 +889,9 @@ pub async fn start_exit_for_entire_wallet(
     Ok(json_string)
 }
 
-/// Progress the exit process once. Returns JSON status.
+/// This function processes the exit queue for the wallet.
+/// It returns a JSON object with the exit status, including whether the process is
+/// done, the spendable height for exits, and any new exit transactions.
 pub async fn exit_progress_once(datadir: &Path, mnemonic: Mnemonic) -> anyhow::Result<String> {
     let mut w = open_wallet(datadir, mnemonic)
         .await

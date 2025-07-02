@@ -179,6 +179,38 @@ export function sendManyOnchain(
   );
 }
 
+// --- Lightning Operations ---
+
+/**
+ * Creates a Bolt 11 invoice.
+ * @param datadir Path to the data directory.
+ * @param mnemonic The wallet mnemonic phrase.
+ * @param amountSat The amount in satoshis for the invoice.
+ * @returns A promise resolving to the Bolt 11 invoice string.
+ */
+export function bolt11Invoice(
+  datadir: string,
+  mnemonic: string,
+  amountSat: number
+): Promise<string> {
+  return NitroArkHybridObject.bolt11Invoice(datadir, mnemonic, amountSat);
+}
+
+/**
+ * Claims a Bolt 11 payment.
+ * @param datadir Path to the data directory.
+ * @param mnemonic The wallet mnemonic phrase.
+ * @param bolt11 The Bolt 11 invoice string to claim.
+ * @returns A promise that resolves on success or rejects on error.
+ */
+export function claimBolt11Payment(
+  datadir: string,
+  mnemonic: string,
+  bolt11: string
+): Promise<void> {
+  return NitroArkHybridObject.claimBolt11Payment(datadir, mnemonic, bolt11);
+}
+
 // --- Ark Operations ---
 
 /**

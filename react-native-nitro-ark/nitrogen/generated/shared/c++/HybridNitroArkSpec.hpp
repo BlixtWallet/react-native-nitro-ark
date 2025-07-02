@@ -77,6 +77,8 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<std::string>> boardAll(const std::string& datadir, const std::string& mnemonic, bool no_sync) = 0;
       virtual std::shared_ptr<Promise<std::string>> send(const std::string& datadir, const std::string& mnemonic, const std::string& destination, double amountSat, const std::optional<std::string>& comment, bool no_sync) = 0;
       virtual std::shared_ptr<Promise<std::string>> sendRoundOnchain(const std::string& datadir, const std::string& mnemonic, const std::string& destination, double amountSat, bool no_sync) = 0;
+      virtual std::shared_ptr<Promise<std::string>> bolt11Invoice(const std::string& datadir, const std::string& mnemonic, double amountSat) = 0;
+      virtual std::shared_ptr<Promise<void>> claimBolt11Payment(const std::string& datadir, const std::string& mnemonic, const std::string& bolt11) = 0;
       virtual std::shared_ptr<Promise<std::string>> offboardSpecific(const std::string& datadir, const std::string& mnemonic, const std::vector<std::string>& vtxoIds, const std::optional<std::string>& optionalAddress, bool no_sync) = 0;
       virtual std::shared_ptr<Promise<std::string>> offboardAll(const std::string& datadir, const std::string& mnemonic, const std::optional<std::string>& optionalAddress, bool no_sync) = 0;
       virtual std::shared_ptr<Promise<std::string>> exitStartSpecific(const std::string& datadir, const std::string& mnemonic, const std::vector<std::string>& vtxoIds, bool no_sync) = 0;
