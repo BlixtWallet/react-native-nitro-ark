@@ -19,6 +19,7 @@ use bark::SqliteClient;
 use bark::UtxoInfo;
 use bark::Wallet;
 mod ffi;
+mod ffi_2;
 mod ffi_utils;
 #[cfg(test)]
 mod tests;

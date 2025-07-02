@@ -1,6 +1,7 @@
 #![cfg(test)]
 
 use crate::ffi::*;
+use crate::ffi_2::*;
 use std::env;
 use std::ffi::c_char;
 use std::ffi::{CStr, CString};
