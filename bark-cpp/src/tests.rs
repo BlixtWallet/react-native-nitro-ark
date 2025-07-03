@@ -73,7 +73,6 @@ impl WalletTestFixture {
         };
 
         let create_opts = BarkCreateOpts {
-            force: true,
             regtest: true,
             signet: false,
             bitcoin: false,
@@ -222,7 +221,6 @@ fn test_bark_load_wallet_null_datadir() {
         fallback_fee_rate: ptr::null(),
     };
     let create_opts = BarkCreateOpts {
-        force: false,
         regtest: true,
         signet: false,
         bitcoin: false,
@@ -265,7 +263,6 @@ fn test_bark_load_wallet_no_network() {
     };
     // No network flag is set to true
     let create_opts = BarkCreateOpts {
-        force: false,
         regtest: false,
         signet: false,
         bitcoin: false,

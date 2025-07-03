@@ -97,10 +97,6 @@ pub struct ConfigOpts {
     pub fallback_fee_rate: Option<FeeRate>,
 }
 pub struct CreateOpts {
-    /// Force re-create the wallet even if it already exists.
-    /// Any funds in the old wallet will be lost
-    pub force: bool,
-
     /// Use regtest network.
     pub regtest: bool,
     /// Use signet network.

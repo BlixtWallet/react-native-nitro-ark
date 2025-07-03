@@ -94,7 +94,6 @@ namespace margelo::nitro::nitroark
                                             : nullptr};
 
       bark::bark_BarkCreateOpts barkOpts = {
-          opts.force.value_or(false),
           opts.regtest.value_or(false),
           opts.signet.value_or(false),
           opts.bitcoin.value_or(true),

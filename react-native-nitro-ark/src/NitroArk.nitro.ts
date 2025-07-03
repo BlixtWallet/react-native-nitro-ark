@@ -24,7 +24,6 @@ export interface BarkConfigOpts {
 }
 
 export interface BarkCreateOpts {
-  force?: boolean;
   regtest?: boolean;
   signet?: boolean;
   bitcoin?: boolean;

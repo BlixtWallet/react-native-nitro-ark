@@ -43,7 +43,6 @@ namespace bark
 
   struct bark_BarkCreateOpts
   {
-    bool force;
     bool regtest;
     bool signet;
     bool bitcoin;

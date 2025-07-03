@@ -32,7 +32,6 @@ namespace margelo::nitro::nitroark {
    */
   struct BarkCreateOpts {
   public:
-    std::optional<bool> force     SWIFT_PRIVATE;
     std::optional<bool> regtest     SWIFT_PRIVATE;
     std::optional<bool> signet     SWIFT_PRIVATE;
     std::optional<bool> bitcoin     SWIFT_PRIVATE;
@@ -42,7 +41,7 @@ namespace margelo::nitro::nitroark {
 
   public:
     BarkCreateOpts() = default;
-    explicit BarkCreateOpts(std::optional<bool> force, std::optional<bool> regtest, std::optional<bool> signet, std::optional<bool> bitcoin, std::string mnemonic, std::optional<double> birthday_height, std::optional<BarkConfigOpts> config): force(force), regtest(regtest), signet(signet), bitcoin(bitcoin), mnemonic(mnemonic), birthday_height(birthday_height), config(config) {}
+    explicit BarkCreateOpts(std::optional<bool> regtest, std::optional<bool> signet, std::optional<bool> bitcoin, std::string mnemonic, std::optional<double> birthday_height, std::optional<BarkConfigOpts> config): regtest(regtest), signet(signet), bitcoin(bitcoin), mnemonic(mnemonic), birthday_height(birthday_height), config(config) {}
   };
 
 } // namespace margelo::nitro::nitroark
@@ -57,7 +56,6 @@ namespace margelo::nitro {
     static inline BarkCreateOpts fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
       jsi::Object obj = arg.asObject(runtime);
       return BarkCreateOpts(
-        JSIConverter<std::optional<bool>>::fromJSI(runtime, obj.getProperty(runtime, "force")),
         JSIConverter<std::optional<bool>>::fromJSI(runtime, obj.getProperty(runtime, "regtest")),
         JSIConverter<std::optional<bool>>::fromJSI(runtime, obj.getProperty(runtime, "signet")),
         JSIConverter<std::optional<bool>>::fromJSI(runtime, obj.getProperty(runtime, "bitcoin")),
@@ -68,7 +66,6 @@ namespace margelo::nitro {
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const BarkCreateOpts& arg) {
       jsi::Object obj(runtime);
-      obj.setProperty(runtime, "force", JSIConverter<std::optional<bool>>::toJSI(runtime, arg.force));
       obj.setProperty(runtime, "regtest", JSIConverter<std::optional<bool>>::toJSI(runtime, arg.regtest));
       obj.setProperty(runtime, "signet", JSIConverter<std::optional<bool>>::toJSI(runtime, arg.signet));
       obj.setProperty(runtime, "bitcoin", JSIConverter<std::optional<bool>>::toJSI(runtime, arg.bitcoin));
@@ -82,7 +79,6 @@ namespace margelo::nitro {
         return false;
       }
       jsi::Object obj = value.getObject(runtime);
-      if (!JSIConverter<std::optional<bool>>::canConvert(runtime, obj.getProperty(runtime, "force"))) return false;
       if (!JSIConverter<std::optional<bool>>::canConvert(runtime, obj.getProperty(runtime, "regtest"))) return false;
       if (!JSIConverter<std::optional<bool>>::canConvert(runtime, obj.getProperty(runtime, "signet"))) return false;
       if (!JSIConverter<std::optional<bool>>::canConvert(runtime, obj.getProperty(runtime, "bitcoin"))) return false;

@@ -52,7 +52,6 @@ pub struct BarkConfigOpts {
 
 #[repr(C)]
 pub struct BarkCreateOpts {
-    pub force: bool,
     pub regtest: bool,
     pub signet: bool,
     pub bitcoin: bool,

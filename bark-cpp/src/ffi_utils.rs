@@ -123,8 +123,8 @@ pub(crate) fn c_string_to_option(s: *const c_char) -> Option<String> {
 pub(crate) fn to_rust_create_opts(c_opts: &BarkCreateOpts) -> anyhow::Result<CreateOpts> {
     debug!("Converting C create opts to Rust");
     debug!(
-        "Create opts - Force: {}, Regtest: {}, Signet: {}, Bitcoin: {}",
-        c_opts.force, c_opts.regtest, c_opts.signet, c_opts.bitcoin
+        "Create opts -  Regtest: {}, Signet: {}, Bitcoin: {}",
+        c_opts.regtest, c_opts.signet, c_opts.bitcoin
     );
     debug!("Create opts - Birthday height: {}", c_opts.birthday_height);
 
@@ -149,7 +149,6 @@ pub(crate) fn to_rust_create_opts(c_opts: &BarkCreateOpts) -> anyhow::Result<Cre
     };
 
     Ok(CreateOpts {
-        force: c_opts.force,
         regtest: c_opts.regtest,
         signet: c_opts.signet,
         bitcoin: c_opts.bitcoin,

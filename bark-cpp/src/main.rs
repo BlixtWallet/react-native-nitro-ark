@@ -57,7 +57,6 @@ async fn main() -> anyhow::Result<()> {
     );
 
     let opts = CreateOpts {
-        force: false,
         bitcoin: false,
         signet: false,
         regtest: true,
@@ -65,10 +64,7 @@ async fn main() -> anyhow::Result<()> {
         birthday_height: None,
         config,
     };
-    debug!(
-        "Create options prepared: force={}, signet={}",
-        opts.force, opts.signet
-    );
+    debug!("Create options prepared: signet={}", opts.signet);
 
     debug!("Attempting to create wallet...");
     if let Err(e) = load_wallet(&datadir, opts).await {
