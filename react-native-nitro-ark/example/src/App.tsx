@@ -10,11 +10,7 @@ import {
   TextInput,
   ActivityIndicator,
 } from 'react-native';
-import {
-  DocumentDirectoryPath,
-  exists,
-  mkdir,
-} from '@dr.pogodin/react-native-fs';
+import { DocumentDirectoryPath } from '@dr.pogodin/react-native-fs';
 import * as NitroArk from 'react-native-nitro-ark';
 import type {
   BarkBalance,
@@ -55,25 +51,25 @@ export default function ArkApp() {
   const [invoiceToClaim, setInvoiceToClaim] = useState('');
 
   // Ensure data directory exists on mount
-  useEffect(() => {
-    const setupDirectory = async () => {
-      try {
-        const dirExists = await exists(ARK_DATA_PATH);
-        if (!dirExists) {
-          await mkdir(ARK_DATA_PATH, {
-            NSURLIsExcludedFromBackupKey: true, // iOS specific
-          });
-          console.log('Data directory created:', ARK_DATA_PATH);
-        } else {
-          console.log('Data directory exists:', ARK_DATA_PATH);
-        }
-      } catch (err: any) {
-        console.error('Error setting up data directory:', err);
-        setError(`Failed to setup data directory: ${err.message}`);
-      }
-    };
-    setupDirectory();
-  }, []);
+  // useEffect(() => {
+  //   const setupDirectory = async () => {
+  //     try {
+  //       const dirExists = await exists(ARK_DATA_PATH);
+  //       if (!dirExists) {
+  //         await mkdir(ARK_DATA_PATH, {
+  //           NSURLIsExcludedFromBackupKey: true, // iOS specific
+  //         });
+  //         console.log('Data directory created:', ARK_DATA_PATH);
+  //       } else {
+  //         console.log('Data directory exists:', ARK_DATA_PATH);
+  //       }
+  //     } catch (err: any) {
+  //       console.error('Error setting up data directory:', err);
+  //       setError(`Failed to setup data directory: ${err.message}`);
+  //     }
+  //   };
+  //   setupDirectory();
+  // }, []);
 
   useEffect(() => {
     const loadSavedMnemonic = async () => {
@@ -167,33 +163,35 @@ export default function ArkApp() {
       setError('Mnemonic is required to create a wallet.');
       return;
     }
-    // const opts: NitroArk.BarkCreateOpts = {
-    //   mnemonic: mnemonic,
-    //   force: true,
-    //   regtest: true,
-    //   signet: false,
-    //   bitcoin: false,
-    //   config: {
-    //     bitcoind: 'http://192.168.4.253:18443',
-    //     asp: 'http://192.168.4.253:3535',
-    //     bitcoind_user: 'polaruser',
-    //     bitcoind_pass: 'polarpass',
-    //     vtxo_refresh_expiry_threshold: 288,
-    //   },
-    // };
-
     const opts: NitroArk.BarkCreateOpts = {
       mnemonic: mnemonic,
       force: true,
-      regtest: false,
-      signet: true,
+      regtest: true,
+      signet: false,
       bitcoin: false,
       config: {
-        esplora: 'esplora.signet.2nd.dev',
-        asp: 'ark.signet.2nd.dev',
+        bitcoind: 'http://192.168.4.252:18443',
+        asp: 'http://192.168.4.252:3535',
+        bitcoind_user: 'polaruser',
+        bitcoind_pass: 'polarpass',
         vtxo_refresh_expiry_threshold: 288,
+        fallback_fee_rate: 100000,
       },
     };
+
+    // const opts: NitroArk.BarkCreateOpts = {
+    //   mnemonic: mnemonic,
+    //   force: true,
+    //   regtest: false,
+    //   signet: true,
+    //   bitcoin: false,
+    //   config: {
+    //     esplora: 'esplora.signet.2nd.dev',
+    //     asp: 'ark.signet.2nd.dev',
+    //     vtxo_refresh_expiry_threshold: 288,
+    //     fallback_fee_rate: 100000,
+    //   },
+    // };
     runOperation(
       'loadWallet',
       () => NitroArk.loadWallet(ARK_DATA_PATH, opts),
@@ -201,6 +199,10 @@ export default function ArkApp() {
         setResults('Wallet created successfully!');
       }
     );
+  };
+
+  const handleCloseWallet = () => {
+    runOperation('closeWallet', () => NitroArk.closeWallet());
   };
 
   const handleGetBalance = (noSync: boolean) => {
@@ -538,6 +540,14 @@ export default function ArkApp() {
           <Button
             title="Create Wallet"
             onPress={handleCreateWallet}
+            disabled={isLoading || !mnemonic} // Disable if no mnemonic or already created
+          />
+        </View>
+
+        <View style={styles.buttonContainer}>
+          <Button
+            title="Close Wallet"
+            onPress={handleCloseWallet}
             disabled={isLoading || !mnemonic} // Disable if no mnemonic or already created
           />
         </View>
