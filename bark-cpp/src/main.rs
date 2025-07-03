@@ -1,5 +1,9 @@
 use anyhow;
-use bark_cpp::{get_ark_info, get_balance, init_logger, load_wallet, ConfigOpts, CreateOpts};
+use bark::ark::bitcoin::FeeRate;
+use bark_cpp::{
+    bolt11_invoice, create_mnemonic, get_ark_info, get_balance, init_logger, load_wallet,
+    ConfigOpts, CreateOpts,
+};
 use bip39::Mnemonic;
 
 use logger::log::{debug, error, info};
@@ -23,29 +27,29 @@ async fn main() -> anyhow::Result<()> {
 
     // fs::create_dir_all(datadir.clone()).await?;
 
-    let mnemonic = Mnemonic::from_str("abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about")?;
+    let mnemonic = Mnemonic::from_str(create_mnemonic().unwrap().as_str())?;
+
+    let config = ConfigOpts {
+        asp: Some("http://127.0.0.1:3535".to_string()),
+        esplora: None,
+        bitcoind: Some("http://127.0.0.1:18443".to_string()),
+        bitcoind_cookie: None,
+        bitcoind_user: Some("polaruser".to_string()),
+        bitcoind_pass: Some("polarpass".to_string()),
+        fallback_fee_rate: Some(FeeRate::from_sat_per_kwu(100000)),
+        vtxo_refresh_expiry_threshold: 288,
+    };
 
     // let config = ConfigOpts {
-    //     asp: Some("http://127.0.0.1:3535".to_string()),
-    //     esplora: None,
-    //     bitcoind: Some("http://127.0.0.1:18443".to_string()),
+    //     asp: Some("ark.signet.2nd.dev".to_string()),
+    //     esplora: Some("esplora.signet.2nd.dev".to_string()),
+    //     bitcoind: None,
     //     bitcoind_cookie: None,
-    //     bitcoind_user: Some("polaruser".to_string()),
-    //     bitcoind_pass: Some("polarpass".to_string()),
+    //     bitcoind_user: None,
+    //     bitcoind_pass: None,
     //     fallback_fee_rate: None,
     //     vtxo_refresh_expiry_threshold: 288,
     // };
-
-    let config = ConfigOpts {
-        asp: Some("ark.signet.2nd.dev".to_string()),
-        esplora: Some("esplora.signet.2nd.dev".to_string()),
-        bitcoind: None,
-        bitcoind_cookie: None,
-        bitcoind_user: None,
-        bitcoind_pass: None,
-        fallback_fee_rate: None,
-        vtxo_refresh_expiry_threshold: 288,
-    };
 
     debug!(
         "Configuration created: asp={:?}, esplora={:?}",
@@ -53,10 +57,10 @@ async fn main() -> anyhow::Result<()> {
     );
 
     let opts = CreateOpts {
-        force: true,
+        force: false,
         bitcoin: false,
-        signet: true,
-        regtest: false,
+        signet: false,
+        regtest: true,
         mnemonic: mnemonic.clone(),
         birthday_height: None,
         config,
@@ -80,6 +84,9 @@ async fn main() -> anyhow::Result<()> {
 
     let info = get_ark_info().await?;
     info!("Wallet info is {:?}", info);
+
+    let invoice = bolt11_invoice(100000).await?;
+    info!("Invoice created: {}", invoice);
 
     debug!("Application completed successfully");
     Ok(())
