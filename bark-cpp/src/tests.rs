@@ -111,7 +111,11 @@ impl Drop for WalletTestFixture {
             unsafe {
                 let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
                 // Using eprintln instead of panic in drop is generally safer.
-                eprintln!("Warning: bark_close_wallet failed during test teardown for '{}': {}", self.temp_dir.display(), msg);
+                eprintln!(
+                    "Warning: bark_close_wallet failed during test teardown for '{}': {}",
+                    self.temp_dir.display(),
+                    msg
+                );
                 bark_free_error(err_ptr);
             }
         }
@@ -140,12 +144,21 @@ fn test_bark_init_logger_call() {
 fn test_bark_create_and_free_mnemonic() {
     setup();
     let mnemonic_ptr = bark_create_mnemonic();
-    assert!(!mnemonic_ptr.is_null(), "bark_create_mnemonic should return a valid pointer");
+    assert!(
+        !mnemonic_ptr.is_null(),
+        "bark_create_mnemonic should return a valid pointer"
+    );
 
     unsafe {
         let mnemonic_c_str = CStr::from_ptr(mnemonic_ptr);
-        let mnemonic_rust_str = mnemonic_c_str.to_str().expect("Mnemonic is not valid UTF-8");
-        assert_eq!(mnemonic_rust_str.split_whitespace().count(), 12, "Mnemonic should have 12 words");
+        let mnemonic_rust_str = mnemonic_c_str
+            .to_str()
+            .expect("Mnemonic is not valid UTF-8");
+        assert_eq!(
+            mnemonic_rust_str.split_whitespace().count(),
+            12,
+            "Mnemonic should have 12 words"
+        );
         bark_free_string(mnemonic_ptr);
     }
 }
@@ -160,7 +173,10 @@ fn test_bark_free_string_with_null() {
 fn test_bark_error_handling_functions() {
     setup();
     // Test bark_error_message with null
-    assert!(bark_error_message(ptr::null()).is_null(), "bark_error_message with null should return null");
+    assert!(
+        bark_error_message(ptr::null()).is_null(),
+        "bark_error_message with null should return null"
+    );
 
     // Test bark_free_error with null
     bark_free_error(ptr::null_mut()); // Should not panic.
@@ -172,14 +188,19 @@ fn test_bark_error_handling_functions() {
 
     unsafe {
         let returned_message_ptr = bark_error_message(error_ptr);
-        assert!(!returned_message_ptr.is_null(), "bark_error_message should return the message pointer");
+        assert!(
+            !returned_message_ptr.is_null(),
+            "bark_error_message should return the message pointer"
+        );
         let returned_message = CStr::from_ptr(returned_message_ptr).to_str().unwrap();
-        assert_eq!(returned_message, error_message, "The returned error message should match the original");
+        assert_eq!(
+            returned_message, error_message,
+            "The returned error message should match the original"
+        );
 
         bark_free_error(error_ptr);
     }
 }
-
 
 // --- Wallet Loading and Closing Tests ---
 
@@ -211,7 +232,10 @@ fn test_bark_load_wallet_null_datadir() {
     };
 
     let err_ptr = bark_load_wallet(ptr::null(), create_opts);
-    assert!(!err_ptr.is_null(), "bark_load_wallet should fail with null datadir");
+    assert!(
+        !err_ptr.is_null(),
+        "bark_load_wallet should fail with null datadir"
+    );
     unsafe {
         let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
         assert!(msg.contains("datadir is null"));
@@ -251,7 +275,10 @@ fn test_bark_load_wallet_no_network() {
     };
 
     let err_ptr = bark_load_wallet(datadir_c.as_ptr(), create_opts);
-    assert!(!err_ptr.is_null(), "bark_load_wallet should fail with no network specified");
+    assert!(
+        !err_ptr.is_null(),
+        "bark_load_wallet should fail with no network specified"
+    );
     unsafe {
         let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
         assert!(msg.contains("A network must be specified"));
@@ -265,7 +292,10 @@ fn test_bark_close_wallet_when_none_loaded() {
     setup();
     // Ensure no wallet is loaded by not calling the fixture and checking state before test.
     let err_ptr = bark_close_wallet();
-    assert!(!err_ptr.is_null(), "bark_close_wallet should fail if no wallet is loaded");
+    assert!(
+        !err_ptr.is_null(),
+        "bark_close_wallet should fail if no wallet is loaded"
+    );
     unsafe {
         let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
         assert!(msg.contains("No wallet is currently loaded"));
@@ -282,15 +312,21 @@ fn test_load_and_close_wallet_success() {
     // Wallet is loaded in new() and closed in drop()
 }
 
-
 // --- Wallet Functionality Tests ---
 
 #[test]
 fn test_get_balance_no_wallet_loaded() {
     setup();
-    let mut balance_out = BarkBalance { onchain: 0, offchain: 0, pending_exit: 0 };
+    let mut balance_out = BarkBalance {
+        onchain: 0,
+        offchain: 0,
+        pending_exit: 0,
+    };
     let err_ptr = bark_get_balance(true, &mut balance_out);
-    assert!(!err_ptr.is_null(), "bark_get_balance should fail if no wallet is loaded");
+    assert!(
+        !err_ptr.is_null(),
+        "bark_get_balance should fail if no wallet is loaded"
+    );
     unsafe {
         let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
         assert!(msg.contains("Wallet not loaded"));
@@ -304,7 +340,10 @@ fn test_get_balance_null_output_pointer() {
     // We need a wallet loaded for this check to be reached.
     let _fixture = WalletTestFixture::new("get_balance_null_output");
     let err_ptr = bark_get_balance(true, ptr::null_mut());
-    assert!(!err_ptr.is_null(), "bark_get_balance should fail with null output pointer");
+    assert!(
+        !err_ptr.is_null(),
+        "bark_get_balance should fail with null output pointer"
+    );
     unsafe {
         let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
         assert!(msg.contains("balance_out is null"));
@@ -312,13 +351,16 @@ fn test_get_balance_null_output_pointer() {
     }
 }
 
-
 #[test]
 #[ignore = "This test requires a running regtest environment with esplora and asp servers"]
 fn test_get_balance_success() {
     let _fixture = WalletTestFixture::new("get_balance_success");
 
-    let mut balance_out = BarkBalance { onchain: 0, offchain: 0, pending_exit: 0 };
+    let mut balance_out = BarkBalance {
+        onchain: 0,
+        offchain: 0,
+        pending_exit: 0,
+    };
     let err_ptr = bark_get_balance(true, &mut balance_out); // no_sync = true
 
     if !err_ptr.is_null() {
@@ -340,7 +382,10 @@ fn test_get_onchain_address_no_wallet_loaded() {
     setup();
     let mut address_out: *mut c_char = ptr::null_mut();
     let err_ptr = bark_get_onchain_address(&mut address_out);
-    assert!(!err_ptr.is_null(), "bark_get_onchain_address should fail if no wallet is loaded");
+    assert!(
+        !err_ptr.is_null(),
+        "bark_get_onchain_address should fail if no wallet is loaded"
+    );
     unsafe {
         let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
         assert!(msg.contains("Wallet not loaded"));
@@ -365,11 +410,18 @@ fn test_get_onchain_address_success() {
         }
     }
 
-    assert!(!address_out.is_null(), "Address output should not be null on success");
+    assert!(
+        !address_out.is_null(),
+        "Address output should not be null on success"
+    );
     unsafe {
         let address_str = CStr::from_ptr(address_out).to_str().unwrap();
         // For regtest, addresses start with "bcrt1".
-        assert!(address_str.starts_with("bcrt1"), "Address should be a regtest address, but was {}", address_str);
+        assert!(
+            address_str.starts_with("bcrt1"),
+            "Address should be a regtest address, but was {}",
+            address_str
+        );
         bark_free_string(address_out);
     }
 }
@@ -379,14 +431,16 @@ fn test_get_onchain_address_success() {
 fn test_get_onchain_address_error_null_address_out() {
     let _fixture = WalletTestFixture::new("get_onchain_address_null_output");
     let err_ptr = bark_get_onchain_address(ptr::null_mut());
-    assert!(!err_ptr.is_null(), "bark_get_onchain_address should fail with null output pointer");
+    assert!(
+        !err_ptr.is_null(),
+        "bark_get_onchain_address should fail with null output pointer"
+    );
     unsafe {
         let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
         assert!(msg.contains("Null pointer argument provided"));
         bark_free_error(err_ptr);
     }
 }
-
 
 // --- Onchain Send Tests ---
 
@@ -396,7 +450,10 @@ fn test_send_onchain_no_wallet_loaded() {
     let destination_c = c_string_for_test("bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
     let mut txid_out: *mut c_char = ptr::null_mut();
     let err_ptr = bark_send_onchain(destination_c.as_ptr(), 1000, true, &mut txid_out);
-    assert!(!err_ptr.is_null(), "bark_send_onchain should fail if no wallet is loaded");
+    assert!(
+        !err_ptr.is_null(),
+        "bark_send_onchain should fail if no wallet is loaded"
+    );
     unsafe {
         let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
         assert!(msg.contains("Wallet not loaded"));
@@ -458,7 +515,6 @@ fn test_send_onchain_success() {
     }
 }
 
-
 // --- Drain and SendMany Tests ---
 
 #[test]
@@ -509,7 +565,13 @@ fn test_send_many_onchain_no_wallet_loaded() {
     let amounts = [1000u64];
     let mut txid_out: *mut c_char = ptr::null_mut();
 
-    let err_ptr = bark_send_many_onchain(destinations.as_ptr(), amounts.as_ptr(), 1, true, &mut txid_out);
+    let err_ptr = bark_send_many_onchain(
+        destinations.as_ptr(),
+        amounts.as_ptr(),
+        1,
+        true,
+        &mut txid_out,
+    );
     assert!(!err_ptr.is_null());
     unsafe {
         let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
@@ -537,7 +599,8 @@ fn test_send_many_onchain_null_pointers() {
     }
 
     // Null amounts
-    let err_ptr = bark_send_many_onchain(destinations.as_ptr(), ptr::null(), 1, true, &mut txid_out);
+    let err_ptr =
+        bark_send_many_onchain(destinations.as_ptr(), ptr::null(), 1, true, &mut txid_out);
     assert!(!err_ptr.is_null());
     unsafe {
         let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
@@ -546,7 +609,13 @@ fn test_send_many_onchain_null_pointers() {
     }
 
     // Null txid_out
-    let err_ptr = bark_send_many_onchain(destinations.as_ptr(), amounts.as_ptr(), 1, true, ptr::null_mut());
+    let err_ptr = bark_send_many_onchain(
+        destinations.as_ptr(),
+        amounts.as_ptr(),
+        1,
+        true,
+        ptr::null_mut(),
+    );
     assert!(!err_ptr.is_null());
     unsafe {
         let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
@@ -555,7 +624,13 @@ fn test_send_many_onchain_null_pointers() {
     }
 
     // Zero outputs
-    let err_ptr = bark_send_many_onchain(destinations.as_ptr(), amounts.as_ptr(), 0, true, &mut txid_out);
+    let err_ptr = bark_send_many_onchain(
+        destinations.as_ptr(),
+        amounts.as_ptr(),
+        0,
+        true,
+        &mut txid_out,
+    );
     assert!(!err_ptr.is_null());
     unsafe {
         let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
@@ -723,7 +798,13 @@ fn test_send_no_wallet_loaded() {
     let mut status_json_out: *mut c_char = ptr::null_mut();
     const AMOUNT_NOT_PROVIDED: u64 = u64::MAX;
 
-    let err_ptr = bark_send(dest_c.as_ptr(), AMOUNT_NOT_PROVIDED, ptr::null(), true, &mut status_json_out);
+    let err_ptr = bark_send(
+        dest_c.as_ptr(),
+        AMOUNT_NOT_PROVIDED,
+        ptr::null(),
+        true,
+        &mut status_json_out,
+    );
     assert!(!err_ptr.is_null());
     unsafe {
         let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
@@ -737,11 +818,18 @@ fn test_send_no_wallet_loaded() {
 #[test]
 fn test_offboard_specific_no_wallet_loaded() {
     setup();
-    let vtxo_id_c = c_string_for_test("0000000000000000000000000000000000000000000000000000000000000000:0");
+    let vtxo_id_c =
+        c_string_for_test("0000000000000000000000000000000000000000000000000000000000000000:0");
     let vtxo_ids = [vtxo_id_c.as_ptr()];
     let mut status_json_out: *mut c_char = ptr::null_mut();
 
-    let err_ptr = bark_offboard_specific(vtxo_ids.as_ptr(), 1, ptr::null(), true, &mut status_json_out);
+    let err_ptr = bark_offboard_specific(
+        vtxo_ids.as_ptr(),
+        1,
+        ptr::null(),
+        true,
+        &mut status_json_out,
+    );
     assert!(!err_ptr.is_null());
     unsafe {
         let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
@@ -768,7 +856,8 @@ fn test_offboard_all_no_wallet_loaded() {
 #[test]
 fn test_exit_start_specific_no_wallet_loaded() {
     setup();
-    let vtxo_id_c = c_string_for_test("0000000000000000000000000000000000000000000000000000000000000000:0");
+    let vtxo_id_c =
+        c_string_for_test("0000000000000000000000000000000000000000000000000000000000000000:0");
     let vtxo_ids = [vtxo_id_c.as_ptr()];
     let mut status_json_out: *mut c_char = ptr::null_mut();
 
@@ -814,7 +903,7 @@ fn test_bolt11_invoice_no_wallet_loaded() {
     setup();
     let mut invoice_out: *mut c_char = ptr::null_mut();
     let err_ptr = bark_bolt11_invoice(1000, &mut invoice_out);
-     assert!(!err_ptr.is_null());
+    assert!(!err_ptr.is_null());
     unsafe {
         let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
         assert!(msg.contains("Wallet not loaded"));
@@ -827,7 +916,7 @@ fn test_claim_bolt11_payment_no_wallet_loaded() {
     setup();
     let bolt11_c = c_string_for_test("lnbcrt100n1pjz3zsp5...");
     let err_ptr = bark_claim_bolt11_payment(bolt11_c.as_ptr());
-     assert!(!err_ptr.is_null());
+    assert!(!err_ptr.is_null());
     unsafe {
         let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
         assert!(msg.contains("Wallet not loaded"));
