@@ -3,17 +3,17 @@
 use crate::ffi::*;
 use crate::ffi_2::*;
 use std::env;
-use std::ffi::c_char;
-use std::ffi::{CStr, CString};
+use std::ffi::{c_char, CStr, CString};
 use std::fs;
 use std::path::PathBuf;
-use std::ptr; // For env!("CARGO_MANIFEST_DIR")
+use std::ptr;
 use std::sync::Once;
 
 static INIT: Once = Once::new();
 
 fn setup() {
     INIT.call_once(|| {
+        // This is important to get logs from the library during tests.
         bark_init_logger();
     });
 }
@@ -21,37 +21,174 @@ fn setup() {
 const VALID_MNEMONIC: &str =
     "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
 
+// Helper to create CString for tests, panics on failure.
 fn c_string_for_test(s: &str) -> CString {
-    CString::new(s)
-        .unwrap_or_else(|e| panic!("Failed to create CString in test for '{}': {}", s, e))
+    CString::new(s).unwrap_or_else(|e| panic!("Failed to create CString for '{}': {}", s, e))
 }
+
+// A test fixture for managing a temporary wallet directory and loaded wallet state.
+// It loads a wallet on creation and closes it on drop.
+// Tests requiring a loaded wallet should use this.
+struct WalletTestFixture {
+    temp_dir: PathBuf,
+    // Keep CStrings alive for the duration of the test by holding ownership.
+    _datadir_c: CString,
+    _mnemonic_c: CString,
+    _asp_url_c: CString,
+    _esplora_url_c: CString,
+}
+
+impl WalletTestFixture {
+    // This will set up a temporary directory and load a wallet into the GLOBAL_WALLET.
+    // It will panic if wallet loading fails, as tests using this fixture depend on it.
+    fn new(test_name: &str) -> Self {
+        setup(); // Ensure logger is initialized
+
+        let base_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("target")
+            .join("test_wallets");
+        let temp_dir = base_dir.join(test_name);
+
+        if temp_dir.exists() {
+            fs::remove_dir_all(&temp_dir).unwrap();
+        }
+        fs::create_dir_all(&temp_dir).unwrap();
+
+        let datadir_c = c_string_for_test(temp_dir.to_str().unwrap());
+        let mnemonic_c = c_string_for_test(VALID_MNEMONIC);
+        // Note: These ports should ideally be unique per test or managed by a mock server framework.
+        // For now, we assume they are available or the test is ignored.
+        let asp_url_c = c_string_for_test("http://127.0.0.1:12345");
+        let esplora_url_c = c_string_for_test("http://127.0.0.1:3002");
+
+        let config_opts = BarkConfigOpts {
+            asp: asp_url_c.as_ptr(),
+            esplora: esplora_url_c.as_ptr(),
+            bitcoind: ptr::null(),
+            bitcoind_cookie: ptr::null(),
+            bitcoind_user: ptr::null(),
+            bitcoind_pass: ptr::null(),
+            vtxo_refresh_expiry_threshold: 144,
+            fallback_fee_rate: ptr::null(),
+        };
+
+        let create_opts = BarkCreateOpts {
+            force: true,
+            regtest: true,
+            signet: false,
+            bitcoin: false,
+            mnemonic: mnemonic_c.as_ptr(),
+            birthday_height: 0,
+            config: config_opts,
+        };
+
+        let err_ptr = bark_load_wallet(datadir_c.as_ptr(), create_opts);
+        if !err_ptr.is_null() {
+            unsafe {
+                let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+                bark_free_error(err_ptr);
+                // We panic here because subsequent tests will fail if the wallet isn't loaded.
+                // The `#[ignore]` attribute should be used for tests requiring a live server.
+                panic!("Wallet loading failed in test setup for '{}': {}. Ensure mock servers or a regtest environment is running.", test_name, msg);
+            }
+        }
+
+        WalletTestFixture {
+            temp_dir,
+            _datadir_c: datadir_c,
+            _mnemonic_c: mnemonic_c,
+            _asp_url_c: asp_url_c,
+            _esplora_url_c: esplora_url_c,
+        }
+    }
+}
+
+impl Drop for WalletTestFixture {
+    fn drop(&mut self) {
+        // Close the wallet
+        let err_ptr = bark_close_wallet();
+        if !err_ptr.is_null() {
+            unsafe {
+                let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+                // Using eprintln instead of panic in drop is generally safer.
+                eprintln!("Warning: bark_close_wallet failed during test teardown for '{}': {}", self.temp_dir.display(), msg);
+                bark_free_error(err_ptr);
+            }
+        }
+
+        // Clean up the directory
+        if self.temp_dir.exists() {
+            fs::remove_dir_all(&self.temp_dir).unwrap_or_else(|e| {
+                eprintln!(
+                    "Warning: Failed to clean up test dir {}: {}",
+                    self.temp_dir.display(),
+                    e
+                )
+            });
+        }
+    }
+}
+
+// --- Basic FFI Tests ---
 
 #[test]
 fn test_bark_init_logger_call() {
-    setup();
+    setup(); // Just ensures it can be called without panicking.
 }
 
 #[test]
 fn test_bark_create_and_free_mnemonic() {
+    setup();
     let mnemonic_ptr = bark_create_mnemonic();
-    assert!(!mnemonic_ptr.is_null());
+    assert!(!mnemonic_ptr.is_null(), "bark_create_mnemonic should return a valid pointer");
+
     unsafe {
         let mnemonic_c_str = CStr::from_ptr(mnemonic_ptr);
-        let mnemonic_rust_str = mnemonic_c_str
-            .to_str()
-            .expect("Mnemonic C string is not valid UTF-8.");
-        assert!(!mnemonic_rust_str.is_empty());
-        let word_count = mnemonic_rust_str.split_whitespace().count();
-        assert_eq!(word_count, 12); // Standard BIP-39 mnemonics are 12 or 24 words
+        let mnemonic_rust_str = mnemonic_c_str.to_str().expect("Mnemonic is not valid UTF-8");
+        assert_eq!(mnemonic_rust_str.split_whitespace().count(), 12, "Mnemonic should have 12 words");
         bark_free_string(mnemonic_ptr);
     }
 }
 
 #[test]
-fn test_bark_create_wallet_error_on_null_datadir() {
-    let asp_url_c = c_string_for_test("http://127.0.0.1:12345");
-    let esplora_url_c = c_string_for_test("http://127.0.0.1:12346");
+fn test_bark_free_string_with_null() {
+    setup();
+    bark_free_string(ptr::null_mut()); // Should not panic.
+}
+
+#[test]
+fn test_bark_error_handling_functions() {
+    setup();
+    // Test bark_error_message with null
+    assert!(bark_error_message(ptr::null()).is_null(), "bark_error_message with null should return null");
+
+    // Test bark_free_error with null
+    bark_free_error(ptr::null_mut()); // Should not panic.
+
+    // Create a real error to test message and free
+    let error_message = "This is a test error";
+    let bark_error = BarkError::new(error_message);
+    let error_ptr = Box::into_raw(Box::new(bark_error));
+
+    unsafe {
+        let returned_message_ptr = bark_error_message(error_ptr);
+        assert!(!returned_message_ptr.is_null(), "bark_error_message should return the message pointer");
+        let returned_message = CStr::from_ptr(returned_message_ptr).to_str().unwrap();
+        assert_eq!(returned_message, error_message, "The returned error message should match the original");
+
+        bark_free_error(error_ptr);
+    }
+}
+
+
+// --- Wallet Loading and Closing Tests ---
+
+#[test]
+fn test_bark_load_wallet_null_datadir() {
+    setup();
     let mnemonic_c = c_string_for_test(VALID_MNEMONIC);
+    let asp_url_c = c_string_for_test("http://127.0.0.1:12345");
+    let esplora_url_c = c_string_for_test("http://127.0.0.1:3002");
 
     let config_opts = BarkConfigOpts {
         asp: asp_url_c.as_ptr(),
@@ -63,7 +200,6 @@ fn test_bark_create_wallet_error_on_null_datadir() {
         vtxo_refresh_expiry_threshold: 144,
         fallback_fee_rate: ptr::null(),
     };
-
     let create_opts = BarkCreateOpts {
         force: false,
         regtest: true,
@@ -74,3169 +210,627 @@ fn test_bark_create_wallet_error_on_null_datadir() {
         config: config_opts,
     };
 
-    let error_ptr = bark_create_wallet(ptr::null(), create_opts);
-    assert!(!error_ptr.is_null());
-
+    let err_ptr = bark_load_wallet(ptr::null(), create_opts);
+    assert!(!err_ptr.is_null(), "bark_load_wallet should fail with null datadir");
     unsafe {
-        let error_message_ptr = bark_error_message(error_ptr);
-        assert!(!error_message_ptr.is_null());
-        let error_message_c_str = CStr::from_ptr(error_message_ptr);
-        let error_message_rust_str = error_message_c_str
-            .to_str()
-            .expect("Error message C string is not valid UTF-8.");
-        assert!(error_message_rust_str.contains("datadir is null"));
-        bark_free_error(error_ptr);
+        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+        assert!(msg.contains("datadir is null"));
+        bark_free_error(err_ptr);
     }
 }
 
 #[test]
-fn test_bark_free_error_null_ptr() {
-    bark_free_error(ptr::null_mut()); // Should not panic
-}
-
-#[test]
-fn test_bark_free_string_null_ptr() {
-    bark_free_string(ptr::null_mut()); // Should not panic
-}
-
-#[test]
-fn test_bark_error_message_null_ptr() {
-    let msg_ptr = bark_error_message(ptr::null());
-    assert!(msg_ptr.is_null()); // Should return null and not panic
-}
-
-#[test]
-fn test_bark_create_wallet_expects_network_error_without_server() {
-    let temp_dir_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("target")
-        .join("test_wallet_network_error_specific"); // Unique name
-    if temp_dir_path.exists() {
-        fs::remove_dir_all(&temp_dir_path).expect("Failed to remove existing test temp_dir");
-    }
-    fs::create_dir_all(&temp_dir_path).expect("Failed to create test temp_dir");
-
-    let datadir_c = c_string_for_test(temp_dir_path.to_str().unwrap());
-    let asp_url_c = c_string_for_test("http://127.0.0.1:12347"); // Different port
-    let esplora_url_c = c_string_for_test("http://127.0.0.1:12348"); // Different port
-    let mnemonic_c = c_string_for_test(VALID_MNEMONIC);
-
-    let config_opts = BarkConfigOpts {
-        asp: asp_url_c.as_ptr(),
-        esplora: esplora_url_c.as_ptr(),
-        bitcoind: ptr::null(),
-        bitcoind_cookie: ptr::null(),
-        bitcoind_user: ptr::null(),
-        bitcoind_pass: ptr::null(),
-        vtxo_refresh_expiry_threshold: 144,
-        fallback_fee_rate: ptr::null(),
-    };
-
-    let create_opts = BarkCreateOpts {
-        force: true,
-        regtest: true,
-        signet: false,
-        bitcoin: false,
-        mnemonic: mnemonic_c.as_ptr(),
-        birthday_height: 0,
-        config: config_opts,
-    };
-
-    setup(); // Ensure logger is initialized for debug output
-    let error_ptr = bark_create_wallet(datadir_c.as_ptr(), create_opts);
-
-    assert!(
-        !error_ptr.is_null(),
-        "bark_create_wallet should return an error if no server is running."
-    );
-
-    unsafe {
-        let message_ptr = bark_error_message(error_ptr);
-        assert!(
-            !message_ptr.is_null(),
-            "Error message pointer should not be null for network error."
-        );
-        let message = CStr::from_ptr(message_ptr).to_string_lossy();
-
-        let is_network_error = message.contains("connect")
-            || message.contains("handshake")
-            || message.contains("error creating wallet")
-            || message.contains("failed to connect")
-            || message.contains("Connection refused");
-
-        assert!(
-            is_network_error,
-            "Expected a network-related error, but got: {}",
-            message
-        );
-        bark_free_error(error_ptr);
-    }
-
-    fs::remove_dir_all(&temp_dir_path).expect("Failed to clean up test temp_dir");
-}
-
-fn setup_temp_wallet(test_name: &str) -> (PathBuf, CString, CString, *mut BarkError) {
-    let base_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("target")
-        .join("test_wallets");
-    let temp_dir_path = base_dir.join(test_name);
-
-    if temp_dir_path.exists() {
-        fs::remove_dir_all(&temp_dir_path).unwrap_or_else(|e| {
-            panic!(
-                "Failed to remove existing test dir {}: {}",
-                temp_dir_path.display(),
-                e
-            )
-        });
-    }
-    fs::create_dir_all(&temp_dir_path).unwrap_or_else(|e| {
-        panic!(
-            "Failed to create test dir {}: {}",
-            temp_dir_path.display(),
-            e
-        )
-    });
-
-    let datadir_c = c_string_for_test(temp_dir_path.to_str().unwrap());
-    let mnemonic_c = c_string_for_test(VALID_MNEMONIC);
-    let asp_url_c = c_string_for_test("http://127.0.0.1:12349"); // Unique port for setup
-    let esplora_url_c = c_string_for_test("http://127.0.0.1:12350"); // Unique port for setup
-
-    let config_opts = BarkConfigOpts {
-        asp: asp_url_c.as_ptr(),
-        esplora: esplora_url_c.as_ptr(),
-        bitcoind: ptr::null(),
-        bitcoind_cookie: ptr::null(),
-        bitcoind_user: ptr::null(),
-        bitcoind_pass: ptr::null(),
-        vtxo_refresh_expiry_threshold: 144,
-        fallback_fee_rate: ptr::null(),
-    };
-
-    let create_opts = BarkCreateOpts {
-        force: true,
-        regtest: true,
-        signet: false,
-        bitcoin: false,
-        mnemonic: mnemonic_c.as_ptr(),
-        birthday_height: 0,
-        config: config_opts,
-    };
-
+fn test_bark_load_wallet_no_network() {
     setup();
-    let error_ptr = bark_create_wallet(datadir_c.as_ptr(), create_opts);
-    (temp_dir_path, datadir_c, mnemonic_c, error_ptr)
-}
+    let temp_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("target/test_wallet_no_network");
+    fs::create_dir_all(&temp_dir).unwrap();
+    let datadir_c = c_string_for_test(temp_dir.to_str().unwrap());
+    let mnemonic_c = c_string_for_test(VALID_MNEMONIC);
+    let asp_url_c = c_string_for_test("http://127.0.0.1:12345");
+    let esplora_url_c = c_string_for_test("http://127.0.0.1:3002");
 
-fn cleanup_temp_wallet(temp_dir_path: &PathBuf) {
-    if temp_dir_path.exists() {
-        fs::remove_dir_all(temp_dir_path).unwrap_or_else(|e| {
-            eprintln!(
-                "Warning: Failed to clean up test dir {}: {}",
-                temp_dir_path.display(),
-                e
-            )
-        });
-    }
-}
+    let config_opts = BarkConfigOpts {
+        asp: asp_url_c.as_ptr(),
+        esplora: esplora_url_c.as_ptr(),
+        bitcoind: ptr::null(),
+        bitcoind_cookie: ptr::null(),
+        bitcoind_user: ptr::null(),
+        bitcoind_pass: ptr::null(),
+        vtxo_refresh_expiry_threshold: 144,
+        fallback_fee_rate: ptr::null(),
+    };
+    // No network flag is set to true
+    let create_opts = BarkCreateOpts {
+        force: false,
+        regtest: false,
+        signet: false,
+        bitcoin: false,
+        mnemonic: mnemonic_c.as_ptr(),
+        birthday_height: 0,
+        config: config_opts,
+    };
 
-#[test]
-#[ignore = "This test requires a running (mock) server or will fail due to network dependency in wallet creation"]
-fn test_bark_get_onchain_address_success() {
-    let (temp_dir, datadir_c, mnemonic_c, create_wallet_error_ptr) =
-        setup_temp_wallet("get_onchain_address_success");
-
-    if !create_wallet_error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(create_wallet_error_ptr)).to_string_lossy();
-            bark_free_error(create_wallet_error_ptr);
-            panic!("Wallet creation failed in setup for ignored test_bark_get_onchain_address_success: {}. This test requires a functional wallet.", msg);
-        }
-    }
-    let mut address_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_get_onchain_address(
-        datadir_c.as_ptr(),
-        mnemonic_c.as_ptr(),
-        &mut address_out_ptr,
-    );
-
-    assert!(
-        error_ptr.is_null(),
-        "bark_get_onchain_address should succeed."
-    );
-    assert!(
-        !address_out_ptr.is_null(),
-        "Output address pointer should not be null."
-    );
-
+    let err_ptr = bark_load_wallet(datadir_c.as_ptr(), create_opts);
+    assert!(!err_ptr.is_null(), "bark_load_wallet should fail with no network specified");
     unsafe {
-        let address_str = CStr::from_ptr(address_out_ptr)
-            .to_str()
-            .expect("Address not valid UTF-8");
-        assert!(
-            !address_str.is_empty(),
-            "Address string should not be empty."
-        );
-        assert!(
-            address_str.starts_with("bcrt1"),
-            "Regtest address should start with bcrt1, got: {}",
-            address_str
-        );
-        bark_free_string(address_out_ptr);
+        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+        assert!(msg.contains("A network must be specified"));
+        bark_free_error(err_ptr);
     }
-    cleanup_temp_wallet(&temp_dir);
+    fs::remove_dir_all(&temp_dir).unwrap();
 }
 
 #[test]
-fn test_bark_get_onchain_address_error_null_datadir() {
-    let mnemonic_c = c_string_for_test(VALID_MNEMONIC);
-    let mut address_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr =
-        bark_get_onchain_address(ptr::null(), mnemonic_c.as_ptr(), &mut address_out_ptr);
-    assert!(
-        !error_ptr.is_null(),
-        "Expected an error for null datadir in test_bark_get_onchain_address_error_null_datadir"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Error message mismatch. Got: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(address_out_ptr.is_null(), "address_out_ptr should remain null on error in test_bark_get_onchain_address_error_null_datadir");
-}
-
-#[test]
-fn test_bark_get_onchain_address_error_null_mnemonic() {
-    let test_name = "get_onchain_address_error_null_mnemonic";
-    let (temp_dir, datadir_c, _mnemonic_c, create_wallet_error_ptr) = setup_temp_wallet(test_name);
-
-    if !create_wallet_error_ptr.is_null() {
-        let error_message = unsafe {
-            CStr::from_ptr(bark_error_message(create_wallet_error_ptr)).to_string_lossy()
-        };
-        println!("Note: Wallet creation failed in setup for {}: {}. This is acceptable as this test only needs a valid datadir.", test_name, error_message);
-        bark_free_error(create_wallet_error_ptr);
-    }
-
-    let mut address_out_ptr: *mut c_char = ptr::null_mut();
-    let error_ptr = bark_get_onchain_address(datadir_c.as_ptr(), ptr::null(), &mut address_out_ptr);
-
-    assert!(!error_ptr.is_null(), "Expected an error for null mnemonic");
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(msg
-                .to_string_lossy()
-                .contains("Null pointer argument provided"));
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        address_out_ptr.is_null(),
-        "address_out_ptr should remain null on error"
-    );
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_get_onchain_address_error_null_address_out() {
-    let test_name = "get_onchain_address_error_null_address_out";
-    let (temp_dir, datadir_c, mnemonic_c, create_wallet_error_ptr) = setup_temp_wallet(test_name);
-
-    if !create_wallet_error_ptr.is_null() {
-        let error_message = unsafe {
-            CStr::from_ptr(bark_error_message(create_wallet_error_ptr)).to_string_lossy()
-        };
-        println!("Note: Wallet creation failed in setup for {}: {}. This is acceptable as this test only needs valid datadir and mnemonic.", test_name, error_message);
-        bark_free_error(create_wallet_error_ptr);
-    }
-
-    let error_ptr =
-        bark_get_onchain_address(datadir_c.as_ptr(), mnemonic_c.as_ptr(), ptr::null_mut());
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected an error for null address_out"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(msg
-                .to_string_lossy()
-                .contains("Null pointer argument provided"));
-            bark_free_error(error_ptr);
-        }
-    }
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_get_balance_error_null_datadir() {
-    let mnemonic_c = c_string_for_test(VALID_MNEMONIC);
-    let mut balance_out = BarkBalance {
-        onchain: 0,
-        offchain: 0,
-        pending_exit: 0,
-    };
-
-    let error_ptr = bark_get_balance(ptr::null(), true, mnemonic_c.as_ptr(), &mut balance_out);
-
-    assert!(!error_ptr.is_null(), "Expected an error for null datadir");
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy().contains("C string is null"),
-                "Unexpected error message for null datadir: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
+fn test_bark_close_wallet_when_none_loaded() {
+    setup();
+    // Ensure no wallet is loaded by not calling the fixture and checking state before test.
+    let err_ptr = bark_close_wallet();
+    assert!(!err_ptr.is_null(), "bark_close_wallet should fail if no wallet is loaded");
+    unsafe {
+        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+        assert!(msg.contains("No wallet is currently loaded"));
+        bark_free_error(err_ptr);
     }
 }
 
 #[test]
-fn test_bark_get_balance_error_null_mnemonic() {
-    let test_name = "get_balance_error_null_mnemonic";
-    let (temp_dir, datadir_c, _mnemonic_c, create_wallet_error_ptr) = setup_temp_wallet(test_name);
+#[ignore = "This test requires a running regtest environment with esplora and asp servers"]
+fn test_load_and_close_wallet_success() {
+    // The fixture's new() and drop() methods test the success case.
+    // This test just ensures it runs without panicking.
+    let _fixture = WalletTestFixture::new("load_and_close_success");
+    // Wallet is loaded in new() and closed in drop()
+}
 
-    if !create_wallet_error_ptr.is_null() {
-        let error_message = unsafe {
-            CStr::from_ptr(bark_error_message(create_wallet_error_ptr)).to_string_lossy()
-        };
-        println!("Note: Wallet creation failed in setup for {}: {}. This is acceptable as this test only needs a valid datadir.", test_name, error_message);
-        bark_free_error(create_wallet_error_ptr);
+
+// --- Wallet Functionality Tests ---
+
+#[test]
+fn test_get_balance_no_wallet_loaded() {
+    setup();
+    let mut balance_out = BarkBalance { onchain: 0, offchain: 0, pending_exit: 0 };
+    let err_ptr = bark_get_balance(true, &mut balance_out);
+    assert!(!err_ptr.is_null(), "bark_get_balance should fail if no wallet is loaded");
+    unsafe {
+        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+        assert!(msg.contains("Wallet not loaded"));
+        bark_free_error(err_ptr);
     }
-
-    let mut balance_out = BarkBalance {
-        onchain: 0,
-        offchain: 0,
-        pending_exit: 0,
-    };
-    let error_ptr = bark_get_balance(datadir_c.as_ptr(), true, ptr::null(), &mut balance_out);
-
-    assert!(!error_ptr.is_null(), "Expected an error for null mnemonic");
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy().contains("C string is null"),
-                "Unexpected error message for null mnemonic: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    cleanup_temp_wallet(&temp_dir);
 }
 
 #[test]
-fn test_bark_get_balance_error_null_balance_out() {
-    let test_name = "get_balance_error_null_balance_out";
-    let (temp_dir, datadir_c, mnemonic_c, create_wallet_error_ptr) = setup_temp_wallet(test_name);
-
-    if !create_wallet_error_ptr.is_null() {
-        let error_message = unsafe {
-            CStr::from_ptr(bark_error_message(create_wallet_error_ptr)).to_string_lossy()
-        };
-        println!("Note: Wallet creation failed in setup for {}: {}. This is acceptable as this test only needs valid datadir and mnemonic.", test_name, error_message);
-        bark_free_error(create_wallet_error_ptr);
+#[ignore = "This test requires a running regtest environment with esplora and asp servers"]
+fn test_get_balance_null_output_pointer() {
+    // We need a wallet loaded for this check to be reached.
+    let _fixture = WalletTestFixture::new("get_balance_null_output");
+    let err_ptr = bark_get_balance(true, ptr::null_mut());
+    assert!(!err_ptr.is_null(), "bark_get_balance should fail with null output pointer");
+    unsafe {
+        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+        assert!(msg.contains("balance_out is null"));
+        bark_free_error(err_ptr);
     }
-
-    let error_ptr = bark_get_balance(
-        datadir_c.as_ptr(),
-        true,
-        mnemonic_c.as_ptr(),
-        ptr::null_mut(),
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected an error for null balance_out"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(msg.to_string_lossy().contains("balance_out is null"));
-            bark_free_error(error_ptr);
-        }
-    }
-    cleanup_temp_wallet(&temp_dir);
 }
 
-#[test]
-#[ignore = "This test requires a running (mock) server or will fail due to network dependency in wallet creation"]
-fn test_bark_get_balance_success_new_wallet() {
-    let (temp_dir, datadir_c, mnemonic_c, create_wallet_error_ptr) =
-        setup_temp_wallet("get_balance_success_new_wallet");
 
-    if !create_wallet_error_ptr.is_null() {
+#[test]
+#[ignore = "This test requires a running regtest environment with esplora and asp servers"]
+fn test_get_balance_success() {
+    let _fixture = WalletTestFixture::new("get_balance_success");
+
+    let mut balance_out = BarkBalance { onchain: 0, offchain: 0, pending_exit: 0 };
+    let err_ptr = bark_get_balance(true, &mut balance_out); // no_sync = true
+
+    if !err_ptr.is_null() {
         unsafe {
-            let msg = CStr::from_ptr(bark_error_message(create_wallet_error_ptr)).to_string_lossy();
-            bark_free_error(create_wallet_error_ptr);
-            panic!("Wallet creation failed in setup for ignored test_bark_get_balance_success_new_wallet: {}. This test requires a functional wallet.", msg);
+            let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+            bark_free_error(err_ptr);
+            panic!("bark_get_balance failed: {}", msg);
         }
     }
 
-    let mut balance_out = BarkBalance {
-        onchain: 0,
-        offchain: 0,
-        pending_exit: 0,
-    };
-
-    let error_ptr = bark_get_balance(
-        datadir_c.as_ptr(),
-        true,
-        mnemonic_c.as_ptr(),
-        &mut balance_out,
-    );
-
-    assert!(
-        error_ptr.is_null(),
-        "bark_get_balance failed for new wallet (no_sync=true)"
-    );
+    // For a new wallet, balances should be 0.
     assert_eq!(balance_out.onchain, 0);
     assert_eq!(balance_out.offchain, 0);
     assert_eq!(balance_out.pending_exit, 0);
-
-    cleanup_temp_wallet(&temp_dir);
 }
 
 #[test]
-fn test_bark_send_onchain_error_null_datadir() {
-    let mnemonic_c = c_string_for_test(VALID_MNEMONIC);
-    let destination_c = c_string_for_test("bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"); // Dummy address
-    let mut txid_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_send_onchain(
-        ptr::null(), // Test null datadir
-        mnemonic_c.as_ptr(),
-        destination_c.as_ptr(),
-        1000, // amount_sat
-        true, // no_sync
-        &mut txid_out_ptr,
-    );
-
-    assert!(!error_ptr.is_null(), "Expected an error for null datadir");
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        txid_out_ptr.is_null(),
-        "txid_out_ptr should remain null on error"
-    );
-}
-
-#[test]
-fn test_bark_send_onchain_error_null_mnemonic() {
-    let test_name = "send_onchain_error_null_mnemonic";
-    let (temp_dir, datadir_c, _mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        // Log but don't panic, as wallet setup might fail due to network but datadir_c is still valid.
-        println!("Note: Wallet creation failed in setup for {}: {}. This is acceptable for this specific test.", test_name, unsafe {CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy()});
-        bark_free_error(wallet_err_ptr);
-    }
-
-    let destination_c = c_string_for_test("bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-    let mut txid_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_send_onchain(
-        datadir_c.as_ptr(),
-        ptr::null(), // Test null mnemonic
-        destination_c.as_ptr(),
-        1000,
-        true,
-        &mut txid_out_ptr,
-    );
-
-    assert!(!error_ptr.is_null(), "Expected an error for null mnemonic");
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        txid_out_ptr.is_null(),
-        "txid_out_ptr should remain null on error"
-    );
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_send_onchain_error_null_destination() {
-    let test_name = "send_onchain_error_null_destination";
-    let (temp_dir, datadir_c, mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!("Note: Wallet creation failed in setup for {}: {}. This is acceptable for this specific test.", test_name, unsafe {CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy()});
-        bark_free_error(wallet_err_ptr);
-    }
-
-    let mut txid_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_send_onchain(
-        datadir_c.as_ptr(),
-        mnemonic_c.as_ptr(),
-        ptr::null(), // Test null destination
-        1000,
-        true,
-        &mut txid_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected an error for null destination"
-    );
-    if !error_ptr.is_null() {
-        let msg = unsafe { CStr::from_ptr(bark_error_message(error_ptr)) };
-        assert!(
-            msg.to_string_lossy()
-                .contains("Null pointer argument provided"),
-            "Unexpected error message: {}",
-            msg.to_string_lossy()
-        );
-        bark_free_error(error_ptr);
-    }
-    assert!(
-        txid_out_ptr.is_null(),
-        "txid_out_ptr should remain null on error"
-    );
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_send_onchain_error_null_txid_out() {
-    let test_name = "send_onchain_error_null_txid_out";
-    let (temp_dir, datadir_c, mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!("Note: Wallet creation failed in setup for {}: {}. This is acceptable for this specific test.", test_name, unsafe {CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy()});
-        bark_free_error(wallet_err_ptr);
-    }
-    let destination_c = c_string_for_test("bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-
-    let error_ptr = bark_send_onchain(
-        datadir_c.as_ptr(),
-        mnemonic_c.as_ptr(),
-        destination_c.as_ptr(),
-        1000,
-        true,
-        ptr::null_mut(), // Test null txid_out
-    );
-
-    assert!(!error_ptr.is_null(), "Expected an error for null txid_out");
-    if !error_ptr.is_null() {
-        let msg = unsafe { CStr::from_ptr(bark_error_message(error_ptr)) };
-        assert!(
-            msg.to_string_lossy()
-                .contains("Null pointer argument provided"),
-            "Unexpected error message: {}",
-            msg.to_string_lossy()
-        );
-        bark_free_error(error_ptr);
-    }
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_drain_onchain_error_null_datadir() {
-    let mnemonic_c = c_string_for_test(VALID_MNEMONIC);
-    let destination_c = c_string_for_test("bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"); // Dummy address
-    let mut txid_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_drain_onchain(
-        ptr::null(), // Test null datadir
-        mnemonic_c.as_ptr(),
-        destination_c.as_ptr(),
-        true, // no_sync
-        &mut txid_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected an error for null datadir in bark_drain_onchain"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null datadir: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        txid_out_ptr.is_null(),
-        "txid_out_ptr should remain null on error"
-    );
-}
-
-#[test]
-fn test_bark_drain_onchain_error_null_mnemonic() {
-    let test_name = "drain_onchain_error_null_mnemonic";
-    let (temp_dir, datadir_c, _mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!("Note: Wallet creation failed in setup for {}: {}. This is acceptable for this specific test.", test_name, unsafe {CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy()});
-        bark_free_error(wallet_err_ptr);
-    }
-
-    let destination_c = c_string_for_test("bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-    let mut txid_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_drain_onchain(
-        datadir_c.as_ptr(),
-        ptr::null(), // Test null mnemonic
-        destination_c.as_ptr(),
-        true,
-        &mut txid_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected an error for null mnemonic in bark_drain_onchain"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null mnemonic: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        txid_out_ptr.is_null(),
-        "txid_out_ptr should remain null on error"
-    );
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_drain_onchain_error_null_destination() {
-    let test_name = "drain_onchain_error_null_destination";
-    let (temp_dir, datadir_c, mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!("Note: Wallet creation failed in setup for {}: {}. This is acceptable for this specific test.", test_name, unsafe {CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy()});
-        bark_free_error(wallet_err_ptr);
-    }
-
-    let mut txid_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_drain_onchain(
-        datadir_c.as_ptr(),
-        mnemonic_c.as_ptr(),
-        ptr::null(), // Test null destination
-        true,
-        &mut txid_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected an error for null destination in bark_drain_onchain"
-    );
-    if !error_ptr.is_null() {
-        let msg = unsafe { CStr::from_ptr(bark_error_message(error_ptr)) };
-        assert!(
-            msg.to_string_lossy()
-                .contains("Null pointer argument provided"),
-            "Unexpected error message for null destination: {}",
-            msg.to_string_lossy()
-        );
-        bark_free_error(error_ptr);
-    }
-    assert!(
-        txid_out_ptr.is_null(),
-        "txid_out_ptr should remain null on error"
-    );
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_drain_onchain_error_null_txid_out() {
-    let test_name = "drain_onchain_error_null_txid_out";
-    let (temp_dir, datadir_c, mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!("Note: Wallet creation failed in setup for {}: {}. This is acceptable for this specific test.", test_name, unsafe {CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy()});
-        bark_free_error(wallet_err_ptr);
-    }
-    let destination_c = c_string_for_test("bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-
-    let error_ptr = bark_drain_onchain(
-        datadir_c.as_ptr(),
-        mnemonic_c.as_ptr(),
-        destination_c.as_ptr(),
-        true,
-        ptr::null_mut(), // Test null txid_out
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected an error for null txid_out in bark_drain_onchain"
-    );
-    if !error_ptr.is_null() {
-        let msg = unsafe { CStr::from_ptr(bark_error_message(error_ptr)) };
-        assert!(
-            msg.to_string_lossy()
-                .contains("Null pointer argument provided"),
-            "Unexpected error message for null txid_out: {}",
-            msg.to_string_lossy()
-        );
-        bark_free_error(error_ptr);
-    }
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_send_many_onchain_error_null_datadir() {
-    let mnemonic_c = c_string_for_test(VALID_MNEMONIC);
-    let dest_str = "bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
-    let dest_c_str = c_string_for_test(dest_str);
-    let destinations_ptr: [*const c_char; 1] = [dest_c_str.as_ptr()];
-    let amounts_sat: [u64; 1] = [1000];
-    let mut txid_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_send_many_onchain(
-        ptr::null(), // Test null datadir
-        mnemonic_c.as_ptr(),
-        destinations_ptr.as_ptr(),
-        amounts_sat.as_ptr(),
-        1,    // num_outputs
-        true, // no_sync
-        &mut txid_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null datadir in bark_send_many_onchain"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer or zero outputs provided"),
-                "Unexpected error message for null datadir: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        txid_out_ptr.is_null(),
-        "txid_out_ptr should remain null on error"
-    );
-}
-
-#[test]
-fn test_bark_send_many_onchain_error_null_mnemonic() {
-    let test_name = "send_many_onchain_error_null_mnemonic";
-    let (temp_dir, datadir_c, _mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-
-    let dest_str = "bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
-    let dest_c_str = c_string_for_test(dest_str);
-    let destinations_ptr: [*const c_char; 1] = [dest_c_str.as_ptr()];
-    let amounts_sat: [u64; 1] = [1000];
-    let mut txid_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_send_many_onchain(
-        datadir_c.as_ptr(),
-        ptr::null(), // Test null mnemonic
-        destinations_ptr.as_ptr(),
-        amounts_sat.as_ptr(),
-        1,
-        true,
-        &mut txid_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null mnemonic in bark_send_many_onchain"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer or zero outputs provided"),
-                "Unexpected error message for null mnemonic: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        txid_out_ptr.is_null(),
-        "txid_out_ptr should remain null on error"
-    );
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_send_many_onchain_error_null_destinations() {
-    let test_name = "send_many_onchain_error_null_destinations";
-    let (temp_dir, datadir_c, mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-
-    let amounts_sat: [u64; 1] = [1000];
-    let mut txid_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_send_many_onchain(
-        datadir_c.as_ptr(),
-        mnemonic_c.as_ptr(),
-        ptr::null(), // Test null destinations
-        amounts_sat.as_ptr(),
-        1,
-        true,
-        &mut txid_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null destinations in bark_send_many_onchain"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer or zero outputs provided"),
-                "Unexpected error message for null destinations: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        txid_out_ptr.is_null(),
-        "txid_out_ptr should remain null on error"
-    );
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_send_many_onchain_error_null_amounts_sat() {
-    let test_name = "send_many_onchain_error_null_amounts_sat";
-    let (temp_dir, datadir_c, mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-    let dest_str = "bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
-    let dest_c_str = c_string_for_test(dest_str);
-    let destinations_ptr: [*const c_char; 1] = [dest_c_str.as_ptr()];
-    let mut txid_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_send_many_onchain(
-        datadir_c.as_ptr(),
-        mnemonic_c.as_ptr(),
-        destinations_ptr.as_ptr(),
-        ptr::null(), // Test null amounts_sat
-        1,
-        true,
-        &mut txid_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null amounts_sat in bark_send_many_onchain"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer or zero outputs provided"),
-                "Unexpected error message for null amounts_sat: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        txid_out_ptr.is_null(),
-        "txid_out_ptr should remain null on error"
-    );
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_send_many_onchain_error_null_txid_out() {
-    let test_name = "send_many_onchain_error_null_txid_out";
-    let (temp_dir, datadir_c, mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-    let dest_str = "bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
-    let dest_c_str = c_string_for_test(dest_str);
-    let destinations_ptr: [*const c_char; 1] = [dest_c_str.as_ptr()];
-    let amounts_sat: [u64; 1] = [1000];
-
-    let error_ptr = bark_send_many_onchain(
-        datadir_c.as_ptr(),
-        mnemonic_c.as_ptr(),
-        destinations_ptr.as_ptr(),
-        amounts_sat.as_ptr(),
-        1,
-        true,
-        ptr::null_mut(), // Test null txid_out
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null txid_out in bark_send_many_onchain"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer or zero outputs provided"),
-                "Unexpected error message for null txid_out: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_send_many_onchain_error_zero_outputs() {
-    let test_name = "send_many_onchain_error_zero_outputs";
-    let (temp_dir, datadir_c, mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-    // Even if pointers are valid, zero outputs should be an error.
-    // Using dummy valid pointers for destinations and amounts.
-    let dest_str = "bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
-    let dest_c_str = c_string_for_test(dest_str);
-    let destinations_ptr: [*const c_char; 1] = [dest_c_str.as_ptr()]; // Dummy, won't be accessed
-    let amounts_sat: [u64; 1] = [1000]; // Dummy, won't be accessed
-    let mut txid_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_send_many_onchain(
-        datadir_c.as_ptr(),
-        mnemonic_c.as_ptr(),
-        destinations_ptr.as_ptr(),
-        amounts_sat.as_ptr(),
-        0, // Test zero outputs
-        true,
-        &mut txid_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for zero outputs in bark_send_many_onchain"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer or zero outputs provided"),
-                "Unexpected error message for zero outputs: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        txid_out_ptr.is_null(),
-        "txid_out_ptr should remain null on error"
-    );
-    cleanup_temp_wallet(&temp_dir);
-}
-
-// It's implied by the "Null pointer or zero outputs provided" check that if num_outputs > 0,
-// then destinations and amounts_sat must not be null.
-// The existing checks for null destinations/amounts_sat when num_outputs is implicitly > 0 (e.g. 1)
-// already cover this. If num_outputs > 0 and destinations is null, it's caught.
-// If num_outputs > 0 and amounts_sat is null, it's caught.
-// So, specific tests like `_error_destinations_null_with_outputs` are redundant
-// given the current error message and validation logic in ffi.rs.
-
-#[test]
-fn test_bark_get_onchain_utxos_error_null_datadir() {
-    let mnemonic_c = c_string_for_test(VALID_MNEMONIC);
-    let mut utxos_json_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_get_onchain_utxos(
-        ptr::null(), // Test null datadir
-        mnemonic_c.as_ptr(),
-        true, // no_sync
-        &mut utxos_json_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null datadir in bark_get_onchain_utxos"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null datadir: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        utxos_json_out_ptr.is_null(),
-        "utxos_json_out_ptr should remain null on error"
-    );
-}
-
-#[test]
-fn test_bark_get_onchain_utxos_error_null_mnemonic() {
-    let test_name = "get_onchain_utxos_error_null_mnemonic";
-    let (temp_dir, datadir_c, _mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-    let mut utxos_json_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_get_onchain_utxos(
-        datadir_c.as_ptr(),
-        ptr::null(), // Test null mnemonic
-        true,
-        &mut utxos_json_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null mnemonic in bark_get_onchain_utxos"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null mnemonic: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        utxos_json_out_ptr.is_null(),
-        "utxos_json_out_ptr should remain null on error"
-    );
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_get_onchain_utxos_error_null_utxos_json_out() {
-    let test_name = "get_onchain_utxos_error_null_utxos_json_out";
-    let (temp_dir, datadir_c, mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-
-    let error_ptr = bark_get_onchain_utxos(
-        datadir_c.as_ptr(),
-        mnemonic_c.as_ptr(),
-        true,
-        ptr::null_mut(), // Test null utxos_json_out
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null utxos_json_out in bark_get_onchain_utxos"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null utxos_json_out: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_get_vtxo_pubkey_error_null_datadir() {
-    let mnemonic_c = c_string_for_test(VALID_MNEMONIC);
-    let mut pubkey_hex_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_get_vtxo_pubkey(
-        ptr::null(), // Test null datadir
-        mnemonic_c.as_ptr(),
-        &mut pubkey_hex_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null datadir in bark_get_vtxo_pubkey"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null datadir: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        pubkey_hex_out_ptr.is_null(),
-        "pubkey_hex_out_ptr should remain null on error"
-    );
-}
-
-#[test]
-fn test_bark_get_vtxo_pubkey_error_null_mnemonic() {
-    let test_name = "get_vtxo_pubkey_error_null_mnemonic";
-    let (temp_dir, datadir_c, _mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-    let mut pubkey_hex_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_get_vtxo_pubkey(
-        datadir_c.as_ptr(),
-        ptr::null(), // Test null mnemonic
-        &mut pubkey_hex_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null mnemonic in bark_get_vtxo_pubkey"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null mnemonic: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        pubkey_hex_out_ptr.is_null(),
-        "pubkey_hex_out_ptr should remain null on error"
-    );
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_get_vtxo_pubkey_error_null_pubkey_hex_out() {
-    let test_name = "get_vtxo_pubkey_error_null_pubkey_hex_out";
-    let (temp_dir, datadir_c, mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-
-    let error_ptr = bark_get_vtxo_pubkey(
-        datadir_c.as_ptr(),
-        mnemonic_c.as_ptr(),
-        ptr::null_mut(), // Test null pubkey_hex_out
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null pubkey_hex_out in bark_get_vtxo_pubkey"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null pubkey_hex_out: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_get_vtxos_error_null_datadir() {
-    let mnemonic_c = c_string_for_test(VALID_MNEMONIC);
-    let mut vtxos_json_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_get_vtxos(
-        ptr::null(), // Test null datadir
-        mnemonic_c.as_ptr(),
-        true, // no_sync
-        &mut vtxos_json_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null datadir in bark_get_vtxos"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null datadir: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        vtxos_json_out_ptr.is_null(),
-        "vtxos_json_out_ptr should remain null on error"
-    );
-}
-
-#[test]
-fn test_bark_get_vtxos_error_null_mnemonic() {
-    let test_name = "get_vtxos_error_null_mnemonic";
-    let (temp_dir, datadir_c, _mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-    let mut vtxos_json_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_get_vtxos(
-        datadir_c.as_ptr(),
-        ptr::null(), // Test null mnemonic
-        true,
-        &mut vtxos_json_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null mnemonic in bark_get_vtxos"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null mnemonic: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        vtxos_json_out_ptr.is_null(),
-        "vtxos_json_out_ptr should remain null on error"
-    );
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_get_vtxos_error_null_vtxos_json_out() {
-    let test_name = "get_vtxos_error_null_vtxos_json_out";
-    let (temp_dir, datadir_c, mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-
-    let error_ptr = bark_get_vtxos(
-        datadir_c.as_ptr(),
-        mnemonic_c.as_ptr(),
-        true,
-        ptr::null_mut(), // Test null vtxos_json_out
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null vtxos_json_out in bark_get_vtxos"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null vtxos_json_out: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_refresh_vtxos_error_null_datadir() {
-    let mnemonic_c = c_string_for_test(VALID_MNEMONIC);
-    let refresh_opts = BarkRefreshOpts {
-        mode_type: BarkRefreshModeType::DefaultThreshold,
-        threshold_value: 0,
-        specific_vtxo_ids: ptr::null(),
-        num_specific_vtxo_ids: 0,
-    };
-    let mut status_json_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_refresh_vtxos(
-        ptr::null(), // Test null datadir
-        mnemonic_c.as_ptr(),
-        refresh_opts,
-        true, // no_sync
-        &mut status_json_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null datadir in bark_refresh_vtxos"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null datadir: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        status_json_out_ptr.is_null(),
-        "status_json_out_ptr should remain null on error"
-    );
-}
-
-#[test]
-fn test_bark_refresh_vtxos_error_null_mnemonic() {
-    let test_name = "refresh_vtxos_error_null_mnemonic";
-    let (temp_dir, datadir_c, _mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-    let refresh_opts = BarkRefreshOpts {
-        mode_type: BarkRefreshModeType::DefaultThreshold,
-        threshold_value: 0,
-        specific_vtxo_ids: ptr::null(),
-        num_specific_vtxo_ids: 0,
-    };
-    let mut status_json_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_refresh_vtxos(
-        datadir_c.as_ptr(),
-        ptr::null(), // Test null mnemonic
-        refresh_opts,
-        true,
-        &mut status_json_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null mnemonic in bark_refresh_vtxos"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null mnemonic: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        status_json_out_ptr.is_null(),
-        "status_json_out_ptr should remain null on error"
-    );
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_refresh_vtxos_error_null_status_json_out() {
-    let test_name = "refresh_vtxos_error_null_status_json_out";
-    let (temp_dir, datadir_c, mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-    let refresh_opts = BarkRefreshOpts {
-        mode_type: BarkRefreshModeType::DefaultThreshold,
-        threshold_value: 0,
-        specific_vtxo_ids: ptr::null(),
-        num_specific_vtxo_ids: 0,
-    };
-
-    let error_ptr = bark_refresh_vtxos(
-        datadir_c.as_ptr(),
-        mnemonic_c.as_ptr(),
-        refresh_opts,
-        true,
-        ptr::null_mut(), // Test null status_json_out
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null status_json_out in bark_refresh_vtxos"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null status_json_out: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_refresh_vtxos_error_specific_mode_null_ids_ptr() {
-    let test_name = "refresh_vtxos_error_specific_mode_null_ids_ptr";
-    let (temp_dir, datadir_c, mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-    let refresh_opts = BarkRefreshOpts {
-        mode_type: BarkRefreshModeType::Specific,
-        threshold_value: 0,
-        specific_vtxo_ids: ptr::null(), // Null pointer for IDs
-        num_specific_vtxo_ids: 1,       // But count is > 0
-    };
-    let mut status_json_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_refresh_vtxos(
-        datadir_c.as_ptr(),
-        mnemonic_c.as_ptr(),
-        refresh_opts,
-        true,
-        &mut status_json_out_ptr,
-    );
-
-    assert!(!error_ptr.is_null(), "Expected error for Specific mode with null specific_vtxo_ids pointer and num_specific_vtxo_ids > 0");
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null specific_vtxo_ids pointer for Specific mode"),
-                "Unexpected error message: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        status_json_out_ptr.is_null(),
-        "status_json_out_ptr should remain null on error"
-    );
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_board_amount_error_null_datadir() {
-    let mnemonic_c = c_string_for_test(VALID_MNEMONIC);
-    let mut status_json_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_board_amount(
-        ptr::null(), // Test null datadir
-        mnemonic_c.as_ptr(),
-        1000, // amount_sat
-        true, // no_sync
-        &mut status_json_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null datadir in bark_board_amount"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null datadir: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        status_json_out_ptr.is_null(),
-        "status_json_out_ptr should remain null on error"
-    );
-}
-
-#[test]
-fn test_bark_board_amount_error_null_mnemonic() {
-    let test_name = "board_amount_error_null_mnemonic";
-    let (temp_dir, datadir_c, _mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-    let mut status_json_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_board_amount(
-        datadir_c.as_ptr(),
-        ptr::null(), // Test null mnemonic
-        1000,
-        true,
-        &mut status_json_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null mnemonic in bark_board_amount"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null mnemonic: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        status_json_out_ptr.is_null(),
-        "status_json_out_ptr should remain null on error"
-    );
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_board_amount_error_null_status_json_out() {
-    let test_name = "board_amount_error_null_status_json_out";
-    let (temp_dir, datadir_c, mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-
-    let error_ptr = bark_board_amount(
-        datadir_c.as_ptr(),
-        mnemonic_c.as_ptr(),
-        1000,
-        true,
-        ptr::null_mut(), // Test null status_json_out
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null status_json_out in bark_board_amount"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null status_json_out: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_board_amount_error_zero_amount() {
-    let test_name = "board_amount_error_zero_amount";
-    let (temp_dir, datadir_c, mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-    let mut status_json_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_board_amount(
-        datadir_c.as_ptr(),
-        mnemonic_c.as_ptr(),
-        0, // Test zero amount
-        true,
-        &mut status_json_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for zero amount in bark_board_amount"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Board amount cannot be zero"),
-                "Unexpected error message for zero amount: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        status_json_out_ptr.is_null(),
-        "status_json_out_ptr should remain null on error"
-    );
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_board_all_error_null_datadir() {
-    let mnemonic_c = c_string_for_test(VALID_MNEMONIC);
-    let mut status_json_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_board_all(
-        ptr::null(), // Test null datadir
-        mnemonic_c.as_ptr(),
-        true, // no_sync
-        &mut status_json_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null datadir in bark_board_all"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null datadir: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        status_json_out_ptr.is_null(),
-        "status_json_out_ptr should remain null on error"
-    );
-}
-
-#[test]
-fn test_bark_board_all_error_null_mnemonic() {
-    let test_name = "board_all_error_null_mnemonic";
-    let (temp_dir, datadir_c, _mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-    let mut status_json_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_board_all(
-        datadir_c.as_ptr(),
-        ptr::null(), // Test null mnemonic
-        true,
-        &mut status_json_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null mnemonic in bark_board_all"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null mnemonic: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        status_json_out_ptr.is_null(),
-        "status_json_out_ptr should remain null on error"
-    );
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_board_all_error_null_status_json_out() {
-    let test_name = "board_all_error_null_status_json_out";
-    let (temp_dir, datadir_c, mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-
-    let error_ptr = bark_board_all(
-        datadir_c.as_ptr(),
-        mnemonic_c.as_ptr(),
-        true,
-        ptr::null_mut(), // Test null status_json_out
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null status_json_out in bark_board_all"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null status_json_out: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_send_error_null_datadir() {
-    let mnemonic_c = c_string_for_test(VALID_MNEMONIC);
-    let destination_c = c_string_for_test("bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"); // Dummy address
-    let mut status_json_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_send(
-        ptr::null(), // Test null datadir
-        mnemonic_c.as_ptr(),
-        destination_c.as_ptr(),
-        1000,        // amount_sat
-        ptr::null(), // comment (can be null)
-        true,        // no_sync
-        &mut status_json_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null datadir in bark_send"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null datadir: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        status_json_out_ptr.is_null(),
-        "status_json_out_ptr should remain null on error"
-    );
-}
-
-#[test]
-fn test_bark_send_error_null_mnemonic() {
-    let test_name = "send_error_null_mnemonic";
-    let (temp_dir, datadir_c, _mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-    let destination_c = c_string_for_test("bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-    let mut status_json_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_send(
-        datadir_c.as_ptr(),
-        ptr::null(), // Test null mnemonic
-        destination_c.as_ptr(),
-        1000,
-        ptr::null(),
-        true,
-        &mut status_json_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null mnemonic in bark_send"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null mnemonic: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        status_json_out_ptr.is_null(),
-        "status_json_out_ptr should remain null on error"
-    );
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_send_error_null_destination() {
-    let test_name = "send_error_null_destination";
-    let (temp_dir, datadir_c, mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-    let mut status_json_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_send(
-        datadir_c.as_ptr(),
-        mnemonic_c.as_ptr(),
-        ptr::null(), // Test null destination
-        1000,
-        ptr::null(),
-        true,
-        &mut status_json_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null destination in bark_send"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null destination: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        status_json_out_ptr.is_null(),
-        "status_json_out_ptr should remain null on error"
-    );
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_send_error_null_status_json_out() {
-    let test_name = "send_error_null_status_json_out";
-    let (temp_dir, datadir_c, mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-    let destination_c = c_string_for_test("bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-
-    let error_ptr = bark_send(
-        datadir_c.as_ptr(),
-        mnemonic_c.as_ptr(),
-        destination_c.as_ptr(),
-        1000,
-        ptr::null(),
-        true,
-        ptr::null_mut(), // Test null status_json_out
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null status_json_out in bark_send"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null status_json_out: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_send_round_onchain_error_null_datadir() {
-    let mnemonic_c = c_string_for_test(VALID_MNEMONIC);
-    let destination_c = c_string_for_test("bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-    let mut status_json_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_send_round_onchain(
-        ptr::null(), // Test null datadir
-        mnemonic_c.as_ptr(),
-        destination_c.as_ptr(),
-        1000, // amount_sat
-        true, // no_sync
-        &mut status_json_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null datadir in bark_send_round_onchain"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null datadir: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        status_json_out_ptr.is_null(),
-        "status_json_out_ptr should remain null on error"
-    );
-}
-
-#[test]
-fn test_bark_send_round_onchain_error_null_mnemonic() {
-    let test_name = "send_round_onchain_error_null_mnemonic";
-    let (temp_dir, datadir_c, _mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-    let destination_c = c_string_for_test("bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-    let mut status_json_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_send_round_onchain(
-        datadir_c.as_ptr(),
-        ptr::null(), // Test null mnemonic
-        destination_c.as_ptr(),
-        1000,
-        true,
-        &mut status_json_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null mnemonic in bark_send_round_onchain"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null mnemonic: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        status_json_out_ptr.is_null(),
-        "status_json_out_ptr should remain null on error"
-    );
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_send_round_onchain_error_null_destination() {
-    let test_name = "send_round_onchain_error_null_destination";
-    let (temp_dir, datadir_c, mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-    let mut status_json_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_send_round_onchain(
-        datadir_c.as_ptr(),
-        mnemonic_c.as_ptr(),
-        ptr::null(), // Test null destination
-        1000,
-        true,
-        &mut status_json_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null destination in bark_send_round_onchain"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null destination: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        status_json_out_ptr.is_null(),
-        "status_json_out_ptr should remain null on error"
-    );
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_send_round_onchain_error_null_status_json_out() {
-    let test_name = "send_round_onchain_error_null_status_json_out";
-    let (temp_dir, datadir_c, mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-    let destination_c = c_string_for_test("bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-
-    let error_ptr = bark_send_round_onchain(
-        datadir_c.as_ptr(),
-        mnemonic_c.as_ptr(),
-        destination_c.as_ptr(),
-        1000,
-        true,
-        ptr::null_mut(), // Test null status_json_out
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null status_json_out in bark_send_round_onchain"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null status_json_out: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_send_round_onchain_error_zero_amount() {
-    let test_name = "send_round_onchain_error_zero_amount";
-    let (temp_dir, datadir_c, mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-    let destination_c = c_string_for_test("bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-    let mut status_json_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_send_round_onchain(
-        datadir_c.as_ptr(),
-        mnemonic_c.as_ptr(),
-        destination_c.as_ptr(),
-        0, // Test zero amount
-        true,
-        &mut status_json_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for zero amount in bark_send_round_onchain"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy().contains("Amount cannot be zero"),
-                "Unexpected error message for zero amount: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        status_json_out_ptr.is_null(),
-        "status_json_out_ptr should remain null on error"
-    );
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_offboard_specific_error_null_datadir() {
-    let mnemonic_c = c_string_for_test(VALID_MNEMONIC);
-    let vtxo_id_str = "0000000000000000000000000000000000000000000000000000000000000000:0";
-    let vtxo_id_c = c_string_for_test(vtxo_id_str);
-    let vtxo_ids_ptr: [*const c_char; 1] = [vtxo_id_c.as_ptr()];
-    let mut status_json_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_offboard_specific(
-        ptr::null(), // Test null datadir
-        mnemonic_c.as_ptr(),
-        vtxo_ids_ptr.as_ptr(),
-        1,           // num_specific_vtxo_ids
-        ptr::null(), // optional_address (can be null)
-        true,        // no_sync
-        &mut status_json_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null datadir in bark_offboard_specific"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null datadir: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        status_json_out_ptr.is_null(),
-        "status_json_out_ptr should remain null on error"
-    );
-}
-
-#[test]
-fn test_bark_offboard_specific_error_null_mnemonic() {
-    let test_name = "offboard_specific_error_null_mnemonic";
-    let (temp_dir, datadir_c, _mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-    let vtxo_id_str = "0000000000000000000000000000000000000000000000000000000000000000:0";
-    let vtxo_id_c = c_string_for_test(vtxo_id_str);
-    let vtxo_ids_ptr: [*const c_char; 1] = [vtxo_id_c.as_ptr()];
-    let mut status_json_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_offboard_specific(
-        datadir_c.as_ptr(),
-        ptr::null(), // Test null mnemonic
-        vtxo_ids_ptr.as_ptr(),
-        1,
-        ptr::null(),
-        true,
-        &mut status_json_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null mnemonic in bark_offboard_specific"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null mnemonic: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        status_json_out_ptr.is_null(),
-        "status_json_out_ptr should remain null on error"
-    );
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_offboard_specific_error_null_specific_vtxo_ids() {
-    let test_name = "offboard_specific_error_null_specific_vtxo_ids";
-    let (temp_dir, datadir_c, mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-    let mut status_json_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_offboard_specific(
-        datadir_c.as_ptr(),
-        mnemonic_c.as_ptr(),
-        ptr::null(), // Test null specific_vtxo_ids
-        1,           // num_specific_vtxo_ids > 0
-        ptr::null(),
-        true,
-        &mut status_json_out_ptr,
-    );
-
-    assert!(!error_ptr.is_null(), "Expected error for null specific_vtxo_ids with num_specific_vtxo_ids > 0 in bark_offboard_specific");
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        status_json_out_ptr.is_null(),
-        "status_json_out_ptr should remain null on error"
-    );
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_offboard_specific_error_zero_num_specific_vtxo_ids() {
-    let test_name = "offboard_specific_error_zero_num_specific_vtxo_ids";
-    let (temp_dir, datadir_c, mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-    // specific_vtxo_ids can be a valid pointer even if num is 0, though it won't be accessed.
-    let vtxo_id_str = "0000000000000000000000000000000000000000000000000000000000000000:0";
-    let vtxo_id_c = c_string_for_test(vtxo_id_str);
-    let vtxo_ids_ptr: [*const c_char; 1] = [vtxo_id_c.as_ptr()]; // Dummy
-    let mut status_json_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_offboard_specific(
-        datadir_c.as_ptr(),
-        mnemonic_c.as_ptr(),
-        vtxo_ids_ptr.as_ptr(), // Can be non-null
-        0,                     // Test zero num_specific_vtxo_ids
-        ptr::null(),
-        true,
-        &mut status_json_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for zero num_specific_vtxo_ids in bark_offboard_specific"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy().contains("No VTXO IDs provided"),
-                "Unexpected error message: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        status_json_out_ptr.is_null(),
-        "status_json_out_ptr should remain null on error"
-    );
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_offboard_specific_error_null_status_json_out() {
-    let test_name = "offboard_specific_error_null_status_json_out";
-    let (temp_dir, datadir_c, mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-    let vtxo_id_str = "0000000000000000000000000000000000000000000000000000000000000000:0";
-    let vtxo_id_c = c_string_for_test(vtxo_id_str);
-    let vtxo_ids_ptr: [*const c_char; 1] = [vtxo_id_c.as_ptr()];
-
-    let error_ptr = bark_offboard_specific(
-        datadir_c.as_ptr(),
-        mnemonic_c.as_ptr(),
-        vtxo_ids_ptr.as_ptr(),
-        1,
-        ptr::null(),
-        true,
-        ptr::null_mut(), // Test null status_json_out
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null status_json_out in bark_offboard_specific"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_offboard_all_error_null_datadir() {
-    let mnemonic_c = c_string_for_test(VALID_MNEMONIC);
-    let mut status_json_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_offboard_all(
-        ptr::null(), // Test null datadir
-        mnemonic_c.as_ptr(),
-        ptr::null(), // optional_address (can be null)
-        true,        // no_sync
-        &mut status_json_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null datadir in bark_offboard_all"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null datadir: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        status_json_out_ptr.is_null(),
-        "status_json_out_ptr should remain null on error"
-    );
-}
-
-#[test]
-fn test_bark_offboard_all_error_null_mnemonic() {
-    let test_name = "offboard_all_error_null_mnemonic";
-    let (temp_dir, datadir_c, _mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-    let mut status_json_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_offboard_all(
-        datadir_c.as_ptr(),
-        ptr::null(), // Test null mnemonic
-        ptr::null(),
-        true,
-        &mut status_json_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null mnemonic in bark_offboard_all"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null mnemonic: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        status_json_out_ptr.is_null(),
-        "status_json_out_ptr should remain null on error"
-    );
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_offboard_all_error_null_status_json_out() {
-    let test_name = "offboard_all_error_null_status_json_out";
-    let (temp_dir, datadir_c, mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-
-    let error_ptr = bark_offboard_all(
-        datadir_c.as_ptr(),
-        mnemonic_c.as_ptr(),
-        ptr::null(),
-        true,
-        ptr::null_mut(), // Test null status_json_out
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null status_json_out in bark_offboard_all"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null status_json_out: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_exit_start_specific_error_null_datadir() {
-    let mnemonic_c = c_string_for_test(VALID_MNEMONIC);
-    let vtxo_id_str = "0000000000000000000000000000000000000000000000000000000000000000:0";
-    let vtxo_id_c = c_string_for_test(vtxo_id_str);
-    let vtxo_ids_ptr: [*const c_char; 1] = [vtxo_id_c.as_ptr()];
-    let mut status_json_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_exit_start_specific(
-        ptr::null(), // Test null datadir
-        mnemonic_c.as_ptr(),
-        vtxo_ids_ptr.as_ptr(),
-        1, // num_specific_vtxo_ids
-        &mut status_json_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null datadir in bark_exit_start_specific"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null datadir: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        status_json_out_ptr.is_null(),
-        "status_json_out_ptr should remain null on error"
-    );
-}
-
-#[test]
-fn test_bark_exit_start_specific_error_null_mnemonic() {
-    let test_name = "exit_start_specific_error_null_mnemonic";
-    let (temp_dir, datadir_c, _mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-    let vtxo_id_str = "0000000000000000000000000000000000000000000000000000000000000000:0";
-    let vtxo_id_c = c_string_for_test(vtxo_id_str);
-    let vtxo_ids_ptr: [*const c_char; 1] = [vtxo_id_c.as_ptr()];
-    let mut status_json_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_exit_start_specific(
-        datadir_c.as_ptr(),
-        ptr::null(), // Test null mnemonic
-        vtxo_ids_ptr.as_ptr(),
-        1,
-        &mut status_json_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null mnemonic in bark_exit_start_specific"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null mnemonic: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        status_json_out_ptr.is_null(),
-        "status_json_out_ptr should remain null on error"
-    );
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_exit_start_specific_error_null_specific_vtxo_ids() {
-    let test_name = "exit_start_specific_error_null_specific_vtxo_ids";
-    let (temp_dir, datadir_c, mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-    let mut status_json_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_exit_start_specific(
-        datadir_c.as_ptr(),
-        mnemonic_c.as_ptr(),
-        ptr::null(), // Test null specific_vtxo_ids
-        1,           // num_specific_vtxo_ids > 0
-        &mut status_json_out_ptr,
-    );
-
-    assert!(!error_ptr.is_null(), "Expected error for null specific_vtxo_ids with num_specific_vtxo_ids > 0 in bark_exit_start_specific");
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        status_json_out_ptr.is_null(),
-        "status_json_out_ptr should remain null on error"
-    );
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_exit_start_specific_error_zero_num_specific_vtxo_ids() {
-    let test_name = "exit_start_specific_error_zero_num_specific_vtxo_ids";
-    let (temp_dir, datadir_c, mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-    let vtxo_id_str = "0000000000000000000000000000000000000000000000000000000000000000:0";
-    let vtxo_id_c = c_string_for_test(vtxo_id_str);
-    let vtxo_ids_ptr: [*const c_char; 1] = [vtxo_id_c.as_ptr()]; // Dummy
-    let mut status_json_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_exit_start_specific(
-        datadir_c.as_ptr(),
-        mnemonic_c.as_ptr(),
-        vtxo_ids_ptr.as_ptr(), // Can be non-null
-        0,                     // Test zero num_specific_vtxo_ids
-        &mut status_json_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for zero num_specific_vtxo_ids in bark_exit_start_specific"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy().contains("No VTXO IDs provided"),
-                "Unexpected error message: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        status_json_out_ptr.is_null(),
-        "status_json_out_ptr should remain null on error"
-    );
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_exit_start_specific_error_null_status_json_out() {
-    let test_name = "exit_start_specific_error_null_status_json_out";
-    let (temp_dir, datadir_c, mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-    let vtxo_id_str = "0000000000000000000000000000000000000000000000000000000000000000:0";
-    let vtxo_id_c = c_string_for_test(vtxo_id_str);
-    let vtxo_ids_ptr: [*const c_char; 1] = [vtxo_id_c.as_ptr()];
-
-    let error_ptr = bark_exit_start_specific(
-        datadir_c.as_ptr(),
-        mnemonic_c.as_ptr(),
-        vtxo_ids_ptr.as_ptr(),
-        1,
-        ptr::null_mut(), // Test null status_json_out
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null status_json_out in bark_exit_start_specific"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_exit_start_all_error_null_datadir() {
-    let mnemonic_c = c_string_for_test(VALID_MNEMONIC);
-    let mut status_json_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_exit_start_all(
-        ptr::null(), // Test null datadir
-        mnemonic_c.as_ptr(),
-        &mut status_json_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null datadir in bark_exit_start_all"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null datadir: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        status_json_out_ptr.is_null(),
-        "status_json_out_ptr should remain null on error"
-    );
-}
-
-#[test]
-fn test_bark_exit_start_all_error_null_mnemonic() {
-    let test_name = "exit_start_all_error_null_mnemonic";
-    let (temp_dir, datadir_c, _mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-    let mut status_json_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_exit_start_all(
-        datadir_c.as_ptr(),
-        ptr::null(), // Test null mnemonic
-        &mut status_json_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null mnemonic in bark_exit_start_all"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null mnemonic: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        status_json_out_ptr.is_null(),
-        "status_json_out_ptr should remain null on error"
-    );
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_exit_start_all_error_null_status_json_out() {
-    let test_name = "exit_start_all_error_null_status_json_out";
-    let (temp_dir, datadir_c, mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-
-    let error_ptr = bark_exit_start_all(
-        datadir_c.as_ptr(),
-        mnemonic_c.as_ptr(),
-        ptr::null_mut(), // Test null status_json_out
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null status_json_out in bark_exit_start_all"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null status_json_out: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_exit_progress_once_error_null_datadir() {
-    let mnemonic_c = c_string_for_test(VALID_MNEMONIC);
-    let mut status_json_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_exit_progress_once(
-        ptr::null(), // Test null datadir
-        mnemonic_c.as_ptr(),
-        &mut status_json_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null datadir in bark_exit_progress_once"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null datadir: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        status_json_out_ptr.is_null(),
-        "status_json_out_ptr should remain null on error"
-    );
-}
-
-#[test]
-fn test_bark_exit_progress_once_error_null_mnemonic() {
-    let test_name = "exit_progress_once_error_null_mnemonic";
-    let (temp_dir, datadir_c, _mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-    let mut status_json_out_ptr: *mut c_char = ptr::null_mut();
-
-    let error_ptr = bark_exit_progress_once(
-        datadir_c.as_ptr(),
-        ptr::null(), // Test null mnemonic
-        &mut status_json_out_ptr,
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null mnemonic in bark_exit_progress_once"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null mnemonic: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    assert!(
-        status_json_out_ptr.is_null(),
-        "status_json_out_ptr should remain null on error"
-    );
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_exit_progress_once_error_null_status_json_out() {
-    let test_name = "exit_progress_once_error_null_status_json_out";
-    let (temp_dir, datadir_c, mnemonic_c, wallet_err_ptr) = setup_temp_wallet(test_name);
-    if !wallet_err_ptr.is_null() {
-        println!(
-            "Note: Wallet creation failed in setup for {}: {}. This is acceptable.",
-            test_name,
-            unsafe { CStr::from_ptr(bark_error_message(wallet_err_ptr)).to_string_lossy() }
-        );
-        bark_free_error(wallet_err_ptr);
-    }
-
-    let error_ptr = bark_exit_progress_once(
-        datadir_c.as_ptr(),
-        mnemonic_c.as_ptr(),
-        ptr::null_mut(), // Test null status_json_out
-    );
-
-    assert!(
-        !error_ptr.is_null(),
-        "Expected error for null status_json_out in bark_exit_progress_once"
-    );
-    if !error_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(error_ptr));
-            assert!(
-                msg.to_string_lossy()
-                    .contains("Null pointer argument provided"),
-                "Unexpected error message for null status_json_out: {}",
-                msg.to_string_lossy()
-            );
-            bark_free_error(error_ptr);
-        }
-    }
-    cleanup_temp_wallet(&temp_dir);
-}
-
-#[test]
-fn test_bark_bolt11_invoice_error_null_datadir() {
+fn test_get_onchain_address_no_wallet_loaded() {
     setup();
-    let mnemonic = c_string_for_test(VALID_MNEMONIC);
+    let mut address_out: *mut c_char = ptr::null_mut();
+    let err_ptr = bark_get_onchain_address(&mut address_out);
+    assert!(!err_ptr.is_null(), "bark_get_onchain_address should fail if no wallet is loaded");
+    unsafe {
+        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+        assert!(msg.contains("Wallet not loaded"));
+        bark_free_error(err_ptr);
+    }
+    assert!(address_out.is_null());
+}
+
+#[test]
+#[ignore = "This test requires a running regtest environment with esplora and asp servers"]
+fn test_get_onchain_address_success() {
+    let _fixture = WalletTestFixture::new("get_onchain_address_success");
+
+    let mut address_out: *mut c_char = ptr::null_mut();
+    let err_ptr = bark_get_onchain_address(&mut address_out);
+
+    if !err_ptr.is_null() {
+        unsafe {
+            let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+            bark_free_error(err_ptr);
+            panic!("bark_get_onchain_address failed: {}", msg);
+        }
+    }
+
+    assert!(!address_out.is_null(), "Address output should not be null on success");
+    unsafe {
+        let address_str = CStr::from_ptr(address_out).to_str().unwrap();
+        // For regtest, addresses start with "bcrt1".
+        assert!(address_str.starts_with("bcrt1"), "Address should be a regtest address, but was {}", address_str);
+        bark_free_string(address_out);
+    }
+}
+
+#[test]
+#[ignore = "This test requires a running regtest environment with esplora and asp servers"]
+fn test_get_onchain_address_error_null_address_out() {
+    let _fixture = WalletTestFixture::new("get_onchain_address_null_output");
+    let err_ptr = bark_get_onchain_address(ptr::null_mut());
+    assert!(!err_ptr.is_null(), "bark_get_onchain_address should fail with null output pointer");
+    unsafe {
+        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+        assert!(msg.contains("Null pointer argument provided"));
+        bark_free_error(err_ptr);
+    }
+}
+
+
+// --- Onchain Send Tests ---
+
+#[test]
+fn test_send_onchain_no_wallet_loaded() {
+    setup();
+    let destination_c = c_string_for_test("bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+    let mut txid_out: *mut c_char = ptr::null_mut();
+    let err_ptr = bark_send_onchain(destination_c.as_ptr(), 1000, true, &mut txid_out);
+    assert!(!err_ptr.is_null(), "bark_send_onchain should fail if no wallet is loaded");
+    unsafe {
+        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+        assert!(msg.contains("Wallet not loaded"));
+        bark_free_error(err_ptr);
+    }
+    assert!(txid_out.is_null());
+}
+
+#[test]
+#[ignore = "This test requires a running regtest environment with esplora and asp servers"]
+fn test_send_onchain_null_pointers() {
+    let _fixture = WalletTestFixture::new("send_onchain_null_pointers");
+    let mut txid_out: *mut c_char = ptr::null_mut();
+    let destination_c = c_string_for_test("bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+
+    // Null destination
+    let err_ptr = bark_send_onchain(ptr::null(), 1000, true, &mut txid_out);
+    assert!(!err_ptr.is_null());
+    unsafe {
+        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+        assert!(msg.contains("Null pointer argument provided"));
+        bark_free_error(err_ptr);
+    }
+
+    // Null txid_out
+    let err_ptr = bark_send_onchain(destination_c.as_ptr(), 1000, true, ptr::null_mut());
+    assert!(!err_ptr.is_null());
+    unsafe {
+        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+        assert!(msg.contains("Null pointer argument provided"));
+        bark_free_error(err_ptr);
+    }
+}
+
+#[test]
+#[ignore = "This test requires a funded regtest wallet"]
+fn test_send_onchain_success() {
+    let _fixture = WalletTestFixture::new("send_onchain_success");
+    // To make this test pass, you would need to:
+    // 1. Fund the wallet's onchain address.
+    // 2. Provide a valid destination address.
+    let destination_c = c_string_for_test("bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+    let mut txid_out: *mut c_char = ptr::null_mut();
+
+    let err_ptr = bark_send_onchain(destination_c.as_ptr(), 5000, false, &mut txid_out);
+
+    if !err_ptr.is_null() {
+        unsafe {
+            let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+            bark_free_error(err_ptr);
+            panic!("bark_send_onchain failed: {}", msg);
+        }
+    }
+    assert!(!txid_out.is_null());
+    unsafe {
+        let txid_str = CStr::from_ptr(txid_out).to_str().unwrap();
+        assert!(!txid_str.is_empty());
+        bark_free_string(txid_out);
+    }
+}
+
+
+// --- Drain and SendMany Tests ---
+
+#[test]
+fn test_drain_onchain_no_wallet_loaded() {
+    setup();
+    let destination_c = c_string_for_test("bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+    let mut txid_out: *mut c_char = ptr::null_mut();
+    let err_ptr = bark_drain_onchain(destination_c.as_ptr(), true, &mut txid_out);
+    assert!(!err_ptr.is_null());
+    unsafe {
+        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+        assert!(msg.contains("Wallet not loaded"));
+        bark_free_error(err_ptr);
+    }
+}
+
+#[test]
+#[ignore = "This test requires a running regtest environment with esplora and asp servers"]
+fn test_drain_onchain_null_pointers() {
+    let _fixture = WalletTestFixture::new("drain_onchain_null_pointers");
+    let mut txid_out: *mut c_char = ptr::null_mut();
+    let destination_c = c_string_for_test("bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+
+    // Null destination
+    let err_ptr = bark_drain_onchain(ptr::null(), true, &mut txid_out);
+    assert!(!err_ptr.is_null());
+    unsafe {
+        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+        assert!(msg.contains("Null pointer argument provided"));
+        bark_free_error(err_ptr);
+    }
+
+    // Null txid_out
+    let err_ptr = bark_drain_onchain(destination_c.as_ptr(), true, ptr::null_mut());
+    assert!(!err_ptr.is_null());
+    unsafe {
+        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+        assert!(msg.contains("Null pointer argument provided"));
+        bark_free_error(err_ptr);
+    }
+}
+
+#[test]
+fn test_send_many_onchain_no_wallet_loaded() {
+    setup();
+    let dest_c = c_string_for_test("bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+    let destinations = [dest_c.as_ptr()];
+    let amounts = [1000u64];
+    let mut txid_out: *mut c_char = ptr::null_mut();
+
+    let err_ptr = bark_send_many_onchain(destinations.as_ptr(), amounts.as_ptr(), 1, true, &mut txid_out);
+    assert!(!err_ptr.is_null());
+    unsafe {
+        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+        assert!(msg.contains("Wallet not loaded"));
+        bark_free_error(err_ptr);
+    }
+}
+
+#[test]
+#[ignore = "This test requires a running regtest environment with esplora and asp servers"]
+fn test_send_many_onchain_null_pointers() {
+    let _fixture = WalletTestFixture::new("send_many_onchain_null_pointers");
+    let dest_c = c_string_for_test("bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+    let destinations = [dest_c.as_ptr()];
+    let amounts = [1000u64];
+    let mut txid_out: *mut c_char = ptr::null_mut();
+
+    // Null destinations
+    let err_ptr = bark_send_many_onchain(ptr::null(), amounts.as_ptr(), 1, true, &mut txid_out);
+    assert!(!err_ptr.is_null());
+    unsafe {
+        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+        assert!(msg.contains("Null pointer or zero outputs provided"));
+        bark_free_error(err_ptr);
+    }
+
+    // Null amounts
+    let err_ptr = bark_send_many_onchain(destinations.as_ptr(), ptr::null(), 1, true, &mut txid_out);
+    assert!(!err_ptr.is_null());
+    unsafe {
+        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+        assert!(msg.contains("Null pointer or zero outputs provided"));
+        bark_free_error(err_ptr);
+    }
+
+    // Null txid_out
+    let err_ptr = bark_send_many_onchain(destinations.as_ptr(), amounts.as_ptr(), 1, true, ptr::null_mut());
+    assert!(!err_ptr.is_null());
+    unsafe {
+        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+        assert!(msg.contains("Null pointer or zero outputs provided"));
+        bark_free_error(err_ptr);
+    }
+
+    // Zero outputs
+    let err_ptr = bark_send_many_onchain(destinations.as_ptr(), amounts.as_ptr(), 0, true, &mut txid_out);
+    assert!(!err_ptr.is_null());
+    unsafe {
+        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+        assert!(msg.contains("Null pointer or zero outputs provided"));
+        bark_free_error(err_ptr);
+    }
+}
+
+// --- VTXO and Refresh Tests ---
+
+#[test]
+fn test_get_vtxos_no_wallet_loaded() {
+    setup();
+    let mut vtxos_json_out: *mut c_char = ptr::null_mut();
+    let err_ptr = bark_get_vtxos(true, &mut vtxos_json_out);
+    assert!(!err_ptr.is_null());
+    unsafe {
+        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+        assert!(msg.contains("Wallet not loaded"));
+        bark_free_error(err_ptr);
+    }
+}
+
+#[test]
+#[ignore = "This test requires a running regtest environment with esplora and asp servers"]
+fn test_get_vtxos_success() {
+    let _fixture = WalletTestFixture::new("get_vtxos_success");
+    let mut vtxos_json_out: *mut c_char = ptr::null_mut();
+    let err_ptr = bark_get_vtxos(true, &mut vtxos_json_out);
+    assert!(err_ptr.is_null());
+    assert!(!vtxos_json_out.is_null());
+    unsafe {
+        let json_str = CStr::from_ptr(vtxos_json_out).to_str().unwrap();
+        assert_eq!(json_str, "[]"); // Expect empty array for new wallet
+        bark_free_string(vtxos_json_out);
+    }
+}
+
+#[test]
+fn test_refresh_vtxos_no_wallet_loaded() {
+    setup();
+    let refresh_opts = BarkRefreshOpts {
+        mode_type: BarkRefreshModeType::DefaultThreshold,
+        threshold_value: 0,
+        specific_vtxo_ids: ptr::null(),
+        num_specific_vtxo_ids: 0,
+    };
+    let mut status_json_out: *mut c_char = ptr::null_mut();
+    let err_ptr = bark_refresh_vtxos(refresh_opts, true, &mut status_json_out);
+    assert!(!err_ptr.is_null());
+    unsafe {
+        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+        assert!(msg.contains("Wallet not loaded"));
+        bark_free_error(err_ptr);
+    }
+}
+
+// --- UTXO and Pubkey Tests ---
+
+#[test]
+fn test_get_onchain_utxos_no_wallet_loaded() {
+    setup();
+    let mut utxos_json_out: *mut c_char = ptr::null_mut();
+    let err_ptr = bark_get_onchain_utxos(true, &mut utxos_json_out);
+    assert!(!err_ptr.is_null());
+    unsafe {
+        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+        assert!(msg.contains("Wallet not loaded"));
+        bark_free_error(err_ptr);
+    }
+}
+
+#[test]
+#[ignore = "This test requires a running regtest environment with esplora and asp servers"]
+fn test_get_onchain_utxos_success() {
+    let _fixture = WalletTestFixture::new("get_onchain_utxos_success");
+    let mut utxos_json_out: *mut c_char = ptr::null_mut();
+    let err_ptr = bark_get_onchain_utxos(true, &mut utxos_json_out);
+    assert!(err_ptr.is_null());
+    assert!(!utxos_json_out.is_null());
+    unsafe {
+        let json_str = CStr::from_ptr(utxos_json_out).to_str().unwrap();
+        assert!(json_str.starts_with("[]"));
+        bark_free_string(utxos_json_out);
+    }
+}
+
+#[test]
+fn test_get_vtxo_pubkey_no_wallet_loaded() {
+    setup();
+    let mut pubkey_hex_out: *mut c_char = ptr::null_mut();
+    let err_ptr = bark_get_vtxo_pubkey(ptr::null(), &mut pubkey_hex_out);
+    assert!(!err_ptr.is_null());
+    unsafe {
+        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+        assert!(msg.contains("Wallet not loaded"));
+        bark_free_error(err_ptr);
+    }
+}
+
+#[test]
+#[ignore = "This test requires a running regtest environment with esplora and asp servers"]
+fn test_get_vtxo_pubkey_success() {
+    let _fixture = WalletTestFixture::new("get_vtxo_pubkey_success");
+    let mut pubkey_hex_out: *mut c_char = ptr::null_mut();
+    // Get next available pubkey
+    let err_ptr = bark_get_vtxo_pubkey(ptr::null(), &mut pubkey_hex_out);
+    assert!(err_ptr.is_null());
+    assert!(!pubkey_hex_out.is_null());
+    unsafe {
+        let pubkey_str = CStr::from_ptr(pubkey_hex_out).to_str().unwrap();
+        assert_eq!(pubkey_str.len(), 66); // 33 bytes * 2 hex chars
+        bark_free_string(pubkey_hex_out);
+    }
+}
+
+// --- Boarding Tests ---
+
+#[test]
+fn test_board_amount_no_wallet_loaded() {
+    setup();
+    let mut status_json_out: *mut c_char = ptr::null_mut();
+    let err_ptr = bark_board_amount(10000, true, &mut status_json_out);
+    assert!(!err_ptr.is_null());
+    unsafe {
+        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+        assert!(msg.contains("Wallet not loaded"));
+        bark_free_error(err_ptr);
+    }
+}
+
+#[test]
+#[ignore = "This test requires a running regtest environment with esplora and asp servers"]
+fn test_board_amount_zero_amount() {
+    let _fixture = WalletTestFixture::new("board_amount_zero_amount");
+    let mut status_json_out: *mut c_char = ptr::null_mut();
+    let err_ptr = bark_board_amount(0, true, &mut status_json_out);
+    assert!(!err_ptr.is_null());
+    unsafe {
+        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+        assert!(msg.contains("Board amount cannot be zero"));
+        bark_free_error(err_ptr);
+    }
+}
+
+#[test]
+fn test_board_all_no_wallet_loaded() {
+    setup();
+    let mut status_json_out: *mut c_char = ptr::null_mut();
+    let err_ptr = bark_board_all(true, &mut status_json_out);
+    assert!(!err_ptr.is_null());
+    unsafe {
+        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+        assert!(msg.contains("Wallet not loaded"));
+        bark_free_error(err_ptr);
+    }
+}
+
+// --- Generic Send Tests ---
+
+#[test]
+fn test_send_no_wallet_loaded() {
+    setup();
+    let dest_c = c_string_for_test("bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
+    let mut status_json_out: *mut c_char = ptr::null_mut();
+    const AMOUNT_NOT_PROVIDED: u64 = u64::MAX;
+
+    let err_ptr = bark_send(dest_c.as_ptr(), AMOUNT_NOT_PROVIDED, ptr::null(), true, &mut status_json_out);
+    assert!(!err_ptr.is_null());
+    unsafe {
+        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+        assert!(msg.contains("Wallet not loaded"));
+        bark_free_error(err_ptr);
+    }
+}
+
+// --- Offboarding Tests ---
+
+#[test]
+fn test_offboard_specific_no_wallet_loaded() {
+    setup();
+    let vtxo_id_c = c_string_for_test("0000000000000000000000000000000000000000000000000000000000000000:0");
+    let vtxo_ids = [vtxo_id_c.as_ptr()];
+    let mut status_json_out: *mut c_char = ptr::null_mut();
+
+    let err_ptr = bark_offboard_specific(vtxo_ids.as_ptr(), 1, ptr::null(), true, &mut status_json_out);
+    assert!(!err_ptr.is_null());
+    unsafe {
+        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+        assert!(msg.contains("Wallet not loaded"));
+        bark_free_error(err_ptr);
+    }
+}
+
+#[test]
+fn test_offboard_all_no_wallet_loaded() {
+    setup();
+    let mut status_json_out: *mut c_char = ptr::null_mut();
+    let err_ptr = bark_offboard_all(ptr::null(), true, &mut status_json_out);
+    assert!(!err_ptr.is_null());
+    unsafe {
+        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+        assert!(msg.contains("Wallet not loaded"));
+        bark_free_error(err_ptr);
+    }
+}
+
+// --- Exit Flow Tests ---
+
+#[test]
+fn test_exit_start_specific_no_wallet_loaded() {
+    setup();
+    let vtxo_id_c = c_string_for_test("0000000000000000000000000000000000000000000000000000000000000000:0");
+    let vtxo_ids = [vtxo_id_c.as_ptr()];
+    let mut status_json_out: *mut c_char = ptr::null_mut();
+
+    let err_ptr = bark_exit_start_specific(vtxo_ids.as_ptr(), 1, &mut status_json_out);
+    assert!(!err_ptr.is_null());
+    unsafe {
+        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+        assert!(msg.contains("Wallet not loaded"));
+        bark_free_error(err_ptr);
+    }
+}
+
+#[test]
+fn test_exit_start_all_no_wallet_loaded() {
+    setup();
+    let mut status_json_out: *mut c_char = ptr::null_mut();
+    let err_ptr = bark_exit_start_all(&mut status_json_out);
+    assert!(!err_ptr.is_null());
+    unsafe {
+        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+        assert!(msg.contains("Wallet not loaded"));
+        bark_free_error(err_ptr);
+    }
+}
+
+#[test]
+fn test_exit_progress_once_no_wallet_loaded() {
+    setup();
+    let mut status_json_out: *mut c_char = ptr::null_mut();
+    let err_ptr = bark_exit_progress_once(&mut status_json_out);
+    assert!(!err_ptr.is_null());
+    unsafe {
+        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+        assert!(msg.contains("Wallet not loaded"));
+        bark_free_error(err_ptr);
+    }
+}
+
+// --- BOLT11 Invoice Tests ---
+
+#[test]
+fn test_bolt11_invoice_no_wallet_loaded() {
+    setup();
     let mut invoice_out: *mut c_char = ptr::null_mut();
-
-    let error = bark_bolt11_invoice(ptr::null(), mnemonic.as_ptr(), 1000, &mut invoice_out);
-    assert!(!error.is_null(), "Expected an error for null datadir");
-    let error_message = unsafe { CStr::from_ptr(bark_error_message(error)) };
-    assert!(
-        error_message
-            .to_str()
-            .unwrap()
-            .contains("Null pointer argument provided"),
-        "Unexpected error message"
-    );
-    bark_free_error(error);
+    let err_ptr = bark_bolt11_invoice(1000, &mut invoice_out);
+     assert!(!err_ptr.is_null());
+    unsafe {
+        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+        assert!(msg.contains("Wallet not loaded"));
+        bark_free_error(err_ptr);
+    }
 }
 
 #[test]
-fn test_bark_bolt11_invoice_error_null_mnemonic() {
+fn test_claim_bolt11_payment_no_wallet_loaded() {
     setup();
-    let (datadir, _temp_dir, _, _) =
-        setup_temp_wallet("test_bark_bolt11_invoice_error_null_mnemonic");
-    let datadir = c_string_for_test(&datadir.to_string_lossy());
-    let mut invoice_out: *mut c_char = ptr::null_mut();
-
-    let error = bark_bolt11_invoice(datadir.as_ptr(), ptr::null(), 1000, &mut invoice_out);
-    assert!(!error.is_null(), "Expected an error for null mnemonic");
-    let error_message = unsafe { CStr::from_ptr(bark_error_message(error)) };
-    assert!(
-        error_message
-            .to_str()
-            .unwrap()
-            .contains("Null pointer argument provided"),
-        "Unexpected error message"
-    );
-    bark_free_error(error);
-}
-
-#[test]
-fn test_bark_bolt11_invoice_error_null_invoice_out() {
-    setup();
-    let (datadir, _temp_dir, _, _) =
-        setup_temp_wallet("test_bark_bolt11_invoice_error_null_invoice_out");
-    let datadir = c_string_for_test(&datadir.to_string_lossy());
-    let mnemonic = c_string_for_test(VALID_MNEMONIC);
-
-    let error = bark_bolt11_invoice(datadir.as_ptr(), mnemonic.as_ptr(), 1000, ptr::null_mut());
-    assert!(!error.is_null(), "Expected an error for null invoice_out");
-    let error_message = unsafe { CStr::from_ptr(bark_error_message(error)) };
-    assert!(
-        error_message
-            .to_str()
-            .unwrap()
-            .contains("Null pointer argument provided"),
-        "Unexpected error message"
-    );
-    bark_free_error(error);
-}
-
-#[test]
-fn test_bark_claim_bolt11_payment_error_null_datadir() {
-    setup();
-    let mnemonic = c_string_for_test(VALID_MNEMONIC);
-    let bolt11 = c_string_for_test("lnbc100n1pjz3zsp5...");
-
-    let error = bark_claim_bolt11_payment(ptr::null(), mnemonic.as_ptr(), bolt11.as_ptr());
-    assert!(!error.is_null(), "Expected an error for null datadir");
-    let error_message = unsafe { CStr::from_ptr(bark_error_message(error)) };
-    assert!(
-        error_message
-            .to_str()
-            .unwrap()
-            .contains("Null pointer argument provided"),
-        "Unexpected error message"
-    );
-    bark_free_error(error);
-}
-
-#[test]
-fn test_bark_claim_bolt11_payment_error_null_mnemonic() {
-    setup();
-    let (datadir, _temp_dir, _, _) =
-        setup_temp_wallet("test_bark_claim_bolt11_payment_error_null_mnemonic");
-    let datadir = c_string_for_test(&datadir.to_string_lossy());
-    let bolt11 = c_string_for_test("lnbc100n1pjz3zsp5...");
-
-    let error = bark_claim_bolt11_payment(datadir.as_ptr(), ptr::null(), bolt11.as_ptr());
-    assert!(!error.is_null(), "Expected an error for null mnemonic");
-    let error_message = unsafe { CStr::from_ptr(bark_error_message(error)) };
-    assert!(
-        error_message
-            .to_str()
-            .unwrap()
-            .contains("Null pointer argument provided"),
-        "Unexpected error message"
-    );
-    bark_free_error(error);
-}
-
-#[test]
-fn test_bark_claim_bolt11_payment_error_null_bolt11() {
-    setup();
-    let (datadir, _temp_dir, _, _) =
-        setup_temp_wallet("test_bark_claim_bolt11_payment_error_null_bolt11");
-    let datadir = c_string_for_test(&datadir.to_string_lossy());
-    let mnemonic = c_string_for_test(VALID_MNEMONIC);
-
-    let error = bark_claim_bolt11_payment(datadir.as_ptr(), mnemonic.as_ptr(), ptr::null());
-    assert!(!error.is_null(), "Expected an error for null bolt11");
-    let error_message = unsafe { CStr::from_ptr(bark_error_message(error)) };
-    assert!(
-        error_message
-            .to_str()
-            .unwrap()
-            .contains("Null pointer argument provided"),
-        "Unexpected error message"
-    );
-    bark_free_error(error);
+    let bolt11_c = c_string_for_test("lnbcrt100n1pjz3zsp5...");
+    let err_ptr = bark_claim_bolt11_payment(bolt11_c.as_ptr());
+     assert!(!err_ptr.is_null());
+    unsafe {
+        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
+        assert!(msg.contains("Wallet not loaded"));
+        bark_free_error(err_ptr);
+    }
 }

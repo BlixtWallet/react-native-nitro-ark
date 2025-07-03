@@ -1,5 +1,5 @@
 use anyhow;
-use bark_cpp::{create_wallet, get_ark_info, get_balance, init_logger, ConfigOpts, CreateOpts};
+use bark_cpp::{get_ark_info, get_balance, init_logger, load_wallet, ConfigOpts, CreateOpts};
 use bip39::Mnemonic;
 
 use logger::log::{debug, error, info};
@@ -67,18 +67,18 @@ async fn main() -> anyhow::Result<()> {
     );
 
     debug!("Attempting to create wallet...");
-    if let Err(e) = create_wallet(&datadir, opts).await {
-        error!("Failed to create wallet: {}", e);
-        return Err(anyhow::anyhow!("Wallet creation failed: {}", e));
+    if let Err(e) = load_wallet(&datadir, opts).await {
+        error!("Failed to load wallet: {}", e);
+        return Err(anyhow::anyhow!("Wallet loading failed: {}", e));
     }
 
-    info!("Wallet created successfully at {}", datadir.display());
+    info!("Wallet loaded successfully from {}", datadir.display());
 
     debug!("Retrieving wallet balance...");
-    let balance = get_balance(&datadir, true, mnemonic.clone()).await?;
+    let balance = get_balance(true).await?;
     info!("Wallet balance is {}", balance.offchain);
 
-    let info = get_ark_info(&datadir, mnemonic).await?;
+    let info = get_ark_info().await?;
     info!("Wallet info is {:?}", info);
 
     debug!("Application completed successfully");
