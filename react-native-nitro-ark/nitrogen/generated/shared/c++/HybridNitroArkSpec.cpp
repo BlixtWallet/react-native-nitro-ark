@@ -15,7 +15,8 @@ namespace margelo::nitro::nitroark {
     // load custom methods/properties
     registerHybrids(this, [](Prototype& prototype) {
       prototype.registerHybridMethod("createMnemonic", &HybridNitroArkSpec::createMnemonic);
-      prototype.registerHybridMethod("createWallet", &HybridNitroArkSpec::createWallet);
+      prototype.registerHybridMethod("loadWallet", &HybridNitroArkSpec::loadWallet);
+      prototype.registerHybridMethod("closeWallet", &HybridNitroArkSpec::closeWallet);
       prototype.registerHybridMethod("getBalance", &HybridNitroArkSpec::getBalance);
       prototype.registerHybridMethod("getOnchainAddress", &HybridNitroArkSpec::getOnchainAddress);
       prototype.registerHybridMethod("getOnchainUtxos", &HybridNitroArkSpec::getOnchainUtxos);

@@ -195,8 +195,8 @@ export default function ArkApp() {
       },
     };
     runOperation(
-      'createWallet',
-      () => NitroArk.createWallet(ARK_DATA_PATH, opts),
+      'loadWallet',
+      () => NitroArk.loadWallet(ARK_DATA_PATH, opts),
       () => {
         setResults('Wallet created successfully!');
       }
@@ -211,7 +211,7 @@ export default function ArkApp() {
     const opName = `getBalance (noSync: ${noSync})`;
     runOperation(
       opName,
-      () => NitroArk.getBalance(ARK_DATA_PATH, mnemonic, noSync),
+      () => NitroArk.getBalance(noSync),
       (balance: BarkBalance) => {
         setBalanceState({
           onchain: balance.onchain,
@@ -229,9 +229,7 @@ export default function ArkApp() {
       setError('Mnemonic required');
       return;
     }
-    runOperation('getOnchainAddress', () =>
-      NitroArk.getOnchainAddress(ARK_DATA_PATH, mnemonic)
-    );
+    runOperation('getOnchainAddress', () => NitroArk.getOnchainAddress());
   };
 
   const handleGetOnchainUtxos = (noSync: boolean) => {
@@ -240,7 +238,7 @@ export default function ArkApp() {
       return;
     }
     runOperation(`getOnchainUtxos (noSync: ${noSync})`, () =>
-      NitroArk.getOnchainUtxos(ARK_DATA_PATH, mnemonic, noSync)
+      NitroArk.getOnchainUtxos(noSync)
     );
   };
 
@@ -249,9 +247,7 @@ export default function ArkApp() {
       setError('Mnemonic required');
       return;
     }
-    runOperation('getVtxoPubkey', () =>
-      NitroArk.getVtxoPubkey(ARK_DATA_PATH, mnemonic)
-    );
+    runOperation('getVtxoPubkey', () => NitroArk.getVtxoPubkey());
   };
 
   const handleGetVtxos = (noSync: boolean) => {
@@ -260,7 +256,7 @@ export default function ArkApp() {
       return;
     }
     runOperation(`getVtxos (noSync: ${noSync})`, () =>
-      NitroArk.getVtxos(ARK_DATA_PATH, mnemonic, noSync)
+      NitroArk.getVtxos(noSync)
     );
   };
 
@@ -275,13 +271,7 @@ export default function ArkApp() {
       return;
     }
     runOperation(`sendOnchain (noSync: ${noSync})`, () =>
-      NitroArk.sendOnchain(
-        ARK_DATA_PATH,
-        mnemonic,
-        destinationAddress,
-        amountNum,
-        noSync
-      )
+      NitroArk.sendOnchain(destinationAddress, amountNum, noSync)
     );
   };
 
@@ -291,7 +281,7 @@ export default function ArkApp() {
       return;
     }
     runOperation(`drainOnchain (noSync: ${noSync})`, () =>
-      NitroArk.drainOnchain(ARK_DATA_PATH, mnemonic, destinationAddress, noSync)
+      NitroArk.drainOnchain(destinationAddress, noSync)
     );
   };
 
@@ -313,7 +303,7 @@ export default function ArkApp() {
       // Add more outputs here if needed, maybe from a more complex input UI
     ];
     runOperation(`sendManyOnchain (noSync: ${noSync})`, () =>
-      NitroArk.sendManyOnchain(ARK_DATA_PATH, mnemonic, outputs, noSync)
+      NitroArk.sendManyOnchain(outputs, noSync)
     );
   };
 
@@ -340,7 +330,7 @@ export default function ArkApp() {
     }
 
     runOperation(`refreshVtxos (mode: ${mode}, noSync: ${noSync})`, () =>
-      NitroArk.refreshVtxos(ARK_DATA_PATH, mnemonic, refreshOpts, noSync)
+      NitroArk.refreshVtxos(refreshOpts, noSync)
     );
   };
 
@@ -355,7 +345,7 @@ export default function ArkApp() {
       return;
     }
     runOperation(`boardAmount (noSync: ${noSync})`, () =>
-      NitroArk.boardAmount(ARK_DATA_PATH, mnemonic, amountNum, noSync)
+      NitroArk.boardAmount(amountNum, noSync)
     );
   };
 
@@ -365,7 +355,7 @@ export default function ArkApp() {
       return;
     }
     runOperation(`boardAll (noSync: ${noSync})`, () =>
-      NitroArk.boardAll(ARK_DATA_PATH, mnemonic, noSync)
+      NitroArk.boardAll(noSync)
     );
   };
 
@@ -382,14 +372,7 @@ export default function ArkApp() {
     // Use comment from state, pass null if empty
     const commentToSend = comment.trim() === '' ? null : comment.trim();
     runOperation(`send (Ark) (noSync: ${noSync})`, () =>
-      NitroArk.send(
-        ARK_DATA_PATH,
-        mnemonic,
-        destinationAddress,
-        amountNum,
-        commentToSend,
-        noSync
-      )
+      NitroArk.send(destinationAddress, amountNum, commentToSend, noSync)
     );
   };
 
@@ -404,13 +387,7 @@ export default function ArkApp() {
       return;
     }
     runOperation(`sendRoundOnchain (noSync: ${noSync})`, () =>
-      NitroArk.sendRoundOnchain(
-        ARK_DATA_PATH,
-        mnemonic,
-        destinationAddress,
-        amountNum,
-        noSync
-      )
+      NitroArk.sendRoundOnchain(destinationAddress, amountNum, noSync)
     );
   };
 
@@ -430,13 +407,7 @@ export default function ArkApp() {
     const addrToSend =
       optionalAddress.trim() === '' ? null : optionalAddress.trim();
     runOperation(`offboardSpecific (noSync: ${noSync})`, () =>
-      NitroArk.offboardSpecific(
-        ARK_DATA_PATH,
-        mnemonic,
-        ids,
-        addrToSend,
-        noSync
-      )
+      NitroArk.offboardSpecific(ids, addrToSend, noSync)
     );
   };
 
@@ -448,7 +419,7 @@ export default function ArkApp() {
     const addrToSend =
       optionalAddress.trim() === '' ? null : optionalAddress.trim();
     runOperation(`offboardAll (noSync: ${noSync})`, () =>
-      NitroArk.offboardAll(ARK_DATA_PATH, mnemonic, addrToSend, noSync)
+      NitroArk.offboardAll(addrToSend, noSync)
     );
   };
 
@@ -466,7 +437,7 @@ export default function ArkApp() {
       return;
     }
     runOperation(`exitStartSpecific (noSync: ${noSync})`, () =>
-      NitroArk.exitStartSpecific(ARK_DATA_PATH, mnemonic, ids, noSync)
+      NitroArk.exitStartSpecific(ids)
     );
   };
 
@@ -476,7 +447,7 @@ export default function ArkApp() {
       return;
     }
     runOperation(`exitStartAll (noSync: ${noSync})`, () =>
-      NitroArk.exitStartAll(ARK_DATA_PATH, mnemonic, noSync)
+      NitroArk.exitStartAll()
     );
   };
 
@@ -485,9 +456,7 @@ export default function ArkApp() {
       setError('Mnemonic required');
       return;
     }
-    runOperation('exitProgressOnce', () =>
-      NitroArk.exitProgressOnce(ARK_DATA_PATH, mnemonic)
-    );
+    runOperation('exitProgressOnce', () => NitroArk.exitProgressOnce());
   };
 
   const handleCreateInvoice = () => {
@@ -502,7 +471,7 @@ export default function ArkApp() {
     }
     runOperation(
       'bolt11Invoice',
-      () => NitroArk.bolt11Invoice(ARK_DATA_PATH, mnemonic, amount),
+      () => NitroArk.bolt11Invoice(amount),
       (invoice) => {
         setResults(`Created Invoice: ${invoice}`);
         setInvoiceToClaim(invoice);
@@ -521,8 +490,7 @@ export default function ArkApp() {
     }
     runOperation(
       'claimBolt11Payment',
-      () =>
-        NitroArk.claimBolt11Payment(ARK_DATA_PATH, mnemonic, invoiceToClaim),
+      () => NitroArk.claimBolt11Payment(invoiceToClaim),
       () => {
         setResults('Successfully claimed payment!');
       }

@@ -53,8 +53,8 @@ namespace margelo::nitro::nitroark
     }
 
     std::shared_ptr<Promise<void>>
-    createWallet(const std::string &datadir,
-                 const BarkCreateOpts &opts) override
+    loadWallet(const std::string &datadir,
+               const BarkCreateOpts &opts) override
     {
       return Promise<void>::async([datadir, opts]()
                                   {
@@ -105,21 +105,27 @@ namespace margelo::nitro::nitroark
           config};
 
       bark::bark_BarkError *error =
-          bark::bark_create_wallet(datadir.c_str(), barkOpts);
+          bark::bark_load_wallet(datadir.c_str(), barkOpts);
+      check_bark_error(error); });
+    }
+
+    std::shared_ptr<Promise<void>> closeWallet() override
+    {
+      return Promise<void>::async([]()
+                                  {
+      bark::bark_BarkError *error = bark::bark_close_wallet();
       check_bark_error(error); });
     }
 
     // --- Wallet Info ---
 
     std::shared_ptr<Promise<BarkBalance>>
-    getBalance(const std::string &datadir, bool no_sync,
-               const std::string &mnemonic) override
+    getBalance(bool no_sync) override
     {
-      return Promise<BarkBalance>::async([datadir, no_sync, mnemonic]()
+      return Promise<BarkBalance>::async([no_sync]()
                                          {
       bark::bark_BarkBalance c_balance;
-      bark::bark_BarkError *error = bark::bark_get_balance(
-          datadir.c_str(), no_sync, mnemonic.c_str(), &c_balance);
+      bark::bark_BarkError *error = bark::bark_get_balance(no_sync, &c_balance);
       check_bark_error(error);
 
       return BarkBalance(static_cast<double>(c_balance.onchain),
@@ -128,14 +134,12 @@ namespace margelo::nitro::nitroark
     }
 
     std::shared_ptr<Promise<std::string>>
-    getOnchainAddress(const std::string &datadir,
-                      const std::string &mnemonic) override
+    getOnchainAddress() override
     {
-      return Promise<std::string>::async([datadir, mnemonic]()
+      return Promise<std::string>::async([]()
                                          {
       char *address_c = nullptr;
-      bark::bark_BarkError *error = bark::bark_get_onchain_address(
-          datadir.c_str(), mnemonic.c_str(), &address_c);
+      bark::bark_BarkError *error = bark::bark_get_onchain_address(&address_c);
       check_bark_error(error);
       if (address_c == nullptr) {
         throw std::runtime_error("Bark-cpp error: getOnchainAddress returned "
@@ -147,14 +151,12 @@ namespace margelo::nitro::nitroark
     }
 
     std::shared_ptr<Promise<std::string>>
-    getOnchainUtxos(const std::string &datadir, const std::string &mnemonic,
-                    bool no_sync) override
+    getOnchainUtxos(bool no_sync) override
     {
-      return Promise<std::string>::async([datadir, mnemonic, no_sync]()
+      return Promise<std::string>::async([no_sync]()
                                          {
       char *json_c = nullptr;
-      bark::bark_BarkError *error = bark::bark_get_onchain_utxos(
-          datadir.c_str(), mnemonic.c_str(), no_sync, &json_c);
+      bark::bark_BarkError *error = bark::bark_get_onchain_utxos(no_sync, &json_c);
       check_bark_error(error);
       if (json_c == nullptr) {
         throw std::runtime_error("Bark-cpp error: getOnchainUtxos returned "
@@ -166,14 +168,18 @@ namespace margelo::nitro::nitroark
     }
 
     std::shared_ptr<Promise<std::string>>
-    getVtxoPubkey(const std::string &datadir,
-                  const std::string &mnemonic) override
+    getVtxoPubkey(std::optional<double> index) override
     {
-      return Promise<std::string>::async([datadir, mnemonic]()
+      return Promise<std::string>::async([index]()
                                          {
       char *pubkey_c = nullptr;
+      std::optional<uint32_t> index_val;
+      if (index.has_value()) {
+        index_val = static_cast<uint32_t>(index.value());
+      }
+
       bark::bark_BarkError *error = bark::bark_get_vtxo_pubkey(
-          datadir.c_str(), mnemonic.c_str(), &pubkey_c);
+          index_val.has_value() ? &index_val.value() : nullptr, &pubkey_c);
       check_bark_error(error);
       if (pubkey_c == nullptr) {
         throw std::runtime_error("Bark-cpp error: getVtxoPubkey returned "
@@ -184,15 +190,12 @@ namespace margelo::nitro::nitroark
       return pubkey_str; });
     }
 
-    std::shared_ptr<Promise<std::string>> getVtxos(const std::string &datadir,
-                                                   const std::string &mnemonic,
-                                                   bool no_sync) override
+    std::shared_ptr<Promise<std::string>> getVtxos(bool no_sync) override
     {
-      return Promise<std::string>::async([datadir, mnemonic, no_sync]()
+      return Promise<std::string>::async([no_sync]()
                                          {
       char *json_c = nullptr;
-      bark::bark_BarkError *error = bark::bark_get_vtxos(
-          datadir.c_str(), mnemonic.c_str(), no_sync, &json_c);
+      bark::bark_BarkError *error = bark::bark_get_vtxos(no_sync, &json_c);
       check_bark_error(error);
       if (json_c == nullptr) {
         throw std::runtime_error(
@@ -206,17 +209,14 @@ namespace margelo::nitro::nitroark
     // --- Onchain Operations ---
 
     std::shared_ptr<Promise<std::string>>
-    sendOnchain(const std::string &datadir, const std::string &mnemonic,
-                const std::string &destination, double amountSat,
+    sendOnchain(const std::string &destination, double amountSat,
                 bool no_sync) override
     {
-      return Promise<std::string>::async([datadir, mnemonic, destination,
-                                          amountSat, no_sync]()
+      return Promise<std::string>::async([destination, amountSat, no_sync]()
                                          {
       char *txid_c = nullptr;
       bark::bark_BarkError *error = bark::bark_send_onchain(
-          datadir.c_str(), mnemonic.c_str(), destination.c_str(),
-          static_cast<uint64_t>(amountSat), no_sync, &txid_c);
+          destination.c_str(), static_cast<uint64_t>(amountSat), no_sync, &txid_c);
       check_bark_error(error);
       if (txid_c == nullptr) {
         throw std::runtime_error(
@@ -228,16 +228,14 @@ namespace margelo::nitro::nitroark
     }
 
     std::shared_ptr<Promise<std::string>>
-    drainOnchain(const std::string &datadir, const std::string &mnemonic,
-                 const std::string &destination, bool no_sync) override
+    drainOnchain(const std::string &destination, bool no_sync) override
     {
       return Promise<std::string>::async(
-          [datadir, mnemonic, destination, no_sync]()
+          [destination, no_sync]()
           {
             char *txid_c = nullptr;
             bark::bark_BarkError *error =
-                bark::bark_drain_onchain(datadir.c_str(), mnemonic.c_str(),
-                                         destination.c_str(), no_sync, &txid_c);
+                bark::bark_drain_onchain(destination.c_str(), no_sync, &txid_c);
             check_bark_error(error);
             if (txid_c == nullptr)
             {
@@ -251,11 +249,10 @@ namespace margelo::nitro::nitroark
     }
 
     std::shared_ptr<Promise<std::string>>
-    sendManyOnchain(const std::string &datadir, const std::string &mnemonic,
-                    const std::vector<BarkSendManyOutput> &outputs,
+    sendManyOnchain(const std::vector<BarkSendManyOutput> &outputs,
                     bool no_sync) override
     {
-      return Promise<std::string>::async([datadir, mnemonic, outputs, no_sync]()
+      return Promise<std::string>::async([outputs, no_sync]()
                                          {
       size_t num_outputs = outputs.size();
       if (num_outputs == 0) {
@@ -269,16 +266,13 @@ namespace margelo::nitro::nitroark
       amounts_c.reserve(num_outputs);
 
       for (const auto &output : outputs) {
-        // --- FIX: Access directly, no .value() ---
         destinations_c.push_back(output.destination.c_str());
         amounts_c.push_back(static_cast<uint64_t>(output.amountSat));
-        // --- End FIX ---
       }
 
       char *txid_c = nullptr;
       bark::bark_BarkError *error = bark::bark_send_many_onchain(
-          datadir.c_str(), mnemonic.c_str(), destinations_c.data(),
-          amounts_c.data(), num_outputs, no_sync, &txid_c);
+          destinations_c.data(), amounts_c.data(), num_outputs, no_sync, &txid_c);
       check_bark_error(error);
       if (txid_c == nullptr) {
         throw std::runtime_error("Bark-cpp error: sendManyOnchain returned "
@@ -292,10 +286,9 @@ namespace margelo::nitro::nitroark
     // --- Ark Operations ---
 
     std::shared_ptr<Promise<std::string>>
-    refreshVtxos(const std::string &datadir, const std::string &mnemonic,
-                 const BarkRefreshOpts &refreshOpts, bool no_sync) override
+    refreshVtxos(const BarkRefreshOpts &refreshOpts, bool no_sync) override
     {
-      return Promise<std::string>::async([datadir, mnemonic, refreshOpts,
+      return Promise<std::string>::async([refreshOpts,
                                           no_sync]()
                                          {
       bark::bark_BarkRefreshOpts c_opts;
@@ -356,8 +349,7 @@ namespace margelo::nitro::nitroark
 
       // Make the C FFI call
       char *status_c = nullptr;
-      bark::bark_BarkError *error = bark::bark_refresh_vtxos(
-          datadir.c_str(), mnemonic.c_str(), c_opts, no_sync, &status_c);
+      bark::bark_BarkError *error = bark::bark_refresh_vtxos(c_opts, no_sync, &status_c);
 
       check_bark_error(error);
       if (status_c == nullptr) {
@@ -371,17 +363,15 @@ namespace margelo::nitro::nitroark
       return status_str; });
     }
 
-    std::shared_ptr<Promise<std::string>> boardAmount(const std::string &datadir,
-                                                      const std::string &mnemonic,
-                                                      double amountSat,
+    std::shared_ptr<Promise<std::string>> boardAmount(double amountSat,
                                                       bool no_sync) override
     {
-      return Promise<std::string>::async([datadir, mnemonic, amountSat,
+      return Promise<std::string>::async([amountSat,
                                           no_sync]()
                                          {
       char *status_c = nullptr;
       bark::bark_BarkError *error = bark::bark_board_amount(
-          datadir.c_str(), mnemonic.c_str(), static_cast<uint64_t>(amountSat),
+          static_cast<uint64_t>(amountSat),
           no_sync, &status_c);
       check_bark_error(error);
       if (status_c == nullptr) {
@@ -393,15 +383,12 @@ namespace margelo::nitro::nitroark
       return status_str; });
     }
 
-    std::shared_ptr<Promise<std::string>> boardAll(const std::string &datadir,
-                                                   const std::string &mnemonic,
-                                                   bool no_sync) override
+    std::shared_ptr<Promise<std::string>> boardAll(bool no_sync) override
     {
-      return Promise<std::string>::async([datadir, mnemonic, no_sync]()
+      return Promise<std::string>::async([no_sync]()
                                          {
       char *status_c = nullptr;
-      bark::bark_BarkError *error = bark::bark_board_all(
-          datadir.c_str(), mnemonic.c_str(), no_sync, &status_c);
+      bark::bark_BarkError *error = bark::bark_board_all(no_sync, &status_c);
       check_bark_error(error);
       if (status_c == nullptr) {
         throw std::runtime_error(
@@ -413,22 +400,16 @@ namespace margelo::nitro::nitroark
     }
 
     std::shared_ptr<Promise<std::string>>
-    send(const std::string &datadir, const std::string &mnemonic,
-         const std::string &destination, double amountSat,
+    send(const std::string &destination, double amountSat,
          const std::optional<std::string> &comment, bool no_sync) override
     {
-      return Promise<std::string>::async([datadir, mnemonic, destination,
+      return Promise<std::string>::async([destination,
                                           amountSat, comment, no_sync]()
                                          {
       char *status_c = nullptr;
       const char *comment_c = comment.has_value() ? comment->c_str() : nullptr;
-      // NOTE: bark_send in ffi.rs expects u64::MAX if amount is not provided.
-      // Here, amountSat (double) is always passed from TS. If you want to
-      // support sending MAX, the TS/Nitro interface needs adjustment (e.g.,
-      // optional amount). Assuming amountSat passed from TS is always the
-      // intended amount.
       bark::bark_BarkError *error = bark::bark_send(
-          datadir.c_str(), mnemonic.c_str(), destination.c_str(),
+          destination.c_str(),
           static_cast<uint64_t>(amountSat), comment_c, no_sync, &status_c);
       check_bark_error(error);
       if (status_c == nullptr) {
@@ -441,16 +422,15 @@ namespace margelo::nitro::nitroark
     }
 
     std::shared_ptr<Promise<std::string>>
-    sendRoundOnchain(const std::string &datadir, const std::string &mnemonic,
-                     const std::string &destination, double amountSat,
+    sendRoundOnchain(const std::string &destination, double amountSat,
                      bool no_sync) override
     {
       return Promise<std::string>::async(
-          [datadir, mnemonic, destination, amountSat, no_sync]()
+          [destination, amountSat, no_sync]()
           {
             char *status_c = nullptr;
             bark::bark_BarkError *error = bark::bark_send_round_onchain(
-                datadir.c_str(), mnemonic.c_str(), destination.c_str(),
+                destination.c_str(),
                 static_cast<uint64_t>(amountSat), no_sync, &status_c);
             check_bark_error(error);
             if (status_c == nullptr)
@@ -467,14 +447,13 @@ namespace margelo::nitro::nitroark
     // --- Lightning Operations ---
 
     std::shared_ptr<Promise<std::string>>
-    bolt11Invoice(const std::string &datadir, const std::string &mnemonic,
-                  double amountSat) override
+    bolt11Invoice(double amountMsat) override
     {
-      return Promise<std::string>::async([datadir, mnemonic, amountSat]()
+      return Promise<std::string>::async([amountMsat]()
                                          {
       char *invoice_c = nullptr;
       bark::bark_BarkError *error = bark::bark_bolt11_invoice(
-          datadir.c_str(), mnemonic.c_str(), static_cast<uint64_t>(amountSat),
+          static_cast<uint64_t>(amountMsat),
           &invoice_c);
       check_bark_error(error);
       if (invoice_c == nullptr) {
@@ -487,26 +466,23 @@ namespace margelo::nitro::nitroark
     }
 
     std::shared_ptr<Promise<void>>
-    claimBolt11Payment(const std::string &datadir, const std::string &mnemonic,
-                       const std::string &bolt11) override
+    claimBolt11Payment(const std::string &bolt11) override
     {
-      return Promise<void>::async([datadir, mnemonic, bolt11]()
+      return Promise<void>::async([bolt11]()
                                   {
-      bark::bark_BarkError *error = bark::bark_claim_bolt11_payment(
-          datadir.c_str(), mnemonic.c_str(), bolt11.c_str());
+      bark::bark_BarkError *error = bark::bark_claim_bolt11_payment(bolt11.c_str());
       check_bark_error(error); });
     }
 
     // --- Offboarding / Exiting ---
 
     std::shared_ptr<Promise<std::string>>
-    offboardSpecific(const std::string &datadir, const std::string &mnemonic,
-                     const std::vector<std::string> &vtxoIds,
+    offboardSpecific(const std::vector<std::string> &vtxoIds,
                      const std::optional<std::string> &optionalAddress,
                      bool no_sync) override
     {
       return Promise<std::string>::async(
-          [datadir, mnemonic, vtxoIds, optionalAddress, no_sync]()
+          [vtxoIds, optionalAddress, no_sync]()
           {
             if (vtxoIds.empty())
             {
@@ -524,7 +500,7 @@ namespace margelo::nitro::nitroark
             char *status_c = nullptr;
 
             bark::bark_BarkError *error = bark::bark_offboard_specific(
-                datadir.c_str(), mnemonic.c_str(), ids_c.data(), ids_c.size(),
+                ids_c.data(), ids_c.size(),
                 addr_c, no_sync, &status_c);
             check_bark_error(error);
             if (status_c == nullptr)
@@ -539,18 +515,17 @@ namespace margelo::nitro::nitroark
     }
 
     std::shared_ptr<Promise<std::string>>
-    offboardAll(const std::string &datadir, const std::string &mnemonic,
-                const std::optional<std::string> &optionalAddress,
+    offboardAll(const std::optional<std::string> &optionalAddress,
                 bool no_sync) override
     {
-      return Promise<std::string>::async([datadir, mnemonic, optionalAddress,
+      return Promise<std::string>::async([optionalAddress,
                                           no_sync]()
                                          {
       const char *addr_c =
           optionalAddress.has_value() ? optionalAddress->c_str() : nullptr;
       char *status_c = nullptr;
       bark::bark_BarkError *error = bark::bark_offboard_all(
-          datadir.c_str(), mnemonic.c_str(), addr_c, no_sync, &status_c);
+          addr_c, no_sync, &status_c);
       check_bark_error(error);
       if (status_c == nullptr) {
         throw std::runtime_error(
@@ -562,11 +537,9 @@ namespace margelo::nitro::nitroark
     }
 
     std::shared_ptr<Promise<std::string>> exitStartSpecific(
-        const std::string &datadir, const std::string &mnemonic,
-        const std::vector<std::string> &vtxoIds,
-        bool no_sync /* Potential C header mismatch noted */) override
+        const std::vector<std::string> &vtxoIds) override
     {
-      return Promise<std::string>::async([datadir, mnemonic, vtxoIds, no_sync]()
+      return Promise<std::string>::async([vtxoIds]()
                                          {
       if (vtxoIds.empty()) {
         throw std::runtime_error(
@@ -579,10 +552,8 @@ namespace margelo::nitro::nitroark
       }
       char *status_c = nullptr;
 
-      // Call reflects C header (which might be missing no_sync)
       bark::bark_BarkError *error =
-          bark::bark_exit_start_specific(datadir.c_str(), mnemonic.c_str(),
-                                         ids_c.data(), ids_c.size(), &status_c);
+          bark::bark_exit_start_specific(ids_c.data(), ids_c.size(), &status_c);
       check_bark_error(error);
       if (status_c == nullptr) {
         throw std::runtime_error("Bark-cpp error: exitStartSpecific returned "
@@ -594,15 +565,12 @@ namespace margelo::nitro::nitroark
     }
 
     std::shared_ptr<Promise<std::string>>
-    exitStartAll(const std::string &datadir, const std::string &mnemonic,
-                 bool no_sync /* Potential C header mismatch noted */) override
+    exitStartAll() override
     {
-      return Promise<std::string>::async([datadir, mnemonic, no_sync]()
+      return Promise<std::string>::async([]()
                                          {
       char *status_c = nullptr;
-      // Call reflects C header (which might be missing no_sync)
-      bark::bark_BarkError *error = bark::bark_exit_start_all(
-          datadir.c_str(), mnemonic.c_str(), &status_c);
+      bark::bark_BarkError *error = bark::bark_exit_start_all(&status_c);
       check_bark_error(error);
       if (status_c == nullptr) {
         throw std::runtime_error(
@@ -614,14 +582,12 @@ namespace margelo::nitro::nitroark
     }
 
     std::shared_ptr<Promise<std::string>>
-    exitProgressOnce(const std::string &datadir,
-                     const std::string &mnemonic) override
+    exitProgressOnce() override
     {
-      return Promise<std::string>::async([datadir, mnemonic]()
+      return Promise<std::string>::async([]()
                                          {
       char *status_c = nullptr;
-      bark::bark_BarkError *error = bark::bark_exit_progress_once(
-          datadir.c_str(), mnemonic.c_str(), &status_c);
+      bark::bark_BarkError *error = bark::bark_exit_progress_once(&status_c);
       check_bark_error(error);
       if (status_c == nullptr) {
         throw std::runtime_error("Bark-cpp error: exitProgressOnce returned "

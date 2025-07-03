@@ -56,118 +56,59 @@ export interface BarkSendManyOutput {
 export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   // --- Management ---
   createMnemonic(): Promise<string>;
-  createWallet(datadir: string, opts: BarkCreateOpts): Promise<void>; // Returns void on success, throws on error
+  loadWallet(datadir: string, opts: BarkCreateOpts): Promise<void>;
+  closeWallet(): Promise<void>;
 
   // --- Wallet Info ---
-  getBalance(
-    datadir: string,
-    no_sync: boolean,
-    mnemonic: string
-  ): Promise<BarkBalance>;
-  getOnchainAddress(datadir: string, mnemonic: string): Promise<string>;
-  getOnchainUtxos(
-    datadir: string,
-    mnemonic: string,
-    no_sync: boolean
-  ): Promise<string>; // Returns JSON string
-  getVtxoPubkey(datadir: string, mnemonic: string): Promise<string>;
-  getVtxos(
-    datadir: string,
-    mnemonic: string,
-    no_sync: boolean
-  ): Promise<string>; // Returns JSON string
+  getBalance(no_sync: boolean): Promise<BarkBalance>;
+  getOnchainAddress(): Promise<string>;
+  getOnchainUtxos(no_sync: boolean): Promise<string>; // Returns JSON string
+  getVtxoPubkey(index?: number): Promise<string>;
+  getVtxos(no_sync: boolean): Promise<string>; // Returns JSON string
 
   // --- Onchain Operations ---
   sendOnchain(
-    datadir: string,
-    mnemonic: string,
     destination: string,
     amountSat: number,
     no_sync: boolean
   ): Promise<string>; // Returns txid
-  drainOnchain(
-    datadir: string,
-    mnemonic: string,
-    destination: string,
-    no_sync: boolean
-  ): Promise<string>; // Returns txid
+  drainOnchain(destination: string, no_sync: boolean): Promise<string>; // Returns txid
   sendManyOnchain(
-    datadir: string,
-    mnemonic: string,
     outputs: BarkSendManyOutput[],
     no_sync: boolean
   ): Promise<string>; // Returns txid
 
   // --- Ark Operations ---
-  refreshVtxos(
-    datadir: string,
-    mnemonic: string,
-    refreshOpts: BarkRefreshOpts,
-    no_sync: boolean
-  ): Promise<string>; // Returns JSON status
-  boardAmount(
-    datadir: string,
-    mnemonic: string,
-    amountSat: number,
-    no_sync: boolean
-  ): Promise<string>; // Returns JSON status
-  boardAll(
-    datadir: string,
-    mnemonic: string,
-    no_sync: boolean
-  ): Promise<string>; // Returns JSON status
+  refreshVtxos(refreshOpts: BarkRefreshOpts, no_sync: boolean): Promise<string>; // Returns JSON status
+  boardAmount(amountSat: number, no_sync: boolean): Promise<string>; // Returns JSON status
+  boardAll(no_sync: boolean): Promise<string>; // Returns JSON status
   send(
-    datadir: string,
-    mnemonic: string,
     destination: string,
     amountSat: number,
     comment: string | null,
     no_sync: boolean
   ): Promise<string>; // Returns JSON status
   sendRoundOnchain(
-    datadir: string,
-    mnemonic: string,
     destination: string,
     amountSat: number,
     no_sync: boolean
   ): Promise<string>; // Returns JSON status
 
   // --- Lightning Operations ---
-  bolt11Invoice(
-    datadir: string,
-    mnemonic: string,
-    amountSat: number
-  ): Promise<string>; // Returns invoice string
-  claimBolt11Payment(
-    datadir: string,
-    mnemonic: string,
-    bolt11: string
-  ): Promise<void>; // Throws on error
+  bolt11Invoice(amountMsat: number): Promise<string>; // Returns invoice string
+  claimBolt11Payment(bolt11: string): Promise<void>; // Throws on error
 
   // --- Offboarding / Exiting ---
   offboardSpecific(
-    datadir: string,
-    mnemonic: string,
     vtxoIds: string[],
     optionalAddress: string | null,
     no_sync: boolean
   ): Promise<string>; // Returns JSON result
   offboardAll(
-    datadir: string,
-    mnemonic: string,
     optionalAddress: string | null,
     no_sync: boolean
   ): Promise<string>; // Returns JSON result
-  exitStartSpecific(
-    datadir: string,
-    mnemonic: string,
-    vtxoIds: string[],
-    no_sync: boolean
-  ): Promise<string>; // Returns JSON status
-  exitStartAll(
-    datadir: string,
-    mnemonic: string,
-    no_sync: boolean
-  ): Promise<string>; // Returns JSON status
-  exitProgressOnce(datadir: string, mnemonic: string): Promise<string>; // Returns JSON status
+  exitStartSpecific(vtxoIds: string[]): Promise<string>; // Returns JSON status
+  exitStartAll(): Promise<string>; // Returns JSON status
+  exitProgressOnce(): Promise<string>; // Returns JSON status
 }
