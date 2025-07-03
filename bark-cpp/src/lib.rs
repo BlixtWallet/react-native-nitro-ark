@@ -18,6 +18,8 @@ use bark::Config;
 use bark::SqliteClient;
 use bark::UtxoInfo;
 use bark::Wallet;
+use once_cell::sync::Lazy;
+use tokio::sync::Mutex;
 mod ffi;
 mod ffi_2;
 mod ffi_utils;
@@ -27,7 +29,6 @@ mod utils;
 
 use bip39::Mnemonic;
 use logger::log::{debug, info, warn};
-use std::fs;
 use std::path::Path;
 use std::sync::Once;
 use utils::try_create_wallet;
@@ -41,6 +42,7 @@ use anyhow::Context;
 
 // Use a static Once to ensure the logger is initialized only once.
 static LOGGER_INIT: Once = Once::new();
+static GLOBAL_WALLET: Lazy<Mutex<Option<Wallet>>> = Lazy::new(|| Mutex::new(None));
 
 // function to explicitly initialize the logger.
 // This should be called once from your FFI entry point.
@@ -59,8 +61,13 @@ pub fn create_mnemonic() -> anyhow::Result<String> {
     Ok(mnemonic.to_string())
 }
 
-pub async fn create_wallet(datadir: &Path, opts: CreateOpts) -> anyhow::Result<()> {
-    debug!("Creating wallet in {}", datadir.display());
+pub async fn load_wallet(datadir: &Path, opts: CreateOpts) -> anyhow::Result<()> {
+    debug!("Loading wallet in {}", datadir.display());
+    let mut wallet_guard = GLOBAL_WALLET.lock().await;
+
+    if wallet_guard.is_some() {
+        bail!("Wallet is already loaded. Please close it first.");
+    }
 
     let net = match (opts.bitcoin, opts.signet, opts.regtest) {
         (true, false, false) => Network::Bitcoin,
@@ -83,18 +90,32 @@ pub async fn create_wallet(datadir: &Path, opts: CreateOpts) -> anyhow::Result<(
         .context("invalid configuration")?;
 
     // check if dir doesn't exists, then create it
-    if datadir.exists() {
-        if opts.force {
-            fs::remove_dir_all(datadir)?;
-        } else {
-            bail!("Directory {} already exists", datadir.display());
-        }
+    if !datadir.exists() {
+        info!("Wallet directory does not exist, creating it...");
+        try_create_wallet(
+            datadir,
+            net,
+            config,
+            opts.mnemonic.clone(),
+            opts.birthday_height,
+        )
+        .await?;
     }
 
-    info!("Attempting to open database...");
+    info!("Attempting to open wallet...");
+    let wallet = open_wallet(datadir, opts.mnemonic).await?;
+    *wallet_guard = Some(wallet);
 
-    try_create_wallet(&datadir, net, config, opts.mnemonic, opts.birthday_height).await?;
+    Ok(())
+}
 
+pub async fn close_wallet() -> anyhow::Result<()> {
+    let mut wallet_guard = GLOBAL_WALLET.lock().await;
+    if wallet_guard.is_none() {
+        bail!("No wallet is currently loaded.");
+    }
+    *wallet_guard = None;
+    info!("Wallet closed successfully.");
     Ok(())
 }
 
@@ -105,14 +126,9 @@ pub struct Balance {
 }
 
 /// Get offchain and onchain balances
-pub async fn get_balance(
-    datadir: &Path,
-    no_sync: bool,
-    mnemonic: Mnemonic,
-) -> anyhow::Result<Balance> {
-    let mut w = open_wallet(&datadir, mnemonic)
-        .await
-        .context("error opening wallet")?;
+pub async fn get_balance(no_sync: bool) -> anyhow::Result<Balance> {
+    let mut wallet_guard = GLOBAL_WALLET.lock().await;
+    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     if !no_sync {
         info!("Syncing wallet...");
@@ -141,10 +157,9 @@ pub async fn open_wallet(datadir: &Path, mnemonic: Mnemonic) -> anyhow::Result<W
     Wallet::open(&mnemonic, db).await
 }
 
-pub async fn get_ark_info(datadir: &Path, mnemonic: Mnemonic) -> anyhow::Result<ArkInfo> {
-    let w = open_wallet(&datadir, mnemonic)
-        .await
-        .context("error opening wallet in get_ark_info")?;
+pub async fn get_ark_info() -> anyhow::Result<ArkInfo> {
+    let wallet_guard = GLOBAL_WALLET.lock().await;
+    let w = wallet_guard.as_ref().context("Wallet not loaded")?;
 
     let info = w.ark_info();
 
@@ -156,10 +171,9 @@ pub async fn get_ark_info(datadir: &Path, mnemonic: Mnemonic) -> anyhow::Result<
 }
 
 /// Get an onchain address from the wallet
-pub async fn get_onchain_address(datadir: &Path, mnemonic: Mnemonic) -> anyhow::Result<Address> {
-    let mut w = open_wallet(&datadir, mnemonic)
-        .await
-        .context("error opening wallet for get_onchain_address")?;
+pub async fn get_onchain_address() -> anyhow::Result<Address> {
+    let mut wallet_guard = GLOBAL_WALLET.lock().await;
+    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     // Wallet::address() returns Result<Address, Error>
     let address = w
@@ -172,15 +186,12 @@ pub async fn get_onchain_address(datadir: &Path, mnemonic: Mnemonic) -> anyhow::
 
 /// Send funds using the onchain wallet
 pub async fn send_onchain(
-    datadir: &Path,
-    mnemonic: Mnemonic,
     destination_str: &str,
     amount: Amount,
     no_sync: bool,
 ) -> anyhow::Result<Txid> {
-    let mut w = open_wallet(&datadir, mnemonic)
-        .await
-        .context("error opening wallet for send_onchain")?;
+    let mut wallet_guard = GLOBAL_WALLET.lock().await;
+    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     let net = w.properties()?.network;
 
@@ -223,14 +234,11 @@ pub async fn send_onchain(
 
 /// Send all funds using the onchain wallet to a specific address
 pub async fn drain_onchain(
-    datadir: &Path,
-    mnemonic: Mnemonic,
     destination_str: &str, // Take string for validation
     no_sync: bool,
 ) -> anyhow::Result<Txid> {
-    let mut w = open_wallet(&datadir, mnemonic)
-        .await
-        .context("error opening wallet for drain_onchain")?;
+    let mut wallet_guard = GLOBAL_WALLET.lock().await;
+    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     let net = w.properties()?.network;
 
@@ -265,14 +273,11 @@ pub async fn drain_onchain(
 
 /// Send funds to multiple recipients using the onchain wallet
 pub async fn send_many_onchain(
-    datadir: &Path,
-    mnemonic: Mnemonic,
     outputs: Vec<(Address, Amount)>, // Pass validated addresses and amounts
     no_sync: bool,
 ) -> anyhow::Result<Txid> {
-    let mut w = open_wallet(&datadir, mnemonic)
-        .await
-        .context("error opening wallet for send_many_onchain")?;
+    let mut wallet_guard = GLOBAL_WALLET.lock().await;
+    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     // Network validation should happen *before* calling this function, during FFI conversion.
     // The Vec<(Address, Amount)> should already contain addresses valid for the wallet's network.
@@ -297,14 +302,9 @@ pub async fn send_many_onchain(
 }
 
 /// Get the list of UTXOs from the onchain wallet as a JSON string
-pub async fn get_onchain_utxos(
-    datadir: &Path,
-    mnemonic: Mnemonic,
-    no_sync: bool,
-) -> anyhow::Result<String> {
-    let mut w = open_wallet(&datadir, mnemonic)
-        .await
-        .context("error opening wallet for get_onchain_utxos")?;
+pub async fn get_onchain_utxos(no_sync: bool) -> anyhow::Result<String> {
+    let mut wallet_guard = GLOBAL_WALLET.lock().await;
+    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     if !no_sync {
         info!("Syncing onchain wallet before getting UTXOs...");
@@ -334,14 +334,9 @@ pub async fn get_onchain_utxos(
 }
 
 /// Get the VTXO public key (OOR Pubkey) as a hex string
-pub async fn get_vtxo_pubkey(
-    datadir: &Path,
-    mnemonic: Mnemonic,
-    index: Option<u32>,
-) -> anyhow::Result<String> {
-    let w = open_wallet(&datadir, mnemonic)
-        .await
-        .context("error opening wallet for get_vtxo_pubkey")?;
+pub async fn get_vtxo_pubkey(index: Option<u32>) -> anyhow::Result<String> {
+    let wallet_guard = GLOBAL_WALLET.lock().await;
+    let w = wallet_guard.as_ref().context("Wallet not loaded")?;
 
     if let Some(index) = index {
         Ok(w.peak_keypair(bark::KeychainKind::External, index)
@@ -357,14 +352,9 @@ pub async fn get_vtxo_pubkey(
 }
 
 /// Get a Bolt 11 invoice
-pub async fn bolt11_invoice(
-    datadir: &Path,
-    mnemonic: Mnemonic,
-    amount: u64,
-) -> anyhow::Result<String> {
-    let mut w = open_wallet(&datadir, mnemonic)
-        .await
-        .context("error opening wallet for bolt11_invoice")?;
+pub async fn bolt11_invoice(amount: u64) -> anyhow::Result<String> {
+    let mut wallet_guard = GLOBAL_WALLET.lock().await;
+    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     let invoice = w
         .bolt11_invoice(Amount::from_sat(amount))
@@ -374,14 +364,9 @@ pub async fn bolt11_invoice(
 }
 
 /// Claim a lightning payment
-pub async fn claim_bolt11_payment(
-    datadir: &Path,
-    mnemonic: Mnemonic,
-    bolt11: String,
-) -> anyhow::Result<()> {
-    let mut w = open_wallet(&datadir, mnemonic)
-        .await
-        .context("error opening wallet for claim_bolt11_payment")?;
+pub async fn claim_bolt11_payment(bolt11: String) -> anyhow::Result<()> {
+    let mut wallet_guard = GLOBAL_WALLET.lock().await;
+    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     let _ = w
         .claim_bolt11_payment(Bolt11Invoice::from_str(&bolt11)?)
@@ -392,14 +377,9 @@ pub async fn claim_bolt11_payment(
 }
 
 /// Get the list of VTXOs from the wallet as a JSON string
-pub async fn get_vtxos(
-    datadir: &Path,
-    mnemonic: Mnemonic,
-    no_sync: bool,
-) -> anyhow::Result<String> {
-    let mut w = open_wallet(&datadir, mnemonic)
-        .await
-        .context("error opening wallet for get_vtxos")?;
+pub async fn get_vtxos(no_sync: bool) -> anyhow::Result<String> {
+    let mut wallet_guard = GLOBAL_WALLET.lock().await;
+    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     if !no_sync {
         info!("Syncing wallet before getting VTXOs...");
@@ -422,13 +402,8 @@ pub async fn get_vtxos(
 }
 
 /// Refresh VTXOs based on specified criteria. Returns JSON status.
-pub async fn refresh_vtxos(
-    datadir: &Path,
-    mnemonic: Mnemonic,
-    mode: RefreshMode,
-    no_sync: bool,
-) -> anyhow::Result<String> {
-    let round_id_opt = refresh_vtxos_internal(datadir, mnemonic, mode, no_sync).await?;
+pub async fn refresh_vtxos(mode: RefreshMode, no_sync: bool) -> anyhow::Result<String> {
+    let round_id_opt = refresh_vtxos_internal(mode, no_sync).await?;
 
     // Convert Option<RoundId> to Option<String> for JSON
     let round_string_opt = round_id_opt.map(|id| id.to_string());
@@ -446,15 +421,9 @@ pub async fn refresh_vtxos(
 }
 
 /// Board a specific amount from the onchain wallet to Ark. Returns JSON status.
-pub async fn board_amount(
-    datadir: &Path,
-    mnemonic: Mnemonic,
-    amount: Amount,
-    no_sync: bool,
-) -> anyhow::Result<String> {
-    let mut w = open_wallet(datadir, mnemonic)
-        .await
-        .context("error opening wallet for board_amount")?;
+pub async fn board_amount(amount: Amount, no_sync: bool) -> anyhow::Result<String> {
+    let mut wallet_guard = GLOBAL_WALLET.lock().await;
+    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     if !no_sync {
         info!("Syncing onchain wallet before boarding amount...");
@@ -472,14 +441,9 @@ pub async fn board_amount(
     Ok(json_string)
 }
 
-pub async fn board_all(
-    datadir: &Path,
-    mnemonic: Mnemonic,
-    no_sync: bool,
-) -> anyhow::Result<String> {
-    let mut w = open_wallet(datadir, mnemonic)
-        .await
-        .context("error opening wallet for board_all")?;
+pub async fn board_all(no_sync: bool) -> anyhow::Result<String> {
+    let mut wallet_guard = GLOBAL_WALLET.lock().await;
+    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     if !no_sync {
         info!("Syncing onchain wallet before boarding all...");
@@ -499,16 +463,13 @@ pub async fn board_all(
 
 /// Send a payment based on destination type. Returns JSON status.
 pub async fn send_payment(
-    datadir: &Path,
-    mnemonic: Mnemonic,
     destination_str: &str,
     amount_sat: Option<u64>,
     comment: Option<String>,
     no_sync: bool,
 ) -> anyhow::Result<String> {
-    let mut w = open_wallet(datadir, mnemonic)
-        .await
-        .context("error opening wallet for send_payment")?;
+    let mut wallet_guard = GLOBAL_WALLET.lock().await;
+    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     let destination = parse_send_destination(destination_str)?;
 
@@ -643,15 +604,12 @@ pub async fn send_payment(
 
 /// Send an onchain payment via an Ark round. Returns JSON status.
 pub async fn send_round_onchain(
-    datadir: &Path,
-    mnemonic: Mnemonic,
     destination_str: &str,
     amount: Amount,
     no_sync: bool,
 ) -> anyhow::Result<String> {
-    let mut w = open_wallet(datadir, mnemonic)
-        .await
-        .context("error opening wallet for send_round_onchain")?;
+    let mut wallet_guard = GLOBAL_WALLET.lock().await;
+    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     let net = w.properties()?.network;
 
@@ -704,15 +662,12 @@ pub async fn send_round_onchain(
 
 /// Offboard specific VTXOs. Returns JSON result.
 pub async fn offboard_specific(
-    datadir: &Path,
-    mnemonic: Mnemonic,
     vtxo_ids: Vec<VtxoId>,
     destination_address_str: Option<String>, // Optional destination address string
     no_sync: bool,
 ) -> anyhow::Result<String> {
-    let mut w = open_wallet(datadir, mnemonic)
-        .await
-        .context("error opening wallet for offboard_specific")?;
+    let mut wallet_guard = GLOBAL_WALLET.lock().await;
+    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     let net = w.properties()?.network;
 
@@ -762,14 +717,11 @@ pub async fn offboard_specific(
 
 /// Offboard all VTXOs. Returns JSON result.
 pub async fn offboard_all(
-    datadir: &Path,
-    mnemonic: Mnemonic,
     destination_address_str: Option<String>, // Optional destination address string
     no_sync: bool,
 ) -> anyhow::Result<String> {
-    let mut w = open_wallet(datadir, mnemonic)
-        .await
-        .context("error opening wallet for offboard_all")?;
+    let mut wallet_guard = GLOBAL_WALLET.lock().await;
+    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     let net = w.properties()?.network;
 
@@ -810,14 +762,9 @@ pub async fn offboard_all(
 }
 
 /// Start the exit process for specific VTXOs. Returns simple success JSON.
-pub async fn start_exit_for_vtxos(
-    datadir: &Path,
-    mnemonic: Mnemonic,
-    vtxo_ids: Vec<VtxoId>,
-) -> anyhow::Result<String> {
-    let mut w = open_wallet(datadir, mnemonic)
-        .await
-        .context("error opening wallet for exit_start_specific")?;
+pub async fn start_exit_for_vtxos(vtxo_ids: Vec<VtxoId>) -> anyhow::Result<String> {
+    let mut wallet_guard = GLOBAL_WALLET.lock().await;
+    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     if vtxo_ids.is_empty() {
         bail!("At least one VTXO ID must be provided for starting specific exit");
@@ -862,13 +809,9 @@ pub async fn start_exit_for_vtxos(
 /// Start the exit process for the entire wallet. Returns simple success JSON.
 /// This function starts the exit process for all vtxos in the wallet.
 /// It returns a JSON object indicating success.
-pub async fn start_exit_for_entire_wallet(
-    datadir: &Path,
-    mnemonic: Mnemonic,
-) -> anyhow::Result<String> {
-    let mut w = open_wallet(datadir, mnemonic)
-        .await
-        .context("error opening wallet for exit_start_all")?;
+pub async fn start_exit_for_entire_wallet() -> anyhow::Result<String> {
+    let mut wallet_guard = GLOBAL_WALLET.lock().await;
+    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     // Syncing is crucial
     info!("Syncing wallet before starting exit for all VTXOs...");
@@ -893,10 +836,9 @@ pub async fn start_exit_for_entire_wallet(
 /// This function processes the exit queue for the wallet.
 /// It returns a JSON object with the exit status, including whether the process is
 /// done, the spendable height for exits, and any new exit transactions.
-pub async fn exit_progress_once(datadir: &Path, mnemonic: Mnemonic) -> anyhow::Result<String> {
-    let mut w = open_wallet(datadir, mnemonic)
-        .await
-        .context("error opening wallet for exit_progress_once")?;
+pub async fn exit_progress_once() -> anyhow::Result<String> {
+    let mut wallet_guard = GLOBAL_WALLET.lock().await;
+    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     // Sync before progressing - crucial for exit state
     info!("Syncing wallet before progressing exit...");

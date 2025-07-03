@@ -1,11 +1,9 @@
 use crate::ffi_utils::{
-    c_string_to_mnemonic, c_string_to_path, c_string_to_string, handle_string_result,
-    handle_txid_result, to_rust_create_opts,
+    c_string_to_string, handle_string_result, handle_txid_result, to_rust_create_opts,
 };
 
 use super::*;
 use bark::ark::bitcoin;
-use bip39::Mnemonic;
 use logger::log::{debug, error, warn};
 use once_cell::sync::Lazy;
 use std::ffi::{c_char, CStr, CString};
@@ -156,22 +154,10 @@ pub extern "C" fn bark_create_mnemonic() -> *mut c_char {
     }
 }
 
-/// Create a new wallet at the specified directory
+/// Load an existing wallet or create a new one at the specified directory
 #[no_mangle]
-pub extern "C" fn bark_create_wallet(
-    datadir: *const c_char,
-    opts: BarkCreateOpts,
-) -> *mut BarkError {
-    debug!("bark_create_wallet called datadir={:?}, opts: force={}, regtest={}, signet={}, bitcoin={}, birthday_height={}, asp={:?}, esplora={:?}",
-    datadir,
-    opts.force,
-    opts.regtest,
-    opts.signet,
-    opts.bitcoin,
-    opts.birthday_height,
-    if opts.config.asp.is_null() { "null" } else { unsafe { CStr::from_ptr(opts.config.asp).to_str().unwrap_or("invalid") } },
-    if opts.config.esplora.is_null() { "null" } else { unsafe { CStr::from_ptr(opts.config.esplora).to_str().unwrap_or("invalid") } }
-);
+pub extern "C" fn bark_load_wallet(datadir: *const c_char, opts: BarkCreateOpts) -> *mut BarkError {
+    debug!("bark_load_wallet called");
     if datadir.is_null() {
         error!("Data directory pointer is null");
         return Box::into_raw(Box::new(BarkError::new("datadir is null")));
@@ -194,17 +180,36 @@ pub extern "C" fn bark_create_wallet(
     };
 
     // Run the async function
-    debug!("Running create_wallet async function");
+    debug!("Running load_wallet async function");
     let result = TOKIO_RUNTIME
-        .block_on(async { create_wallet(Path::new(datadir_str.as_str()), create_opts).await });
+        .block_on(async { load_wallet(Path::new(datadir_str.as_str()), create_opts).await });
 
     match result {
         Ok(_) => {
-            debug!("Wallet created successfully");
+            debug!("Wallet loaded successfully");
             ptr::null_mut()
         }
         Err(e) => {
-            error!("Failed to create wallet: {}", e);
+            error!("Failed to load wallet: {}", e);
+            Box::into_raw(Box::new(BarkError::new(&e.to_string())))
+        }
+    }
+}
+
+/// Close the currently loaded wallet
+#[no_mangle]
+pub extern "C" fn bark_close_wallet() -> *mut BarkError {
+    debug!("bark_close_wallet called");
+
+    let result = TOKIO_RUNTIME.block_on(async { close_wallet().await });
+
+    match result {
+        Ok(_) => {
+            debug!("Wallet closed successfully");
+            ptr::null_mut()
+        }
+        Err(e) => {
+            error!("Failed to close wallet: {}", e);
             Box::into_raw(Box::new(BarkError::new(&e.to_string())))
         }
     }
@@ -212,29 +217,8 @@ pub extern "C" fn bark_create_wallet(
 
 /// Get offchain and onchain balances
 #[no_mangle]
-pub extern "C" fn bark_get_balance(
-    datadir: *const c_char,
-    no_sync: bool,
-    mnemonic: *const c_char,
-    balance_out: *mut BarkBalance,
-) -> *mut BarkError {
+pub extern "C" fn bark_get_balance(no_sync: bool, balance_out: *mut BarkBalance) -> *mut BarkError {
     debug!("bark_get_balance called, no_sync: {}", no_sync);
-
-    let datadir_str = match c_string_to_string(datadir) {
-        Ok(s) => s,
-        Err(e) => {
-            error!("Failed to convert datadir string: {}", e);
-            return Box::into_raw(Box::new(BarkError::new(&e.to_string())));
-        }
-    };
-
-    let mnemonic_str = match c_string_to_string(mnemonic) {
-        Ok(s) => s,
-        Err(e) => {
-            error!("Failed to convert mnemonic string: {}", e);
-            return Box::into_raw(Box::new(BarkError::new(&e.to_string())));
-        }
-    };
 
     if balance_out.is_null() {
         error!("Balance output pointer is null");
@@ -244,9 +228,7 @@ pub extern "C" fn bark_get_balance(
     // Run the async function
     debug!("Running get_balance async function");
 
-    let mnemonic = Mnemonic::from_str(mnemonic_str.as_str()).unwrap();
-    let result = TOKIO_RUNTIME
-        .block_on(async { get_balance(Path::new(datadir_str.as_str()), no_sync, mnemonic).await });
+    let result = TOKIO_RUNTIME.block_on(async { get_balance(no_sync).await });
 
     match result {
         Ok(balance) => {
@@ -271,17 +253,15 @@ pub extern "C" fn bark_get_balance(
 
 /// Get an onchain address.
 #[no_mangle]
-pub extern "C" fn bark_get_onchain_address(
-    datadir: *const c_char,
-    mnemonic: *const c_char,
-    address_out: *mut *mut c_char,
-) -> *mut BarkError {
+pub extern "C" fn bark_get_onchain_address(address_out: *mut *mut c_char) -> *mut BarkError {
     debug!("bark_get_onchain_address called");
 
     // --- Input Validation ---
-    if datadir.is_null() || mnemonic.is_null() || address_out.is_null() {
-        error!("Null pointer passed to bark_get_onchain_address (datadir={}, mnemonic={}, address_out={})",
-             datadir.is_null(), mnemonic.is_null(), address_out.is_null());
+    if address_out.is_null() {
+        error!(
+            "Null pointer passed to bark_get_onchain_address (address_out={})",
+            address_out.is_null()
+        );
         return Box::into_raw(Box::new(BarkError::new("Null pointer argument provided")));
     }
     // Initialize output pointer to null
@@ -289,38 +269,9 @@ pub extern "C" fn bark_get_onchain_address(
         *address_out = ptr::null_mut();
     }
 
-    // --- Conversions ---
-    let datadir_str = match c_string_to_string(datadir) {
-        Ok(s) => s,
-        Err(e) => {
-            return Box::into_raw(Box::new(BarkError::new(&format!("Invalid datadir: {}", e))))
-        }
-    };
-    let datadir_path = Path::new(&datadir_str);
-
-    let mnemonic_str = match c_string_to_string(mnemonic) {
-        Ok(s) => s,
-        Err(e) => {
-            return Box::into_raw(Box::new(BarkError::new(&format!(
-                "Invalid mnemonic: {}",
-                e
-            ))))
-        }
-    };
-    let rust_mnemonic = match Mnemonic::from_str(&mnemonic_str) {
-        Ok(m) => m,
-        Err(e) => {
-            return Box::into_raw(Box::new(BarkError::new(&format!(
-                "Failed to parse mnemonic: {}",
-                e
-            ))))
-        }
-    };
-
     // --- Runtime and Async Execution ---
     debug!("Running get_onchain_address async function");
-    let result =
-        TOKIO_RUNTIME.block_on(async { get_onchain_address(datadir_path, rust_mnemonic).await });
+    let result = TOKIO_RUNTIME.block_on(async { get_onchain_address().await });
 
     // --- Result Handling ---
     match result {
@@ -357,8 +308,6 @@ pub extern "C" fn bark_get_onchain_address(
 /// Send funds using the onchain wallet.
 #[no_mangle]
 pub extern "C" fn bark_send_onchain(
-    datadir: *const c_char,
-    mnemonic: *const c_char,
     destination: *const c_char,
     amount_sat: u64,
     no_sync: bool,
@@ -370,9 +319,12 @@ pub extern "C" fn bark_send_onchain(
     );
 
     // --- Input Validation ---
-    if datadir.is_null() || mnemonic.is_null() || destination.is_null() || txid_out.is_null() {
-        error!("Null pointer passed to bark_send_onchain (datadir={}, mnemonic={}, destination={}, txid_out={})",
-             datadir.is_null(), mnemonic.is_null(), destination.is_null(), txid_out.is_null());
+    if destination.is_null() || txid_out.is_null() {
+        error!(
+            "Null pointer passed to bark_send_onchain (destination={}, txid_out={})",
+            destination.is_null(),
+            txid_out.is_null()
+        );
         return Box::into_raw(Box::new(BarkError::new("Null pointer argument provided")));
     }
     // Initialize output pointer to null
@@ -381,33 +333,6 @@ pub extern "C" fn bark_send_onchain(
     }
 
     // --- Conversions ---
-    let datadir_str = match c_string_to_string(datadir) {
-        Ok(s) => s,
-        Err(e) => {
-            return Box::into_raw(Box::new(BarkError::new(&format!("Invalid datadir: {}", e))))
-        }
-    };
-    let datadir_path = Path::new(&datadir_str);
-
-    let mnemonic_str = match c_string_to_string(mnemonic) {
-        Ok(s) => s,
-        Err(e) => {
-            return Box::into_raw(Box::new(BarkError::new(&format!(
-                "Invalid mnemonic: {}",
-                e
-            ))))
-        }
-    };
-    let rust_mnemonic = match Mnemonic::from_str(&mnemonic_str) {
-        Ok(m) => m,
-        Err(e) => {
-            return Box::into_raw(Box::new(BarkError::new(&format!(
-                "Failed to parse mnemonic: {}",
-                e
-            ))))
-        }
-    };
-
     let destination_str = match c_string_to_string(destination) {
         Ok(s) => s,
         Err(e) => {
@@ -425,16 +350,8 @@ pub extern "C" fn bark_send_onchain(
     // --- Runtime and Async Execution ---
     debug!("Running send_onchain async function");
     // Pass destination_str, validation happens inside send_onchain
-    let result = TOKIO_RUNTIME.block_on(async {
-        send_onchain(
-            datadir_path,
-            rust_mnemonic,
-            &destination_str,
-            amount,
-            no_sync,
-        )
-        .await
-    });
+    let result =
+        TOKIO_RUNTIME.block_on(async { send_onchain(&destination_str, amount, no_sync).await });
 
     // --- Result Handling ---
     match result {
@@ -472,8 +389,6 @@ pub extern "C" fn bark_send_onchain(
 /// Send all funds from the onchain wallet to a destination address.
 #[no_mangle]
 pub extern "C" fn bark_drain_onchain(
-    datadir: *const c_char,
-    mnemonic: *const c_char,
     destination: *const c_char,
     no_sync: bool,
     txid_out: *mut *mut c_char,
@@ -481,7 +396,7 @@ pub extern "C" fn bark_drain_onchain(
     debug!("bark_drain_onchain called: no_sync={}", no_sync);
 
     // --- Input Validation ---
-    if datadir.is_null() || mnemonic.is_null() || destination.is_null() || txid_out.is_null() {
+    if destination.is_null() || txid_out.is_null() {
         error!("Null pointer passed to bark_drain_onchain");
         return Box::into_raw(Box::new(BarkError::new("Null pointer argument provided")));
     }
@@ -490,33 +405,6 @@ pub extern "C" fn bark_drain_onchain(
     } // Initialize output
 
     // --- Conversions ---
-    let datadir_str = match c_string_to_string(datadir) {
-        Ok(s) => s,
-        Err(e) => {
-            return Box::into_raw(Box::new(BarkError::new(&format!("Invalid datadir: {}", e))))
-        }
-    };
-    let datadir_path = Path::new(&datadir_str);
-
-    let mnemonic_str = match c_string_to_string(mnemonic) {
-        Ok(s) => s,
-        Err(e) => {
-            return Box::into_raw(Box::new(BarkError::new(&format!(
-                "Invalid mnemonic: {}",
-                e
-            ))))
-        }
-    };
-    let rust_mnemonic = match Mnemonic::from_str(&mnemonic_str) {
-        Ok(m) => m,
-        Err(e) => {
-            return Box::into_raw(Box::new(BarkError::new(&format!(
-                "Failed to parse mnemonic: {}",
-                e
-            ))))
-        }
-    };
-
     let destination_str = match c_string_to_string(destination) {
         Ok(s) => s,
         Err(e) => {
@@ -529,9 +417,7 @@ pub extern "C" fn bark_drain_onchain(
     debug!("Drain destination address string: {}", destination_str);
 
     // --- Runtime and Async Execution ---
-    let result = TOKIO_RUNTIME.block_on(async {
-        drain_onchain(datadir_path, rust_mnemonic, &destination_str, no_sync).await
-    });
+    let result = TOKIO_RUNTIME.block_on(async { drain_onchain(&destination_str, no_sync).await });
 
     // --- Result Handling ---
     // Use the new helper function
@@ -541,8 +427,6 @@ pub extern "C" fn bark_drain_onchain(
 /// Send funds to multiple recipients using the onchain wallet.
 #[no_mangle]
 pub extern "C" fn bark_send_many_onchain(
-    datadir: *const c_char,
-    mnemonic: *const c_char,
     destinations: *const *const c_char,
     amounts_sat: *const u64,
     num_outputs: usize,
@@ -555,13 +439,7 @@ pub extern "C" fn bark_send_many_onchain(
     );
 
     // --- Input Validation ---
-    if datadir.is_null()
-        || mnemonic.is_null()
-        || destinations.is_null()
-        || amounts_sat.is_null()
-        || txid_out.is_null()
-        || num_outputs == 0
-    {
+    if destinations.is_null() || amounts_sat.is_null() || txid_out.is_null() || num_outputs == 0 {
         error!("Null pointer or zero outputs passed to bark_send_many_onchain");
         return Box::into_raw(Box::new(BarkError::new(
             "Null pointer or zero outputs provided",
@@ -574,16 +452,10 @@ pub extern "C" fn bark_send_many_onchain(
     // --- Conversions & Core Logic ---
     // This part needs to be inside the async block or use block_on carefully
     let result = TOKIO_RUNTIME.block_on(async {
-        // Perform conversions that need the wallet (like network checking) inside async
-        let datadir_str = c_string_to_string(datadir)?;
-        let mnemonic_str = c_string_to_string(mnemonic)?;
-        let rust_mnemonic = Mnemonic::from_str(&mnemonic_str)?;
-
         // Open the wallet just to get the network for validation
         let net = {
-            let w = open_wallet(Path::new(&datadir_str), rust_mnemonic.clone())
-                .await
-                .context("Failed to open wallet to determine network for send_many")?;
+            let mut wallet_guard = GLOBAL_WALLET.lock().await;
+            let w = wallet_guard.as_mut().context("Wallet not loaded")?;
             w.properties()?.network
             // Wallet `w` is dropped here
         };
@@ -592,7 +464,7 @@ pub extern "C" fn bark_send_many_onchain(
         let outputs_vec = convert_outputs(destinations, amounts_sat, num_outputs, net)?;
 
         // Call the actual send_many logic (will re-open wallet internally)
-        send_many_onchain(Path::new(&datadir_str), rust_mnemonic, outputs_vec, no_sync).await
+        send_many_onchain(outputs_vec, no_sync).await
     });
 
     // --- Result Handling ---
@@ -668,15 +540,13 @@ fn convert_outputs(
 /// Get the list of onchain UTXOs as a JSON string.
 #[no_mangle]
 pub extern "C" fn bark_get_onchain_utxos(
-    datadir: *const c_char,
-    mnemonic: *const c_char,
     no_sync: bool,
     utxos_json_out: *mut *mut c_char,
 ) -> *mut BarkError {
     debug!("bark_get_onchain_utxos called: no_sync={}", no_sync);
 
     // --- Input Validation ---
-    if datadir.is_null() || mnemonic.is_null() || utxos_json_out.is_null() {
+    if utxos_json_out.is_null() {
         error!("Null pointer passed to bark_get_onchain_utxos");
         return Box::into_raw(Box::new(BarkError::new("Null pointer argument provided")));
     }
@@ -684,19 +554,8 @@ pub extern "C" fn bark_get_onchain_utxos(
         *utxos_json_out = ptr::null_mut();
     } // Initialize output
 
-    // --- Conversions ---
-    let datadir_path = match c_string_to_path(datadir) {
-        Ok(p) => p,
-        Err(e) => return Box::into_raw(Box::new(BarkError::new(&e.to_string()))),
-    };
-    let rust_mnemonic = match c_string_to_mnemonic(mnemonic) {
-        Ok(m) => m,
-        Err(e) => return Box::into_raw(Box::new(BarkError::new(&e.to_string()))),
-    };
-
     // --- Runtime and Async Execution ---
-    let result = TOKIO_RUNTIME
-        .block_on(async { get_onchain_utxos(&datadir_path, rust_mnemonic, no_sync).await });
+    let result = TOKIO_RUNTIME.block_on(async { get_onchain_utxos(no_sync).await });
 
     // --- Result Handling ---
     handle_string_result(result, utxos_json_out, "get_onchain_utxos")

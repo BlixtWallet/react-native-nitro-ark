@@ -1,6 +1,6 @@
 use std::{path::Path, str::FromStr};
 
-use crate::open_wallet;
+use crate::GLOBAL_WALLET;
 use anyhow::{self, bail, Context};
 use bark::{
     ark::{
@@ -13,7 +13,7 @@ use bark::{
     vtxo_selection::VtxoFilter,
     Config, SqliteClient, Wallet,
 };
-use bip39::Mnemonic;
+
 use bitcoin_ext::BlockHeight;
 use logger::log::{debug, info, warn};
 use tokio::fs;
@@ -156,14 +156,11 @@ pub(crate) async fn try_create_wallet(
 
 // Internal function encapsulating refresh logic
 pub async fn refresh_vtxos_internal(
-    datadir: &Path,
-    mnemonic: Mnemonic,
     mode: RefreshMode,
     no_sync: bool,
 ) -> anyhow::Result<Option<RoundId>> {
-    let mut w = open_wallet(datadir, mnemonic)
-        .await
-        .context("error opening wallet for refresh")?;
+    let mut wallet_guard = GLOBAL_WALLET.lock().await;
+    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     if !no_sync {
         info!("Syncing wallet before refreshing VTXOs...");

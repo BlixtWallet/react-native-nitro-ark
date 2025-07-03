@@ -26,10 +26,10 @@ namespace margelo::nitro::nitroark { struct BarkRefreshOpts; }
 #include <string>
 #include "BarkCreateOpts.hpp"
 #include "BarkBalance.hpp"
+#include <optional>
 #include <vector>
 #include "BarkSendManyOutput.hpp"
 #include "BarkRefreshOpts.hpp"
-#include <optional>
 
 namespace margelo::nitro::nitroark {
 
@@ -63,27 +63,28 @@ namespace margelo::nitro::nitroark {
     public:
       // Methods
       virtual std::shared_ptr<Promise<std::string>> createMnemonic() = 0;
-      virtual std::shared_ptr<Promise<void>> createWallet(const std::string& datadir, const BarkCreateOpts& opts) = 0;
-      virtual std::shared_ptr<Promise<BarkBalance>> getBalance(const std::string& datadir, bool no_sync, const std::string& mnemonic) = 0;
-      virtual std::shared_ptr<Promise<std::string>> getOnchainAddress(const std::string& datadir, const std::string& mnemonic) = 0;
-      virtual std::shared_ptr<Promise<std::string>> getOnchainUtxos(const std::string& datadir, const std::string& mnemonic, bool no_sync) = 0;
-      virtual std::shared_ptr<Promise<std::string>> getVtxoPubkey(const std::string& datadir, const std::string& mnemonic) = 0;
-      virtual std::shared_ptr<Promise<std::string>> getVtxos(const std::string& datadir, const std::string& mnemonic, bool no_sync) = 0;
-      virtual std::shared_ptr<Promise<std::string>> sendOnchain(const std::string& datadir, const std::string& mnemonic, const std::string& destination, double amountSat, bool no_sync) = 0;
-      virtual std::shared_ptr<Promise<std::string>> drainOnchain(const std::string& datadir, const std::string& mnemonic, const std::string& destination, bool no_sync) = 0;
-      virtual std::shared_ptr<Promise<std::string>> sendManyOnchain(const std::string& datadir, const std::string& mnemonic, const std::vector<BarkSendManyOutput>& outputs, bool no_sync) = 0;
-      virtual std::shared_ptr<Promise<std::string>> refreshVtxos(const std::string& datadir, const std::string& mnemonic, const BarkRefreshOpts& refreshOpts, bool no_sync) = 0;
-      virtual std::shared_ptr<Promise<std::string>> boardAmount(const std::string& datadir, const std::string& mnemonic, double amountSat, bool no_sync) = 0;
-      virtual std::shared_ptr<Promise<std::string>> boardAll(const std::string& datadir, const std::string& mnemonic, bool no_sync) = 0;
-      virtual std::shared_ptr<Promise<std::string>> send(const std::string& datadir, const std::string& mnemonic, const std::string& destination, double amountSat, const std::optional<std::string>& comment, bool no_sync) = 0;
-      virtual std::shared_ptr<Promise<std::string>> sendRoundOnchain(const std::string& datadir, const std::string& mnemonic, const std::string& destination, double amountSat, bool no_sync) = 0;
-      virtual std::shared_ptr<Promise<std::string>> bolt11Invoice(const std::string& datadir, const std::string& mnemonic, double amountSat) = 0;
-      virtual std::shared_ptr<Promise<void>> claimBolt11Payment(const std::string& datadir, const std::string& mnemonic, const std::string& bolt11) = 0;
-      virtual std::shared_ptr<Promise<std::string>> offboardSpecific(const std::string& datadir, const std::string& mnemonic, const std::vector<std::string>& vtxoIds, const std::optional<std::string>& optionalAddress, bool no_sync) = 0;
-      virtual std::shared_ptr<Promise<std::string>> offboardAll(const std::string& datadir, const std::string& mnemonic, const std::optional<std::string>& optionalAddress, bool no_sync) = 0;
-      virtual std::shared_ptr<Promise<std::string>> exitStartSpecific(const std::string& datadir, const std::string& mnemonic, const std::vector<std::string>& vtxoIds, bool no_sync) = 0;
-      virtual std::shared_ptr<Promise<std::string>> exitStartAll(const std::string& datadir, const std::string& mnemonic, bool no_sync) = 0;
-      virtual std::shared_ptr<Promise<std::string>> exitProgressOnce(const std::string& datadir, const std::string& mnemonic) = 0;
+      virtual std::shared_ptr<Promise<void>> loadWallet(const std::string& datadir, const BarkCreateOpts& opts) = 0;
+      virtual std::shared_ptr<Promise<void>> closeWallet() = 0;
+      virtual std::shared_ptr<Promise<BarkBalance>> getBalance(bool no_sync) = 0;
+      virtual std::shared_ptr<Promise<std::string>> getOnchainAddress() = 0;
+      virtual std::shared_ptr<Promise<std::string>> getOnchainUtxos(bool no_sync) = 0;
+      virtual std::shared_ptr<Promise<std::string>> getVtxoPubkey(std::optional<double> index) = 0;
+      virtual std::shared_ptr<Promise<std::string>> getVtxos(bool no_sync) = 0;
+      virtual std::shared_ptr<Promise<std::string>> sendOnchain(const std::string& destination, double amountSat, bool no_sync) = 0;
+      virtual std::shared_ptr<Promise<std::string>> drainOnchain(const std::string& destination, bool no_sync) = 0;
+      virtual std::shared_ptr<Promise<std::string>> sendManyOnchain(const std::vector<BarkSendManyOutput>& outputs, bool no_sync) = 0;
+      virtual std::shared_ptr<Promise<std::string>> refreshVtxos(const BarkRefreshOpts& refreshOpts, bool no_sync) = 0;
+      virtual std::shared_ptr<Promise<std::string>> boardAmount(double amountSat, bool no_sync) = 0;
+      virtual std::shared_ptr<Promise<std::string>> boardAll(bool no_sync) = 0;
+      virtual std::shared_ptr<Promise<std::string>> send(const std::string& destination, double amountSat, const std::optional<std::string>& comment, bool no_sync) = 0;
+      virtual std::shared_ptr<Promise<std::string>> sendRoundOnchain(const std::string& destination, double amountSat, bool no_sync) = 0;
+      virtual std::shared_ptr<Promise<std::string>> bolt11Invoice(double amountMsat) = 0;
+      virtual std::shared_ptr<Promise<void>> claimBolt11Payment(const std::string& bolt11) = 0;
+      virtual std::shared_ptr<Promise<std::string>> offboardSpecific(const std::vector<std::string>& vtxoIds, const std::optional<std::string>& optionalAddress, bool no_sync) = 0;
+      virtual std::shared_ptr<Promise<std::string>> offboardAll(const std::optional<std::string>& optionalAddress, bool no_sync) = 0;
+      virtual std::shared_ptr<Promise<std::string>> exitStartSpecific(const std::vector<std::string>& vtxoIds) = 0;
+      virtual std::shared_ptr<Promise<std::string>> exitStartAll() = 0;
+      virtual std::shared_ptr<Promise<std::string>> exitProgressOnce() = 0;
 
     protected:
       // Hybrid Setup

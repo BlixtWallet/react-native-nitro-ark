@@ -1,6 +1,5 @@
 use std::{
     ffi::{c_char, CStr, CString},
-    path::PathBuf,
     ptr, slice,
     str::FromStr,
 };
@@ -245,34 +244,6 @@ pub(crate) fn handle_string_result(
             ))))
         }
     }
-}
-
-// Helper to convert C string to PathBuf
-pub fn c_string_to_path(s: *const c_char) -> anyhow::Result<PathBuf> {
-    if s.is_null() {
-        bail!("C path string pointer is null");
-    }
-    let path_str = unsafe { CStr::from_ptr(s) }
-        .to_str()
-        .context("Failed to convert C path string to UTF-8")?;
-    if path_str.is_empty() {
-        bail!("Path string is empty");
-    }
-    Ok(PathBuf::from(path_str))
-}
-
-// Helper to convert C string to Mnemonic
-pub(crate) fn c_string_to_mnemonic(s: *const c_char) -> anyhow::Result<Mnemonic> {
-    if s.is_null() {
-        bail!("C mnemonic string pointer is null");
-    }
-    let mnemonic_str = unsafe { CStr::from_ptr(s) }
-        .to_str()
-        .context("Failed to convert C mnemonic string to UTF-8")?;
-    if mnemonic_str.is_empty() {
-        bail!("Mnemonic string is empty");
-    }
-    Mnemonic::from_str(mnemonic_str).context("Invalid mnemonic format")
 }
 
 // Extract string from C string
