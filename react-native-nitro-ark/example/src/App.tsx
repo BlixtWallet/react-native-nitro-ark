@@ -165,7 +165,6 @@ export default function ArkApp() {
     }
     const opts: NitroArk.BarkCreateOpts = {
       mnemonic: mnemonic,
-      force: true,
       regtest: true,
       signet: false,
       bitcoin: false,
