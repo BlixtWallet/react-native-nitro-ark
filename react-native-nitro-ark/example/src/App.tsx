@@ -10,7 +10,12 @@ import {
   TextInput,
   ActivityIndicator,
 } from 'react-native';
-import { DocumentDirectoryPath } from '@dr.pogodin/react-native-fs';
+import {
+  DocumentDirectoryPath,
+  exists,
+  mkdir,
+  unlink,
+} from '@dr.pogodin/react-native-fs';
 import * as NitroArk from 'react-native-nitro-ark';
 import type {
   BarkBalance,
@@ -51,25 +56,25 @@ export default function ArkApp() {
   const [invoiceToClaim, setInvoiceToClaim] = useState('');
 
   // Ensure data directory exists on mount
-  // useEffect(() => {
-  //   const setupDirectory = async () => {
-  //     try {
-  //       const dirExists = await exists(ARK_DATA_PATH);
-  //       if (!dirExists) {
-  //         await mkdir(ARK_DATA_PATH, {
-  //           NSURLIsExcludedFromBackupKey: true, // iOS specific
-  //         });
-  //         console.log('Data directory created:', ARK_DATA_PATH);
-  //       } else {
-  //         console.log('Data directory exists:', ARK_DATA_PATH);
-  //       }
-  //     } catch (err: any) {
-  //       console.error('Error setting up data directory:', err);
-  //       setError(`Failed to setup data directory: ${err.message}`);
-  //     }
-  //   };
-  //   setupDirectory();
-  // }, []);
+  useEffect(() => {
+    const setupDirectory = async () => {
+      try {
+        const dirExists = await exists(ARK_DATA_PATH);
+        if (!dirExists) {
+          await mkdir(ARK_DATA_PATH, {
+            NSURLIsExcludedFromBackupKey: true, // iOS specific
+          });
+          console.log('Data directory created:', ARK_DATA_PATH);
+        } else {
+          console.log('Data directory exists:', ARK_DATA_PATH);
+        }
+      } catch (err: any) {
+        console.error('Error setting up data directory:', err);
+        setError(`Failed to setup data directory: ${err.message}`);
+      }
+    };
+    setupDirectory();
+  }, []);
 
   useEffect(() => {
     const loadSavedMnemonic = async () => {
@@ -158,39 +163,46 @@ export default function ArkApp() {
     }
   };
 
-  const handleCreateWallet = () => {
+  const handleCreateWallet = async () => {
     if (!mnemonic) {
       setError('Mnemonic is required to create a wallet.');
       return;
     }
+
+    try {
+      await unlink(ARK_DATA_PATH); // Clear existing data directory if it exists
+    } catch (err: any) {
+      console.error('Error clearing existing data directory:', err);
+    }
+
+    // const opts: NitroArk.BarkCreateOpts = {
+    //   mnemonic: mnemonic,
+    //   regtest: true,
+    //   signet: false,
+    //   bitcoin: false,
+    //   config: {
+    //     bitcoind: 'http://192.168.4.252:18443',
+    //     asp: 'http://192.168.4.252:3535',
+    //     bitcoind_user: 'polaruser',
+    //     bitcoind_pass: 'polarpass',
+    //     vtxo_refresh_expiry_threshold: 288,
+    //     fallback_fee_rate: 100000,
+    //   },
+    // };
+
     const opts: NitroArk.BarkCreateOpts = {
       mnemonic: mnemonic,
-      regtest: true,
-      signet: false,
+      regtest: false,
+      signet: true,
       bitcoin: false,
       config: {
-        bitcoind: 'http://192.168.4.252:18443',
-        asp: 'http://192.168.4.252:3535',
-        bitcoind_user: 'polaruser',
-        bitcoind_pass: 'polarpass',
+        esplora: 'esplora.signet.2nd.dev',
+        asp: 'ark.signet.2nd.dev',
         vtxo_refresh_expiry_threshold: 288,
         fallback_fee_rate: 100000,
       },
     };
 
-    // const opts: NitroArk.BarkCreateOpts = {
-    //   mnemonic: mnemonic,
-    //   force: true,
-    //   regtest: false,
-    //   signet: true,
-    //   bitcoin: false,
-    //   config: {
-    //     esplora: 'esplora.signet.2nd.dev',
-    //     asp: 'ark.signet.2nd.dev',
-    //     vtxo_refresh_expiry_threshold: 288,
-    //     fallback_fee_rate: 100000,
-    //   },
-    // };
     runOperation(
       'loadWallet',
       () => NitroArk.loadWallet(ARK_DATA_PATH, opts),

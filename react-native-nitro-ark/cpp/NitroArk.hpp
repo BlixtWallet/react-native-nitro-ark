@@ -406,15 +406,18 @@ namespace margelo::nitro::nitroark
                                          {
       char *status_c = nullptr;
       const char *comment_c = comment.has_value() ? comment->c_str() : nullptr;
+      
+      uint64_t amount_val = 0;
+      const uint64_t* amount_ptr = nullptr;
 
-      std::optional<uint64_t> amount_val;
       if (amountSat.has_value()) {
         amount_val = static_cast<uint64_t>(amountSat.value());
+        amount_ptr = &amount_val;
       }
 
       bark::bark_BarkError *error = bark::bark_send(
           destination.c_str(),
-          amount_val.has_value() ? &amount_val.value() : nullptr,
+          amount_ptr,
           comment_c,
           no_sync,
           &status_c);
