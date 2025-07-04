@@ -178,23 +178,14 @@ pub extern "C" fn bark_board_all(
 #[no_mangle]
 pub extern "C" fn bark_send(
     destination: *const c_char,
-    amount_sat: u64,        // Use 0 or ULLONG_MAX to indicate 'not provided by user'
-    comment: *const c_char, // Nullable
+    amount_sat: u64,
+    comment: *const c_char,
     no_sync: bool,
     status_json_out: *mut *mut c_char,
 ) -> *mut BarkError {
-    // Use a sentinel value like u64::MAX to clearly indicate user did not provide amount
-    const AMOUNT_NOT_PROVIDED: u64 = u64::MAX;
-    let amount_provided = amount_sat != AMOUNT_NOT_PROVIDED;
     debug!(
-        "bark_send called: amount_sat={}, amount_provided={}, no_sync={}",
-        if amount_provided {
-            amount_sat.to_string()
-        } else {
-            "NotProvided".to_string()
-        },
-        amount_provided,
-        no_sync
+        "bark_send called: amount_sat={}, no_sync={}",
+        amount_sat, no_sync
     );
 
     // --- Input Validation ---
@@ -216,16 +207,18 @@ pub extern "C" fn bark_send(
             ))))
         }
     };
-    let rust_amount_opt: Option<u64> = if amount_provided {
-        Some(amount_sat)
-    } else {
-        None
-    };
+
     let rust_comment_opt: Option<String> = c_string_to_option(comment);
 
     // --- Runtime and Async Execution ---
     let result = TOKIO_RUNTIME.block_on(async {
-        send_payment(&destination_str, rust_amount_opt, rust_comment_opt, no_sync).await
+        send_payment(
+            &destination_str,
+            Some(amount_sat),
+            rust_comment_opt,
+            no_sync,
+        )
+        .await
     });
 
     // --- Result Handling ---

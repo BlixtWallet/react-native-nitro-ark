@@ -474,7 +474,7 @@ pub async fn send_payment(
     let destination = parse_send_destination(destination_str)?;
 
     // Convert optional amount_sat to Option<Amount>
-    let user_amount_opt: Option<Amount> = amount_sat.map(Amount::from_sat);
+    let user_amount_opt = amount_sat.map(Amount::from_sat);
 
     // --- Logic per destination type ---
     let result_json = match destination {
