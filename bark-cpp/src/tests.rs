@@ -793,11 +793,10 @@ fn test_send_no_wallet_loaded() {
     setup();
     let dest_c = c_string_for_test("bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
     let mut status_json_out: *mut c_char = ptr::null_mut();
-    const AMOUNT_NOT_PROVIDED: u64 = u64::MAX;
 
     let err_ptr = bark_send(
         dest_c.as_ptr(),
-        AMOUNT_NOT_PROVIDED,
+        ptr::null(),
         ptr::null(),
         true,
         &mut status_json_out,
