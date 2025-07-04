@@ -399,17 +399,25 @@ namespace margelo::nitro::nitroark
     }
 
     std::shared_ptr<Promise<std::string>>
-    send(const std::string &destination, double amountSat,
+    send(const std::string &destination, std::optional<double> amountSat,
          const std::optional<std::string> &comment, bool no_sync) override
     {
-      return Promise<std::string>::async([destination,
-                                          amountSat, comment, no_sync]()
+      return Promise<std::string>::async([destination, amountSat, comment, no_sync]()
                                          {
       char *status_c = nullptr;
       const char *comment_c = comment.has_value() ? comment->c_str() : nullptr;
+
+      std::optional<uint64_t> amount_val;
+      if (amountSat.has_value()) {
+        amount_val = static_cast<uint64_t>(amountSat.value());
+      }
+
       bark::bark_BarkError *error = bark::bark_send(
           destination.c_str(),
-          static_cast<uint64_t>(amountSat), comment_c, no_sync, &status_c);
+          amount_val.has_value() ? &amount_val.value() : nullptr,
+          comment_c,
+          no_sync,
+          &status_c);
       check_bark_error(error);
       if (status_c == nullptr) {
         throw std::runtime_error(

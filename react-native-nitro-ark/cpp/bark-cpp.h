@@ -133,7 +133,7 @@ namespace bark
     bark_BarkError *bark_board_all(bool no_sync, char **status_json_out);
 
     bark_BarkError *bark_send(const char *destination,
-                              uint64_t amount_sat,
+                              const uint64_t *amount_sat,
                               const char *comment,
                               bool no_sync,
                               char **status_json_out);

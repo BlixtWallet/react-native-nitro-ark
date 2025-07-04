@@ -178,14 +178,21 @@ pub extern "C" fn bark_board_all(
 #[no_mangle]
 pub extern "C" fn bark_send(
     destination: *const c_char,
-    amount_sat: u64,
+    amount_sat: *const u64,
     comment: *const c_char,
     no_sync: bool,
     status_json_out: *mut *mut c_char,
 ) -> *mut BarkError {
+    let amount_opt = if amount_sat.is_null() {
+        None
+    } else {
+        Some(unsafe { *amount_sat })
+    };
+
     debug!(
         "bark_send called: amount_sat={}, no_sync={}",
-        amount_sat, no_sync
+        amount_opt.unwrap_or(0),
+        no_sync
     );
 
     // --- Input Validation ---
@@ -212,13 +219,7 @@ pub extern "C" fn bark_send(
 
     // --- Runtime and Async Execution ---
     let result = TOKIO_RUNTIME.block_on(async {
-        send_payment(
-            &destination_str,
-            Some(amount_sat),
-            rust_comment_opt,
-            no_sync,
-        )
-        .await
+        send_payment(&destination_str, amount_opt, rust_comment_opt, no_sync).await
     });
 
     // --- Result Handling ---

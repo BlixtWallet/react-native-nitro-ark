@@ -83,7 +83,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   boardAll(no_sync: boolean): Promise<string>; // Returns JSON status
   send(
     destination: string,
-    amountSat: number,
+    amountSat: number | null,
     comment: string | null,
     no_sync: boolean
   ): Promise<string>; // Returns JSON status

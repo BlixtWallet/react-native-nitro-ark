@@ -76,7 +76,7 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<std::string>> refreshVtxos(const BarkRefreshOpts& refreshOpts, bool no_sync) = 0;
       virtual std::shared_ptr<Promise<std::string>> boardAmount(double amountSat, bool no_sync) = 0;
       virtual std::shared_ptr<Promise<std::string>> boardAll(bool no_sync) = 0;
-      virtual std::shared_ptr<Promise<std::string>> send(const std::string& destination, double amountSat, const std::optional<std::string>& comment, bool no_sync) = 0;
+      virtual std::shared_ptr<Promise<std::string>> send(const std::string& destination, std::optional<double> amountSat, const std::optional<std::string>& comment, bool no_sync) = 0;
       virtual std::shared_ptr<Promise<std::string>> sendRoundOnchain(const std::string& destination, double amountSat, bool no_sync) = 0;
       virtual std::shared_ptr<Promise<std::string>> bolt11Invoice(double amountMsat) = 0;
       virtual std::shared_ptr<Promise<void>> claimBolt11Payment(const std::string& bolt11) = 0;

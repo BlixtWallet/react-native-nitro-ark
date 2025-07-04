@@ -227,7 +227,7 @@ export function boardAll(no_sync: boolean = false): Promise<string> {
  */
 export function send(
   destination: string,
-  amountSat: number,
+  amountSat: number | null,
   comment: string | null = null,
   no_sync: boolean = false
 ): Promise<string> {
