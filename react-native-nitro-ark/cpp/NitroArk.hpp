@@ -116,6 +116,12 @@ namespace margelo::nitro::nitroark
       check_bark_error(error); });
     }
 
+    std::shared_ptr<Promise<bool>> isWalletLoaded() override
+    {
+      return Promise<bool>::async([]()
+                                  { return bark::bark_is_wallet_loaded(); });
+    }
+
     // --- Wallet Info ---
 
     std::shared_ptr<Promise<BarkBalance>>

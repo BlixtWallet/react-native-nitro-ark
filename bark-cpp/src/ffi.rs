@@ -214,6 +214,13 @@ pub extern "C" fn bark_close_wallet() -> *mut BarkError {
     }
 }
 
+/// Checks if a wallet is currently loaded.
+#[no_mangle]
+pub extern "C" fn bark_is_wallet_loaded() -> bool {
+    debug!("bark_is_wallet_loaded called");
+    TOKIO_RUNTIME.block_on(is_wallet_loaded())
+}
+
 /// Get offchain and onchain balances
 #[no_mangle]
 pub extern "C" fn bark_get_balance(no_sync: bool, balance_out: *mut BarkBalance) -> *mut BarkError {

@@ -119,6 +119,12 @@ pub async fn close_wallet() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Check if a wallet is loaded
+pub async fn is_wallet_loaded() -> bool {
+    let wallet_guard = GLOBAL_WALLET.lock().await;
+    wallet_guard.is_some()
+}
+
 pub struct Balance {
     pub onchain: u64,
     pub offchain: u64,

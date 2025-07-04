@@ -216,6 +216,10 @@ export default function ArkApp() {
     runOperation('closeWallet', () => NitroArk.closeWallet());
   };
 
+  const handleIsWalletLoaded = () => {
+    runOperation('isWalletLoaded', () => NitroArk.isWalletLoaded());
+  };
+
   const handleGetBalance = (noSync: boolean) => {
     if (!mnemonic) {
       setError('Mnemonic required');
@@ -560,6 +564,14 @@ export default function ArkApp() {
             title="Close Wallet"
             onPress={handleCloseWallet}
             disabled={isLoading || !mnemonic} // Disable if no mnemonic or already created
+          />
+        </View>
+
+        <View style={styles.buttonContainer}>
+          <Button
+            title="Check Wallet Status"
+            onPress={handleIsWalletLoaded}
+            disabled={isLoading}
           />
         </View>
 

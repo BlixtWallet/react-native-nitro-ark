@@ -82,6 +82,9 @@ bark_BarkError *bark_load_wallet(const char *datadir, bark_BarkCreateOpts opts);
 /// Close the currently loaded wallet
 bark_BarkError *bark_close_wallet();
 
+/// Checks if a wallet is currently loaded.
+bool bark_is_wallet_loaded();
+
 /// Get offchain and onchain balances
 bark_BarkError *bark_get_balance(bool no_sync, bark_BarkBalance *balance_out);
 

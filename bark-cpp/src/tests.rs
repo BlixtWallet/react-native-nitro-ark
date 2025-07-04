@@ -309,6 +309,33 @@ fn test_load_and_close_wallet_success() {
     // Wallet is loaded in new() and closed in drop()
 }
 
+#[test]
+#[ignore = "This test requires a running regtest environment with esplora and asp servers"]
+fn test_bark_is_wallet_loaded() {
+    setup();
+
+    // Should be false initially
+    assert!(
+        !bark_is_wallet_loaded(),
+        "Wallet should not be loaded initially"
+    );
+
+    {
+        let _fixture = WalletTestFixture::new("is_wallet_loaded_test");
+        // Should be true inside the fixture's scope
+        assert!(
+            bark_is_wallet_loaded(),
+            "Wallet should be loaded within the fixture's scope"
+        );
+    } // Fixture is dropped, wallet is closed.
+
+    // Should be false again after the wallet is closed
+    assert!(
+        !bark_is_wallet_loaded(),
+        "Wallet should not be loaded after fixture is dropped"
+    );
+}
+
 // --- Wallet Functionality Tests ---
 
 #[test]

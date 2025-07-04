@@ -65,6 +65,7 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<std::string>> createMnemonic() = 0;
       virtual std::shared_ptr<Promise<void>> loadWallet(const std::string& datadir, const BarkCreateOpts& opts) = 0;
       virtual std::shared_ptr<Promise<void>> closeWallet() = 0;
+      virtual std::shared_ptr<Promise<bool>> isWalletLoaded() = 0;
       virtual std::shared_ptr<Promise<BarkBalance>> getBalance(bool no_sync) = 0;
       virtual std::shared_ptr<Promise<std::string>> getOnchainAddress() = 0;
       virtual std::shared_ptr<Promise<std::string>> getOnchainUtxos(bool no_sync) = 0;
