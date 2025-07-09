@@ -26,9 +26,10 @@ tonic = { version = "0.13.1", default-features = false, features = [
     "prost",
 ] }
 serde_json = "1.0.140"
+cxx = "1.0"
 
 [build-dependencies]
-cbindgen = "0.28.0"
+cxx-build = "1.0"
 
 [lib]
 crate-type = ["rlib", "staticlib"]

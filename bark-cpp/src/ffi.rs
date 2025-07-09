@@ -131,28 +131,6 @@ pub extern "C" fn bark_free_string(s: *mut c_char) {
     }
 }
 
-/// Create a new mnemonic
-#[no_mangle]
-pub extern "C" fn bark_create_mnemonic() -> *mut c_char {
-    debug!("bark_create_mnemonic called");
-
-    let mnemonic = match create_mnemonic() {
-        Ok(m) => m,
-        Err(e) => {
-            error!("Failed to create mnemonic: {}", e);
-            return ptr::null_mut();
-        }
-    };
-
-    match CString::new(mnemonic) {
-        Ok(c_string) => c_string.into_raw(),
-        Err(e) => {
-            error!("Failed to convert mnemonic to CString: {}", e);
-            ptr::null_mut()
-        }
-    }
-}
-
 /// Load an existing wallet or create a new one at the specified directory
 #[no_mangle]
 pub extern "C" fn bark_load_wallet(datadir: *const c_char, opts: BarkCreateOpts) -> *mut BarkError {

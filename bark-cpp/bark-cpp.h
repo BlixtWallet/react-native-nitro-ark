@@ -73,9 +73,6 @@ const char *bark_error_message(const bark_BarkError *error);
 /// Frees a C string allocated by a bark-cpp function.
 void bark_free_string(char *s);
 
-/// Create a new mnemonic
-char *bark_create_mnemonic();
-
 /// Load an existing wallet or create a new one at the specified directory
 bark_BarkError *bark_load_wallet(const char *datadir, bark_BarkCreateOpts opts);
 

@@ -20,6 +20,7 @@ use bark::UtxoInfo;
 use bark::Wallet;
 use once_cell::sync::Lazy;
 use tokio::sync::Mutex;
+mod cxx;
 mod ffi;
 mod ffi_2;
 mod ffi_utils;

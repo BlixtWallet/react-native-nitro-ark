@@ -1,6 +1,7 @@
 #pragma once
 
 #include "HybridNitroArkSpec.hpp"
+#include "generated/ark_cxx.h"
 #include "bark-cpp.h"
 #include <memory>
 #include <stdexcept>
@@ -42,14 +43,12 @@ namespace margelo::nitro::nitroark
     {
       return Promise<std::string>::async([]()
                                          {
-      char *mnemonic_c = bark::bark_create_mnemonic();
-      if (mnemonic_c == nullptr) {
-        throw std::runtime_error(
-            "Bark-cpp error: Failed to create mnemonic (returned NULL)");
-      }
-      std::string mnemonic_str(mnemonic_c);
-      bark::bark_free_string(mnemonic_c);
-      return mnemonic_str; });
+            try {
+                rust::String mnemonic_rs = bark_cxx::create_mnemonic();
+                return std::string(mnemonic_rs.data(), mnemonic_rs.length());
+            } catch (const rust::Error &e) {
+                throw std::runtime_error(e.what());
+            } });
     }
 
     std::shared_ptr<Promise<void>>
