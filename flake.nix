@@ -53,7 +53,7 @@
         xcode-wrapper =
           pkgs:
           pkgs.stdenv.mkDerivation {
-            name = "xcode-wrapper-16.2.0";
+            name = "xcode-wrapper-16.4.0";
             buildInputs = [ pkgs.darwin.cctools ];
             buildCommand = ''
               mkdir -p $out/bin
@@ -93,8 +93,8 @@
 
               if [ -d "/Applications/Xcode.app" ]; then
                 DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
-              elif [ -d "/Applications/Xcode-16.2.0.app" ]; then
-                DEVELOPER_DIR="/Applications/Xcode-16.2.0.app/Contents/Developer"
+              elif [ -d "/Applications/Xcode-16.4.0.app" ]; then
+              DEVELOPER_DIR="/Applications/Xcode-16.4.0.app/Contents/Developer"
               else
                 echo "Error: Xcode not found"
                 exit 1
@@ -159,6 +159,8 @@
             export LC_ALL=en_US.UTF-8
             export LANG=en_US.UTF-8
 
+            unset SDKROOT
+
             rustup target add aarch64-linux-android x86_64-linux-android i686-linux-android
             rustup target add aarch64-apple-ios x86_64-apple-ios aarch64-apple-darwin x86_64-apple-darwin
 
@@ -171,7 +173,6 @@
 
             echo "iOS development environment:"
             echo "DEVELOPER_DIR: $DEVELOPER_DIR"
-            echo "SDKROOT: $SDKROOT"
             xcodebuild -version
           '';
 

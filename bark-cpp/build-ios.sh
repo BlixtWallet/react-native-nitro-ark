@@ -11,7 +11,6 @@ unset TVOS_DEPLOYMENT_TARGET
 unset XROS_DEPLOYMENT_TARGET
 export PLATFORM_NAME=iphoneos
 export DEVELOPER_DIR="$(xcode-select -p)"
-export SDKROOT="$DEVELOPER_DIR/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk"
 
 # --- Configuration ---
 BUILD_TYPE="release"
