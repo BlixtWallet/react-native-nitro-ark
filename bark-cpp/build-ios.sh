@@ -109,28 +109,37 @@ xcodebuild -create-xcframework \
 echo "Successfully created target/$FRAMEWORK_NAME"
 
 echo "Creating $CXX_FRAMEWORK_NAME..."
+
+# Prepare a single, clean directory for all CXX headers
 HEADERS_DIR_CXX="$TARGET_DIR/cxx_headers"
+rm -rf "$HEADERS_DIR_CXX"
 mkdir -p "$HEADERS_DIR_CXX"
+
+# Find and copy the generated API header, renaming it for clarity
 HEADER_SRC_PATH=$(find "$TARGET_DIR/aarch64-apple-ios/$BUILD_TYPE/build" -name "cxx.rs.h" | head -n 1)
 if [ -z "$HEADER_SRC_PATH" ]; then
     echo "Error: Could not find generated cxx.rs.h header."
     exit 1
 fi
-echo "Found cxx header at: $HEADER_SRC_PATH"
+echo "Found generated API header at: $HEADER_SRC_PATH"
 cp "$HEADER_SRC_PATH" "$HEADERS_DIR_CXX/ark_cxx.h"
 
-# Also copy to the react-native project for direct include
-DEST_HEADER_DIR="../react-native-nitro-ark/cpp/generated"
-mkdir -p "$DEST_HEADER_DIR"
-cp "$HEADER_SRC_PATH" "$DEST_HEADER_DIR/ark_cxx.h"
-
+# Find and copy the main cxx library header
 CXX_HEADER_PATH=$(find "$TARGET_DIR/aarch64-apple-ios/$BUILD_TYPE/build" -path "*/rust/cxx.h" | head -n 1)
 if [ -z "$CXX_HEADER_PATH" ]; then
     echo "Error: Could not find cxx.h header."
     exit 1
 fi
-echo "Found cxx.h at: $CXX_HEADER_PATH"
-cp "$CXX_HEADER_PATH" "$DEST_HEADER_DIR/"
+echo "Found cxx library header at: $CXX_HEADER_PATH"
+cp "$CXX_HEADER_PATH" "$HEADERS_DIR_CXX/cxx.h"
+
+# Now HEADERS_DIR_CXX is the single source of truth for our headers.
+# Use it to populate the cpp/generated directory for local builds.
+DEST_HEADER_DIR="../react-native-nitro-ark/cpp/generated"
+rm -rf "$DEST_HEADER_DIR"
+mkdir -p "$DEST_HEADER_DIR"
+cp "$HEADERS_DIR_CXX/ark_cxx.h" "$DEST_HEADER_DIR/"
+cp "$HEADERS_DIR_CXX/cxx.h" "$DEST_HEADER_DIR/"
 
 # Find the CXX bridge library for the device arch
 DEVICE_CXX_LIB_PATH=$(find "$TARGET_DIR/aarch64-apple-ios/$BUILD_TYPE/build" -name "$CXX_BINARY_NAME" | head -n 1)
