@@ -124,6 +124,14 @@ DEST_HEADER_DIR="../react-native-nitro-ark/cpp/generated"
 mkdir -p "$DEST_HEADER_DIR"
 cp "$HEADER_SRC_PATH" "$DEST_HEADER_DIR/ark_cxx.h"
 
+CXX_HEADER_PATH=$(find "$TARGET_DIR/aarch64-apple-ios/$BUILD_TYPE/build" -path "*/rust/cxx.h" | head -n 1)
+if [ -z "$CXX_HEADER_PATH" ]; then
+    echo "Error: Could not find cxx.h header."
+    exit 1
+fi
+echo "Found cxx.h at: $CXX_HEADER_PATH"
+cp "$CXX_HEADER_PATH" "$DEST_HEADER_DIR/"
+
 # Find the CXX bridge library for the device arch
 DEVICE_CXX_LIB_PATH=$(find "$TARGET_DIR/aarch64-apple-ios/$BUILD_TYPE/build" -name "$CXX_BINARY_NAME" | head -n 1)
 if [ -z "$DEVICE_CXX_LIB_PATH" ]; then

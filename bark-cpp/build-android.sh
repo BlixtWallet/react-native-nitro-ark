@@ -133,13 +133,11 @@ mkdir -p "$DEST_JNI_DIR_X86_64"
 
 echo "Copying arm64-v8a binary..."
 cp -f "$OUTPUT_DIR/arm64-v8a/$BINARY_NAME" "$DEST_JNI_DIR_ARM64/"
-# This file is already being copied from the line above
-# cp -f "$OUTPUT_DIR/arm64-v8a/$CXX_BINARY_NAME" "$DEST_JNI_DIR_ARM64/"
+cp -f "$OUTPUT_DIR/arm64-v8a/$CXX_BINARY_NAME" "$DEST_JNI_DIR_ARM64/"
 
 echo "Copying x86_64 binary..."
 cp -f "$OUTPUT_DIR/x86_64/$BINARY_NAME" "$DEST_JNI_DIR_X86_64/"
-# This file is already being copied from the line above
-# cp -f "$OUTPUT_DIR/x86_64/$CXX_BINARY_NAME" "$DEST_JNI_DIR_X86_64/"
+cp -f "$OUTPUT_DIR/x86_64/$CXX_BINARY_NAME" "$DEST_JNI_DIR_X86_64/"
 
 # --- Copy CXX-generated header ---
 DEST_HEADER_DIR="../react-native-nitro-ark/cpp/generated"
@@ -151,5 +149,13 @@ if [ -z "$HEADER_SRC_PATH" ]; then
 fi
 echo "Found cxx header at: $HEADER_SRC_PATH"
 cp -f "$HEADER_SRC_PATH" "$DEST_HEADER_DIR/ark_cxx.h"
+
+CXX_HEADER_PATH=$(find "target/aarch64-linux-android/$BUILD_TYPE/build" -path "*/rust/cxx.h" | head -n 1)
+if [ -z "$CXX_HEADER_PATH" ]; then
+    echo "Error: Could not find cxx.h header."
+    exit 1
+fi
+echo "Found cxx.h at: $CXX_HEADER_PATH"
+cp -f "$CXX_HEADER_PATH" "$DEST_HEADER_DIR/"
 
 echo "Android build complete!"

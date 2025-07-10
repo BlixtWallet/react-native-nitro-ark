@@ -56,9 +56,9 @@ pub fn init_logger() {
 }
 
 pub fn create_mnemonic() -> anyhow::Result<String> {
-    info!("Attempting to create a new mnemonic...");
+    info!("Attempting to create a new mnemonic using cxx bridge...");
     let mnemonic = bip39::Mnemonic::generate(12).context("failed to generate mnemonic")?;
-    info!("Successfully created a new mnemonic.");
+    info!("Successfully created a new mnemonic using cxx bridge.");
     Ok(mnemonic.to_string())
 }
 
