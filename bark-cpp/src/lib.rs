@@ -19,13 +19,9 @@ use bark::SqliteClient;
 use bark::UtxoInfo;
 use bark::Wallet;
 use once_cell::sync::Lazy;
+use tokio::runtime::Runtime;
 use tokio::sync::Mutex;
 mod cxx;
-mod ffi;
-mod ffi_2;
-mod ffi_utils;
-#[cfg(test)]
-mod tests;
 mod utils;
 
 use bip39::Mnemonic;
@@ -44,6 +40,8 @@ use anyhow::Context;
 // Use a static Once to ensure the logger is initialized only once.
 static LOGGER_INIT: Once = Once::new();
 static GLOBAL_WALLET: Lazy<Mutex<Option<Wallet>>> = Lazy::new(|| Mutex::new(None));
+pub static TOKIO_RUNTIME: Lazy<Runtime> =
+    Lazy::new(|| Runtime::new().expect("Failed to create Tokio runtime"));
 
 // function to explicitly initialize the logger.
 // This should be called once from your FFI entry point.

@@ -1,11 +1,7 @@
-use std::env::{self, current_dir};
-
 fn main() {
     // Tell cargo to invalidate the built crate whenever the wrapper changes
     println!("cargo:rerun-if-changed=src/lib.rs");
-    println!("cargo:rerun-if-changed=src/ffi.rs");
     println!("cargo:rerun-if-changed=src/cxx.rs");
-    println!("cargo:rerun-if-changed=cbindgen.toml");
 
     cxx_build::bridge("src/cxx.rs")
         .flag_if_supported("-std=c++17")
