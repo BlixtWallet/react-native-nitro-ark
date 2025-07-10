@@ -3,7 +3,6 @@
 #include "HybridNitroArkSpec.hpp"
 #include "generated/ark_cxx.h"
 #include "generated/cxx.h"
-#include "bark-cpp.h"
 #include <memory>
 #include <stdexcept>
 #include <string>

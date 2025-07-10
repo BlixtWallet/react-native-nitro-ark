@@ -19,6 +19,7 @@
     "ios",
     "cpp",
     "nitrogen",
+    "ArkCxxBridge.xcframework",
     "*.podspec",
     "react-native.config.js",
     "!ios/build",
