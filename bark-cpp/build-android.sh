@@ -46,6 +46,7 @@ fi
 # Define build variables
 OUTPUT_DIR="target/jniLibs"
 BINARY_NAME="libbark_cpp.a"
+CXX_BINARY_NAME="libcxxbridge1.a"
 
 # Delete old output directory
 rm -rf "$OUTPUT_DIR"
@@ -93,6 +94,12 @@ export OPENSSL_LIB_DIR="$PWD/target/$TARGET_ARCH_ARM64/$BUILD_TYPE/build/openssl
 
 cargo build --target=$TARGET_ARCH_ARM64 $CARGO_FLAG --lib
 cp "$TARGET_DIR_ARM64/$BINARY_NAME" "$OUTPUT_DIR/arm64-v8a/"
+ARM64_CXX_LIB_PATH=$(find "$TARGET_DIR_ARM64/build" -name "$CXX_BINARY_NAME" | head -n 1)
+if [ -z "$ARM64_CXX_LIB_PATH" ]; then
+    echo "Error: Could not find CXX bridge library for arm64-v8a."
+    exit 1
+fi
+cp "$ARM64_CXX_LIB_PATH" "$OUTPUT_DIR/arm64-v8a/"
 
 # --- Build for x86_64 (x86_64-linux-android) ---
 echo "Building for x86_64..."
@@ -110,6 +117,12 @@ export OPENSSL_LIB_DIR="$PWD/target/$TARGET_ARCH_X86_64/$BUILD_TYPE/build/openss
 
 cargo build --target=$TARGET_ARCH_X86_64 $CARGO_FLAG --lib
 cp "$TARGET_DIR_X86_64/$BINARY_NAME" "$OUTPUT_DIR/x86_64/"
+X86_64_CXX_LIB_PATH=$(find "$TARGET_DIR_X86_64/build" -name "$CXX_BINARY_NAME" | head -n 1)
+if [ -z "$X86_64_CXX_LIB_PATH" ]; then
+    echo "Error: Could not find CXX bridge library for x86_64."
+    exit 1
+fi
+cp "$X86_64_CXX_LIB_PATH" "$OUTPUT_DIR/x86_64/"
 
 # --- Copy binaries to React Native project ---
 DEST_JNI_DIR_ARM64="../../react-native-nitro-ark/react-native-nitro-ark/android/src/main/jniLibs/arm64-v8a"
@@ -120,8 +133,29 @@ mkdir -p "$DEST_JNI_DIR_X86_64"
 
 echo "Copying arm64-v8a binary..."
 cp -f "$OUTPUT_DIR/arm64-v8a/$BINARY_NAME" "$DEST_JNI_DIR_ARM64/"
+cp -f "$OUTPUT_DIR/arm64-v8a/$CXX_BINARY_NAME" "$DEST_JNI_DIR_ARM64/"
 
 echo "Copying x86_64 binary..."
 cp -f "$OUTPUT_DIR/x86_64/$BINARY_NAME" "$DEST_JNI_DIR_X86_64/"
+cp -f "$OUTPUT_DIR/x86_64/$CXX_BINARY_NAME" "$DEST_JNI_DIR_X86_64/"
+
+# --- Copy CXX-generated header ---
+DEST_HEADER_DIR="../react-native-nitro-ark/cpp/generated"
+mkdir -p "$DEST_HEADER_DIR"
+HEADER_SRC_PATH=$(find "target/aarch64-linux-android/$BUILD_TYPE/build" -name "cxx.rs.h" | head -n 1)
+if [ -z "$HEADER_SRC_PATH" ]; then
+    echo "Error: Could not find generated cxx.rs.h header."
+    exit 1
+fi
+echo "Found cxx header at: $HEADER_SRC_PATH"
+cp -f "$HEADER_SRC_PATH" "$DEST_HEADER_DIR/ark_cxx.h"
+
+CXX_HEADER_PATH=$(find "target/aarch64-linux-android/$BUILD_TYPE/build" -path "*/rust/cxx.h" | head -n 1)
+if [ -z "$CXX_HEADER_PATH" ]; then
+    echo "Error: Could not find cxx.h header."
+    exit 1
+fi
+echo "Found cxx.h at: $CXX_HEADER_PATH"
+cp -f "$CXX_HEADER_PATH" "$DEST_HEADER_DIR/"
 
 echo "Android build complete!"

@@ -1,7 +1,8 @@
 #pragma once
 
 #include "HybridNitroArkSpec.hpp"
-#include "bark-cpp.h"
+#include "generated/ark_cxx.h"
+#include "generated/cxx.h"
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -10,613 +11,428 @@
 namespace margelo::nitro::nitroark
 {
 
-  // Helper function to handle potential errors from bark-cpp calls
-  inline void check_bark_error(bark::bark_BarkError *error)
-  {
-    if (error != nullptr)
+    class NitroArk : public HybridNitroArkSpec
     {
-      std::string error_message = "Bark-cpp error: Unknown";
-      if (error->message != nullptr)
-      {
-        // Assuming error->message is valid C string allocated correctly
-        error_message = std::string("Bark-cpp error: ") + error->message;
-      }
-      // Use the FFI function to free the error struct and its contents
-      bark::bark_free_error(error);
-      throw std::runtime_error(error_message);
-    }
-  }
+    public:
+        NitroArk() : HybridObject(TAG)
+        {
+            // Initialize the Rust logger once when a NitroArk object is created.
+            bark_cxx::init_logger();
+        }
 
-  class NitroArk : public HybridNitroArkSpec
-  {
-  public:
-    NitroArk() : HybridObject(TAG)
-    {
-      // Initialize the Rust logger once when a NitroArk object is created.
-      bark::bark_init_logger();
-    }
+        // --- Management ---
 
-    // --- Management ---
+        std::shared_ptr<Promise<std::string>> createMnemonic() override
+        {
+            return Promise<std::string>::async([]()
+                                               {
+            try {
+                rust::String mnemonic_rs = bark_cxx::create_mnemonic();
+                return std::string(mnemonic_rs.data(), mnemonic_rs.length());
+            } catch (const rust::Error &e) {
+                throw std::runtime_error(e.what());
+            } });
+        }
 
-    std::shared_ptr<Promise<std::string>> createMnemonic() override
-    {
-      return Promise<std::string>::async([]()
-                                         {
-      char *mnemonic_c = bark::bark_create_mnemonic();
-      if (mnemonic_c == nullptr) {
-        throw std::runtime_error(
-            "Bark-cpp error: Failed to create mnemonic (returned NULL)");
-      }
-      std::string mnemonic_str(mnemonic_c);
-      bark::bark_free_string(mnemonic_c);
-      return mnemonic_str; });
-    }
+        std::shared_ptr<Promise<void>>
+        loadWallet(const std::string &datadir,
+                   const BarkCreateOpts &opts) override
+        {
+            return Promise<void>::async([datadir, opts]()
+                                        {
+            try {
+                  bark_cxx::ConfigOpts config_opts;
+                if (opts.config.has_value()) {
+                    config_opts.asp = opts.config->asp.value_or("");
+                    config_opts.esplora = opts.config->esplora.value_or("");
+                    config_opts.bitcoind = opts.config->bitcoind.value_or("");
+                    config_opts.bitcoind_cookie = opts.config->bitcoind_cookie.value_or("");
+                    config_opts.bitcoind_user = opts.config->bitcoind_user.value_or("");
+                    config_opts.bitcoind_pass = opts.config->bitcoind_pass.value_or("");
+                    config_opts.vtxo_refresh_expiry_threshold = static_cast<uint32_t>(opts.config->vtxo_refresh_expiry_threshold.value_or(0));
+                    config_opts.fallback_fee_rate = static_cast<uint64_t>(opts.config->fallback_fee_rate.value_or(0));
+                }
 
-    std::shared_ptr<Promise<void>>
-    loadWallet(const std::string &datadir,
-               const BarkCreateOpts &opts) override
-    {
-      return Promise<void>::async([datadir, opts]()
-                                  {
-      // Keep fee rate value alive for the C call
-      std::optional<uint64_t> fallback_fee_rate_val;
-      if (opts.config.has_value() &&
-          opts.config->fallback_fee_rate.has_value()) {
-        fallback_fee_rate_val =
-            static_cast<uint64_t>(opts.config->fallback_fee_rate.value());
-      }
+                bark_cxx::CreateOpts create_opts;
+                create_opts.regtest = opts.regtest.value_or(false);
+                create_opts.signet = opts.signet.value_or(false);
+                create_opts.bitcoin = opts.bitcoin.value_or(true);
+                create_opts.mnemonic = opts.mnemonic;
+                create_opts.birthday_height = static_cast<uint32_t>(opts.birthday_height.value_or(0));
+                create_opts.config = config_opts;
 
-      bark::bark_BarkConfigOpts config = {
-          opts.config.has_value() && opts.config->asp.has_value()
-              ? opts.config->asp->c_str()
-              : nullptr,
-          opts.config.has_value() && opts.config->esplora.has_value()
-              ? opts.config->esplora->c_str()
-              : nullptr,
-          opts.config.has_value() && opts.config->bitcoind.has_value()
-              ? opts.config->bitcoind->c_str()
-              : nullptr,
-          opts.config.has_value() && opts.config->bitcoind_cookie.has_value()
-              ? opts.config->bitcoind_cookie->c_str()
-              : nullptr,
-          opts.config.has_value() && opts.config->bitcoind_user.has_value()
-              ? opts.config->bitcoind_user->c_str()
-              : nullptr,
-          opts.config.has_value() && opts.config->bitcoind_pass.has_value()
-              ? opts.config->bitcoind_pass->c_str()
-              : nullptr,
-          opts.config.has_value() &&
-                  opts.config->vtxo_refresh_expiry_threshold.has_value()
-              ? static_cast<uint32_t>(
-                    opts.config->vtxo_refresh_expiry_threshold.value())
-              : 0,
-          fallback_fee_rate_val.has_value() ? &fallback_fee_rate_val.value()
-                                            : nullptr};
+                bark_cxx::load_wallet(datadir, create_opts);
+            } catch (const rust::Error &e) {
+                throw std::runtime_error(e.what());
+            } });
+        }
 
-      bark::bark_BarkCreateOpts barkOpts = {
-          opts.regtest.value_or(false),
-          opts.signet.value_or(false),
-          opts.bitcoin.value_or(true),
-          opts.mnemonic.empty() ? nullptr : opts.mnemonic.c_str(),
-          opts.birthday_height.has_value()
-              ? static_cast<uint32_t>(opts.birthday_height.value())
-              : 0,
-          config};
+        std::shared_ptr<Promise<void>> closeWallet() override
+        {
+            return Promise<void>::async([]()
+                                        {
+            try {
+                bark_cxx::close_wallet();
+            } catch (const rust::Error &e) {
+                throw std::runtime_error(e.what());
+            } });
+        }
 
-      bark::bark_BarkError *error =
-          bark::bark_load_wallet(datadir.c_str(), barkOpts);
-      check_bark_error(error); });
-    }
+        std::shared_ptr<Promise<bool>> isWalletLoaded() override
+        {
+            return Promise<bool>::async([]()
+                                        { return bark_cxx::is_wallet_loaded(); });
+        }
 
-    std::shared_ptr<Promise<void>> closeWallet() override
-    {
-      return Promise<void>::async([]()
-                                  {
-      bark::bark_BarkError *error = bark::bark_close_wallet();
-      check_bark_error(error); });
-    }
+        // --- Wallet Info ---
 
-    std::shared_ptr<Promise<bool>> isWalletLoaded() override
-    {
-      return Promise<bool>::async([]()
-                                  { return bark::bark_is_wallet_loaded(); });
-    }
+        std::shared_ptr<Promise<BarkBalance>>
+        getBalance(bool no_sync) override
+        {
+            return Promise<BarkBalance>::async([no_sync]()
+                                               {
+            try {
+                bark_cxx::CxxBalance c_balance = bark_cxx::get_balance(no_sync);
+                return BarkBalance{static_cast<double>(c_balance.onchain),
+                                   static_cast<double>(c_balance.offchain),
+                                   static_cast<double>(c_balance.pending_exit)};
+            } catch (const rust::Error &e) {
+                throw std::runtime_error(e.what());
+            } });
+        }
 
-    // --- Wallet Info ---
+        std::shared_ptr<Promise<std::string>>
+        getOnchainAddress() override
+        {
+            return Promise<std::string>::async([]()
+                                               {
+            try {
+                rust::String address_rs = bark_cxx::get_onchain_address();
+                return std::string(address_rs.data(), address_rs.length());
+            } catch (const rust::Error &e) {
+                throw std::runtime_error(e.what());
+            } });
+        }
 
-    std::shared_ptr<Promise<BarkBalance>>
-    getBalance(bool no_sync) override
-    {
-      return Promise<BarkBalance>::async([no_sync]()
-                                         {
-      bark::bark_BarkBalance c_balance;
-      bark::bark_BarkError *error = bark::bark_get_balance(no_sync, &c_balance);
-      check_bark_error(error);
+        std::shared_ptr<Promise<std::string>>
+        getOnchainUtxos(bool no_sync) override
+        {
+            return Promise<std::string>::async([no_sync]()
+                                               {
+            try {
+                rust::String json_rs = bark_cxx::get_onchain_utxos(no_sync);
+                return std::string(json_rs.data(), json_rs.length());
+            } catch (const rust::Error &e) {
+                throw std::runtime_error(e.what());
+            } });
+        }
 
-      return BarkBalance(static_cast<double>(c_balance.onchain),
-                         static_cast<double>(c_balance.offchain),
-                         static_cast<double>(c_balance.pending_exit)); });
-    }
+        std::shared_ptr<Promise<std::string>>
+        getVtxoPubkey(std::optional<double> index) override
+        {
+            return Promise<std::string>::async([index]()
+                                               {
+            try {
+                uint32_t index_val = index.has_value() ? static_cast<uint32_t>(index.value()) : UINT32_MAX;
+                rust::String pubkey_rs = bark_cxx::get_vtxo_pubkey(index_val);
+                return std::string(pubkey_rs.data(), pubkey_rs.length());
+            } catch (const rust::Error &e) {
+                throw std::runtime_error(e.what());
+            } });
+        }
 
-    std::shared_ptr<Promise<std::string>>
-    getOnchainAddress() override
-    {
-      return Promise<std::string>::async([]()
-                                         {
-      char *address_c = nullptr;
-      bark::bark_BarkError *error = bark::bark_get_onchain_address(&address_c);
-      check_bark_error(error);
-      if (address_c == nullptr) {
-        throw std::runtime_error("Bark-cpp error: getOnchainAddress returned "
-                                 "success but address is null");
-      }
-      std::string address_str(address_c);
-      bark::bark_free_string(address_c); // Use helper
-      return address_str; });
-    }
+        std::shared_ptr<Promise<std::string>> getVtxos(bool no_sync) override
+        {
+            return Promise<std::string>::async([no_sync]()
+                                               {
+            try {
+                rust::String json_rs = bark_cxx::get_vtxos(no_sync);
+                return std::string(json_rs.data(), json_rs.length());
+            } catch (const rust::Error &e) {
+                throw std::runtime_error(e.what());
+            } });
+        }
 
-    std::shared_ptr<Promise<std::string>>
-    getOnchainUtxos(bool no_sync) override
-    {
-      return Promise<std::string>::async([no_sync]()
-                                         {
-      char *json_c = nullptr;
-      bark::bark_BarkError *error = bark::bark_get_onchain_utxos(no_sync, &json_c);
-      check_bark_error(error);
-      if (json_c == nullptr) {
-        throw std::runtime_error("Bark-cpp error: getOnchainUtxos returned "
-                                 "success but JSON is null");
-      }
-      std::string json_str(json_c);
-      bark::bark_free_string(json_c); // Use helper
-      return json_str; });
-    }
+        // --- Onchain Operations ---
 
-    std::shared_ptr<Promise<std::string>>
-    getVtxoPubkey(std::optional<double> index) override
-    {
-      return Promise<std::string>::async([index]()
-                                         {
-      char *pubkey_c = nullptr;
-      std::optional<uint32_t> index_val;
-      if (index.has_value()) {
-        index_val = static_cast<uint32_t>(index.value());
-      }
-
-      bark::bark_BarkError *error = bark::bark_get_vtxo_pubkey(
-          index_val.has_value() ? &index_val.value() : nullptr, &pubkey_c);
-      check_bark_error(error);
-      if (pubkey_c == nullptr) {
-        throw std::runtime_error("Bark-cpp error: getVtxoPubkey returned "
-                                 "success but pubkey is null");
-      }
-      std::string pubkey_str(pubkey_c);
-      bark::bark_free_string(pubkey_c); // Use helper
-      return pubkey_str; });
-    }
-
-    std::shared_ptr<Promise<std::string>> getVtxos(bool no_sync) override
-    {
-      return Promise<std::string>::async([no_sync]()
-                                         {
-      char *json_c = nullptr;
-      bark::bark_BarkError *error = bark::bark_get_vtxos(no_sync, &json_c);
-      check_bark_error(error);
-      if (json_c == nullptr) {
-        throw std::runtime_error(
-            "Bark-cpp error: getVtxos returned success but JSON is null");
-      }
-      std::string json_str(json_c);
-      bark::bark_free_string(json_c); // Use helper
-      return json_str; });
-    }
-
-    // --- Onchain Operations ---
-
-    std::shared_ptr<Promise<std::string>>
-    sendOnchain(const std::string &destination, double amountSat,
-                bool no_sync) override
-    {
-      return Promise<std::string>::async([destination, amountSat, no_sync]()
-                                         {
-      char *txid_c = nullptr;
-      bark::bark_BarkError *error = bark::bark_send_onchain(
-          destination.c_str(), static_cast<uint64_t>(amountSat), no_sync, &txid_c);
-      check_bark_error(error);
-      if (txid_c == nullptr) {
-        throw std::runtime_error(
-            "Bark-cpp error: sendOnchain returned success but txid is null");
-      }
-      std::string txid_str(txid_c);
-      bark::bark_free_string(txid_c); // Use helper
-      return txid_str; });
-    }
-
-    std::shared_ptr<Promise<std::string>>
-    drainOnchain(const std::string &destination, bool no_sync) override
-    {
-      return Promise<std::string>::async(
-          [destination, no_sync]()
-          {
-            char *txid_c = nullptr;
-            bark::bark_BarkError *error =
-                bark::bark_drain_onchain(destination.c_str(), no_sync, &txid_c);
-            check_bark_error(error);
-            if (txid_c == nullptr)
-            {
-              throw std::runtime_error("Bark-cpp error: drainOnchain returned "
-                                       "success but txid is null");
-            }
-            std::string txid_str(txid_c);
-            bark::bark_free_string(txid_c); // Use helper
-            return txid_str;
-          });
-    }
-
-    std::shared_ptr<Promise<std::string>>
-    sendManyOnchain(const std::vector<BarkSendManyOutput> &outputs,
+        std::shared_ptr<Promise<std::string>>
+        sendOnchain(const std::string &destination, double amountSat,
                     bool no_sync) override
-    {
-      return Promise<std::string>::async([outputs, no_sync]()
-                                         {
-      size_t num_outputs = outputs.size();
-      if (num_outputs == 0) {
-        throw std::runtime_error(
-            "sendManyOnchain requires at least one output");
-      }
-
-      std::vector<const char *> destinations_c;
-      std::vector<uint64_t> amounts_c;
-      destinations_c.reserve(num_outputs);
-      amounts_c.reserve(num_outputs);
-
-      for (const auto &output : outputs) {
-        destinations_c.push_back(output.destination.c_str());
-        amounts_c.push_back(static_cast<uint64_t>(output.amountSat));
-      }
-
-      char *txid_c = nullptr;
-      bark::bark_BarkError *error = bark::bark_send_many_onchain(
-          destinations_c.data(), amounts_c.data(), num_outputs, no_sync, &txid_c);
-      check_bark_error(error);
-      if (txid_c == nullptr) {
-        throw std::runtime_error("Bark-cpp error: sendManyOnchain returned "
-                                 "success but txid is null");
-      }
-      std::string txid_str(txid_c);
-      bark::bark_free_string(txid_c); // Use helper
-      return txid_str; });
-    }
-
-    // --- Ark Operations ---
-
-    std::shared_ptr<Promise<std::string>>
-    refreshVtxos(const BarkRefreshOpts &refreshOpts, bool no_sync) override
-    {
-      return Promise<std::string>::async([refreshOpts,
-                                          no_sync]()
-                                         {
-      bark::bark_BarkRefreshOpts c_opts;
-      std::vector<const char *> specific_ids_c; // Keep alive for the C call
-
-      // Map the C++ enum to the C FFI enum using a switch
-      switch (refreshOpts.mode_type) {
-      case margelo::nitro::nitroark::BarkRefreshModeType::DEFAULTTHRESHOLD:
-        c_opts.mode_type = bark::bark_BarkRefreshModeType::DefaultThreshold;
-        break;
-      case margelo::nitro::nitroark::BarkRefreshModeType::THRESHOLDBLOCKS:
-        c_opts.mode_type = bark::bark_BarkRefreshModeType::ThresholdBlocks;
-        break;
-      case margelo::nitro::nitroark::BarkRefreshModeType::THRESHOLDHOURS:
-        c_opts.mode_type = bark::bark_BarkRefreshModeType::ThresholdHours;
-        break;
-      case margelo::nitro::nitroark::BarkRefreshModeType::COUNTERPARTY:
-        c_opts.mode_type = bark::bark_BarkRefreshModeType::Counterparty;
-        break;
-      case margelo::nitro::nitroark::BarkRefreshModeType::ALL:
-        c_opts.mode_type = bark::bark_BarkRefreshModeType::All;
-        break;
-      case margelo::nitro::nitroark::BarkRefreshModeType::SPECIFIC:
-        c_opts.mode_type = bark::bark_BarkRefreshModeType::Specific;
-        break;
-      default:
-        // This should ideally not happen with a closed enum, but handle
-        // defensively
-        throw std::runtime_error(
-            "Unknown BarkRefreshModeType encountered: " +
-            std::to_string(static_cast<int>(refreshOpts.mode_type)));
-      }
-
-      // Assign threshold_value (handle optional)
-      // Note: C struct expects uint32_t, C++ has optional<double>. Cast needed.
-      c_opts.threshold_value =
-          static_cast<uint32_t>(refreshOpts.threshold_value.value_or(0));
-
-      // Handle specific_vtxo_ids only if mode is Specific
-      if (c_opts.mode_type == bark::bark_BarkRefreshModeType::Specific) {
-        if (!refreshOpts.specific_vtxo_ids.has_value() ||
-            refreshOpts.specific_vtxo_ids->empty()) {
-          throw std::runtime_error(
-              "Specific refresh mode requires non-empty specific_vtxo_ids");
+        {
+            return Promise<std::string>::async([destination, amountSat, no_sync]()
+                                               {
+            try {
+                rust::String txid_rs = bark_cxx::send_onchain(destination, static_cast<uint64_t>(amountSat), no_sync);
+                return std::string(txid_rs.data(), txid_rs.length());
+            } catch (const rust::Error &e) {
+                throw std::runtime_error(e.what());
+            } });
         }
-        specific_ids_c.reserve(refreshOpts.specific_vtxo_ids->size());
-        for (const auto &id : refreshOpts.specific_vtxo_ids.value()) {
-          specific_ids_c.push_back(id.c_str()); // Get C string pointer
+
+        std::shared_ptr<Promise<std::string>>
+        drainOnchain(const std::string &destination, bool no_sync) override
+        {
+            return Promise<std::string>::async(
+                [destination, no_sync]()
+                {
+                    try
+                    {
+                        rust::String txid_rs = bark_cxx::drain_onchain(destination, no_sync);
+                        return std::string(txid_rs.data(), txid_rs.length());
+                    }
+                    catch (const rust::Error &e)
+                    {
+                        throw std::runtime_error(e.what());
+                    }
+                });
         }
-        c_opts.specific_vtxo_ids =
-            specific_ids_c.data(); // Point to the data in the vector
-        c_opts.num_specific_vtxo_ids = specific_ids_c.size(); // Get the size
-      } else {
-        // Ensure these are null/zero if not in Specific mode
-        c_opts.specific_vtxo_ids = nullptr;
-        c_opts.num_specific_vtxo_ids = 0;
-      }
 
-      // Make the C FFI call
-      char *status_c = nullptr;
-      bark::bark_BarkError *error = bark::bark_refresh_vtxos(c_opts, no_sync, &status_c);
+        std::shared_ptr<Promise<std::string>>
+        sendManyOnchain(const std::vector<BarkSendManyOutput> &outputs,
+                        bool no_sync) override
+        {
+            return Promise<std::string>::async([outputs, no_sync]()
+                                               {
+            try {
+                rust::Vec<bark_cxx::SendManyOutput> cxx_outputs;
+                for (const auto &output : outputs) {
+                    cxx_outputs.push_back({rust::String(output.destination), static_cast<uint64_t>(output.amountSat)});
+                }
+                rust::String txid_rs = bark_cxx::send_many_onchain(std::move(cxx_outputs), no_sync);
+                return std::string(txid_rs.data(), txid_rs.length());
+            } catch (const rust::Error &e) {
+                throw std::runtime_error(e.what());
+            } });
+        }
 
-      check_bark_error(error);
-      if (status_c == nullptr) {
-        // Decide if null status is an error or just empty status
-        // For consistency let's assume null should not happen on success.
-        throw std::runtime_error("Bark-cpp error: refreshVtxos returned "
-                                 "success but status pointer is null");
-      }
-      std::string status_str(status_c);
-      bark::bark_free_string(status_c); // Use helper
-      return status_str; });
-    }
+        // --- Ark Operations ---
 
-    std::shared_ptr<Promise<std::string>> boardAmount(double amountSat,
-                                                      bool no_sync) override
-    {
-      return Promise<std::string>::async([amountSat,
-                                          no_sync]()
-                                         {
-      char *status_c = nullptr;
-      bark::bark_BarkError *error = bark::bark_board_amount(
-          static_cast<uint64_t>(amountSat),
-          no_sync, &status_c);
-      check_bark_error(error);
-      if (status_c == nullptr) {
-        throw std::runtime_error(
-            "Bark-cpp error: boardAmount returned success but status is null");
-      }
-      std::string status_str(status_c);
-      bark::bark_free_string(status_c); // Use helper
-      return status_str; });
-    }
+        std::shared_ptr<Promise<std::string>>
+        refreshVtxos(const BarkRefreshOpts &refreshOpts, bool no_sync) override
+        {
+            return Promise<std::string>::async([refreshOpts,
+                                                no_sync]()
+                                               {
+            try {
+                bark_cxx::RefreshOpts opts;
+                switch (refreshOpts.mode_type) {
+                    case BarkRefreshModeType::DEFAULTTHRESHOLD:
+                        opts.mode_type = bark_cxx::RefreshModeType::DefaultThreshold;
+                        break;
+                    case BarkRefreshModeType::THRESHOLDBLOCKS:
+                        opts.mode_type = bark_cxx::RefreshModeType::ThresholdBlocks;
+                        break;
+                    case BarkRefreshModeType::THRESHOLDHOURS:
+                        opts.mode_type = bark_cxx::RefreshModeType::ThresholdHours;
+                        break;
+                    case BarkRefreshModeType::COUNTERPARTY:
+                        opts.mode_type = bark_cxx::RefreshModeType::Counterparty;
+                        break;
+                    case BarkRefreshModeType::ALL:
+                        opts.mode_type = bark_cxx::RefreshModeType::All;
+                        break;
+                    case BarkRefreshModeType::SPECIFIC:
+                        opts.mode_type = bark_cxx::RefreshModeType::Specific;
+                        break;
+                }
+                opts.threshold_value = static_cast<uint32_t>(refreshOpts.threshold_value.value_or(0));
+                if (refreshOpts.specific_vtxo_ids.has_value()) {
+                    for (const auto &id : refreshOpts.specific_vtxo_ids.value()) {
+                        opts.specific_vtxo_ids.push_back(id);
+                    }
+                }
+                rust::String status_rs = bark_cxx::refresh_vtxos(opts, no_sync);
+                return std::string(status_rs.data(), status_rs.length());
+            } catch (const rust::Error &e) {
+                throw std::runtime_error(e.what());
+            } });
+        }
 
-    std::shared_ptr<Promise<std::string>> boardAll(bool no_sync) override
-    {
-      return Promise<std::string>::async([no_sync]()
-                                         {
-      char *status_c = nullptr;
-      bark::bark_BarkError *error = bark::bark_board_all(no_sync, &status_c);
-      check_bark_error(error);
-      if (status_c == nullptr) {
-        throw std::runtime_error(
-            "Bark-cpp error: boardAll returned success but status is null");
-      }
-      std::string status_str(status_c);
-      bark::bark_free_string(status_c); // Use helper
-      return status_str; });
-    }
+        std::shared_ptr<Promise<std::string>> boardAmount(double amountSat,
+                                                          bool no_sync) override
+        {
+            return Promise<std::string>::async([amountSat,
+                                                no_sync]()
+                                               {
+            try {
+                rust::String status_rs = bark_cxx::board_amount(static_cast<uint64_t>(amountSat), no_sync);
+                return std::string(status_rs.data(), status_rs.length());
+            } catch (const rust::Error &e) {
+                throw std::runtime_error(e.what());
+            } });
+        }
 
-    std::shared_ptr<Promise<std::string>>
-    send(const std::string &destination, std::optional<double> amountSat,
-         const std::optional<std::string> &comment, bool no_sync) override
-    {
-      return Promise<std::string>::async([destination, amountSat, comment, no_sync]()
-                                         {
-      char *status_c = nullptr;
-      const char *comment_c = comment.has_value() ? comment->c_str() : nullptr;
-      
-      uint64_t amount_val = 0;
-      const uint64_t* amount_ptr = nullptr;
+        std::shared_ptr<Promise<std::string>> boardAll(bool no_sync) override
+        {
+            return Promise<std::string>::async([no_sync]()
+                                               {
+            try {
+                rust::String status_rs = bark_cxx::board_all(no_sync);
+                return std::string(status_rs.data(), status_rs.length());
+            } catch (const rust::Error &e) {
+                throw std::runtime_error(e.what());
+            } });
+        }
 
-      if (amountSat.has_value()) {
-        amount_val = static_cast<uint64_t>(amountSat.value());
-        amount_ptr = &amount_val;
-      }
+        std::shared_ptr<Promise<std::string>>
+        send(const std::string &destination, std::optional<double> amountSat,
+             const std::optional<std::string> &comment, bool no_sync) override
+        {
+            return Promise<std::string>::async([destination, amountSat, comment, no_sync]()
+                                               {
+            try {
+                uint64_t amount_val = 0;
+                if (amountSat.has_value()) {
+                    amount_val = static_cast<uint64_t>(amountSat.value());
+                }
+                std::string comment_val = "";
+                if (comment.has_value()) {
+                    comment_val = comment.value();
+                }
+                rust::String status_rs = bark_cxx::send_payment(destination, amount_val, comment_val, no_sync);
+                return std::string(status_rs.data(), status_rs.length());
+            } catch (const rust::Error &e) {
+                throw std::runtime_error(e.what());
+            } });
+        }
 
-      bark::bark_BarkError *error = bark::bark_send(
-          destination.c_str(),
-          amount_ptr,
-          comment_c,
-          no_sync,
-          &status_c);
-      check_bark_error(error);
-      if (status_c == nullptr) {
-        throw std::runtime_error(
-            "Bark-cpp error: send returned success but status is null");
-      }
-      std::string status_str(status_c);
-      bark::bark_free_string(status_c); // Use helper
-      return status_str; });
-    }
+        std::shared_ptr<Promise<std::string>>
+        sendRoundOnchain(const std::string &destination, double amountSat,
+                         bool no_sync) override
+        {
+            return Promise<std::string>::async(
+                [destination, amountSat, no_sync]()
+                {
+                    try
+                    {
+                        rust::String status_rs = bark_cxx::send_round_onchain(destination, static_cast<uint64_t>(amountSat), no_sync);
+                        return std::string(status_rs.data(), status_rs.length());
+                    }
+                    catch (const rust::Error &e)
+                    {
+                        throw std::runtime_error(e.what());
+                    }
+                });
+        }
 
-    std::shared_ptr<Promise<std::string>>
-    sendRoundOnchain(const std::string &destination, double amountSat,
-                     bool no_sync) override
-    {
-      return Promise<std::string>::async(
-          [destination, amountSat, no_sync]()
-          {
-            char *status_c = nullptr;
-            bark::bark_BarkError *error = bark::bark_send_round_onchain(
-                destination.c_str(),
-                static_cast<uint64_t>(amountSat), no_sync, &status_c);
-            check_bark_error(error);
-            if (status_c == nullptr)
-            {
-              throw std::runtime_error("Bark-cpp error: sendRoundOnchain "
-                                       "returned success but status is null");
-            }
-            std::string status_str(status_c);
-            bark::bark_free_string(status_c); // Use helper
-            return status_str;
-          });
-    }
+        // --- Lightning Operations ---
 
-    // --- Lightning Operations ---
+        std::shared_ptr<Promise<std::string>>
+        bolt11Invoice(double amountMsat) override
+        {
+            return Promise<std::string>::async([amountMsat]()
+                                               {
+            try {
+                rust::String invoice_rs = bark_cxx::bolt11_invoice(static_cast<uint64_t>(amountMsat));
+                return std::string(invoice_rs.data(), invoice_rs.length());
+            } catch (const rust::Error &e) {
+                throw std::runtime_error(e.what());
+            } });
+        }
 
-    std::shared_ptr<Promise<std::string>>
-    bolt11Invoice(double amountMsat) override
-    {
-      return Promise<std::string>::async([amountMsat]()
-                                         {
-      char *invoice_c = nullptr;
-      bark::bark_BarkError *error = bark::bark_bolt11_invoice(
-          static_cast<uint64_t>(amountMsat),
-          &invoice_c);
-      check_bark_error(error);
-      if (invoice_c == nullptr) {
-        throw std::runtime_error("Bark-cpp error: bolt11Invoice returned "
-                                 "success but invoice is null");
-      }
-      std::string invoice_str(invoice_c);
-      bark::bark_free_string(invoice_c);
-      return invoice_str; });
-    }
+        std::shared_ptr<Promise<void>>
+        claimBolt11Payment(const std::string &bolt11) override
+        {
+            return Promise<void>::async([bolt11]()
+                                        {
+            try {
+                bark_cxx::claim_bolt11_payment(bolt11);
+            } catch (const rust::Error &e) {
+                throw std::runtime_error(e.what());
+            } });
+        }
 
-    std::shared_ptr<Promise<void>>
-    claimBolt11Payment(const std::string &bolt11) override
-    {
-      return Promise<void>::async([bolt11]()
-                                  {
-      bark::bark_BarkError *error = bark::bark_claim_bolt11_payment(bolt11.c_str());
-      check_bark_error(error); });
-    }
+        // --- Offboarding / Exiting ---
 
-    // --- Offboarding / Exiting ---
+        std::shared_ptr<Promise<std::string>>
+        offboardSpecific(const std::vector<std::string> &vtxoIds,
+                         const std::optional<std::string> &optionalAddress,
+                         bool no_sync) override
+        {
+            return Promise<std::string>::async(
+                [vtxoIds, optionalAddress, no_sync]()
+                {
+                    try
+                    {
+                        rust::Vec<rust::String> rust_vtxo_ids;
+                        for (const auto &id : vtxoIds)
+                        {
+                            rust_vtxo_ids.push_back(rust::String(id));
+                        }
+                        std::string address = optionalAddress.has_value() ? optionalAddress.value() : "";
+                        rust::String status_rs = bark_cxx::offboard_specific(std::move(rust_vtxo_ids), address, no_sync);
+                        return std::string(status_rs.data(), status_rs.length());
+                    }
+                    catch (const rust::Error &e)
+                    {
+                        throw std::runtime_error(e.what());
+                    }
+                });
+        }
 
-    std::shared_ptr<Promise<std::string>>
-    offboardSpecific(const std::vector<std::string> &vtxoIds,
-                     const std::optional<std::string> &optionalAddress,
-                     bool no_sync) override
-    {
-      return Promise<std::string>::async(
-          [vtxoIds, optionalAddress, no_sync]()
-          {
-            if (vtxoIds.empty())
-            {
-              throw std::runtime_error(
-                  "offboardSpecific requires at least one vtxoId");
-            }
-            std::vector<const char *> ids_c;
-            ids_c.reserve(vtxoIds.size());
-            for (const auto &id : vtxoIds)
-            {
-              ids_c.push_back(id.c_str());
-            }
-            const char *addr_c =
-                optionalAddress.has_value() ? optionalAddress->c_str() : nullptr;
-            char *status_c = nullptr;
+        std::shared_ptr<Promise<std::string>>
+        offboardAll(const std::optional<std::string> &optionalAddress,
+                    bool no_sync) override
+        {
+            return Promise<std::string>::async([optionalAddress,
+                                                no_sync]()
+                                               {
+            try {
+                std::string address = optionalAddress.has_value() ? optionalAddress.value() : "";
+                rust::String status_rs = bark_cxx::offboard_all(address, no_sync);
+                return std::string(status_rs.data(), status_rs.length());
+            } catch (const rust::Error &e) {
+                throw std::runtime_error(e.what());
+            } });
+        }
 
-            bark::bark_BarkError *error = bark::bark_offboard_specific(
-                ids_c.data(), ids_c.size(),
-                addr_c, no_sync, &status_c);
-            check_bark_error(error);
-            if (status_c == nullptr)
-            {
-              throw std::runtime_error("Bark-cpp error: offboardSpecific "
-                                       "returned success but status is null");
-            }
-            std::string status_str(status_c);
-            bark::bark_free_string(status_c); // Use helper
-            return status_str;
-          });
-    }
+        std::shared_ptr<Promise<std::string>> exitStartSpecific(
+            const std::vector<std::string> &vtxoIds) override
+        {
+            return Promise<std::string>::async([vtxoIds]()
+                                               {
+            try {
+                rust::Vec<rust::String> rust_vtxo_ids;
+                for (const auto &id : vtxoIds)
+                {
+                  rust_vtxo_ids.push_back(rust::String(id));
+                }
+                rust::String status_rs = bark_cxx::start_exit_for_vtxos(std::move(rust_vtxo_ids));
+                return std::string(status_rs.data(), status_rs.length());
+            } catch (const rust::Error &e) {
+                throw std::runtime_error(e.what());
+            } });
+        }
 
-    std::shared_ptr<Promise<std::string>>
-    offboardAll(const std::optional<std::string> &optionalAddress,
-                bool no_sync) override
-    {
-      return Promise<std::string>::async([optionalAddress,
-                                          no_sync]()
-                                         {
-      const char *addr_c =
-          optionalAddress.has_value() ? optionalAddress->c_str() : nullptr;
-      char *status_c = nullptr;
-      bark::bark_BarkError *error = bark::bark_offboard_all(
-          addr_c, no_sync, &status_c);
-      check_bark_error(error);
-      if (status_c == nullptr) {
-        throw std::runtime_error(
-            "Bark-cpp error: offboardAll returned success but status is null");
-      }
-      std::string status_str(status_c);
-      bark::bark_free_string(status_c); // Use helper
-      return status_str; });
-    }
+        std::shared_ptr<Promise<std::string>>
+        exitStartAll() override
+        {
+            return Promise<std::string>::async([]()
+                                               {
+            try {
+                rust::String status_rs = bark_cxx::start_exit_for_entire_wallet();
+                return std::string(status_rs.data(), status_rs.length());
+            } catch (const rust::Error &e) {
+                throw std::runtime_error(e.what());
+            } });
+        }
 
-    std::shared_ptr<Promise<std::string>> exitStartSpecific(
-        const std::vector<std::string> &vtxoIds) override
-    {
-      return Promise<std::string>::async([vtxoIds]()
-                                         {
-      if (vtxoIds.empty()) {
-        throw std::runtime_error(
-            "exitStartSpecific requires at least one vtxoId");
-      }
-      std::vector<const char *> ids_c;
-      ids_c.reserve(vtxoIds.size());
-      for (const auto &id : vtxoIds) {
-        ids_c.push_back(id.c_str());
-      }
-      char *status_c = nullptr;
+        std::shared_ptr<Promise<std::string>>
+        exitProgressOnce() override
+        {
+            return Promise<std::string>::async([]()
+                                               {
+            try {
+                rust::String status_rs = bark_cxx::exit_progress_once();
+                return std::string(status_rs.data(), status_rs.length());
+            } catch (const rust::Error &e) {
+                throw std::runtime_error(e.what());
+            } });
+        }
 
-      bark::bark_BarkError *error =
-          bark::bark_exit_start_specific(ids_c.data(), ids_c.size(), &status_c);
-      check_bark_error(error);
-      if (status_c == nullptr) {
-        throw std::runtime_error("Bark-cpp error: exitStartSpecific returned "
-                                 "success but status is null");
-      }
-      std::string status_str(status_c);
-      bark::bark_free_string(status_c); // Use helper
-      return status_str; });
-    }
-
-    std::shared_ptr<Promise<std::string>>
-    exitStartAll() override
-    {
-      return Promise<std::string>::async([]()
-                                         {
-      char *status_c = nullptr;
-      bark::bark_BarkError *error = bark::bark_exit_start_all(&status_c);
-      check_bark_error(error);
-      if (status_c == nullptr) {
-        throw std::runtime_error(
-            "Bark-cpp error: exitStartAll returned success but status is null");
-      }
-      std::string status_str(status_c);
-      bark::bark_free_string(status_c); // Use helper
-      return status_str; });
-    }
-
-    std::shared_ptr<Promise<std::string>>
-    exitProgressOnce() override
-    {
-      return Promise<std::string>::async([]()
-                                         {
-      char *status_c = nullptr;
-      bark::bark_BarkError *error = bark::bark_exit_progress_once(&status_c);
-      check_bark_error(error);
-      if (status_c == nullptr) {
-        throw std::runtime_error("Bark-cpp error: exitProgressOnce returned "
-                                 "success but status is null");
-      }
-      std::string status_str(status_c);
-      bark::bark_free_string(status_c); // Use helper
-      return status_str; });
-    }
-
-  private:
-    // Tag for logging/debugging within Nitro
-    static constexpr auto TAG = "NitroArk";
-  };
+    private:
+        // Tag for logging/debugging within Nitro
+        static constexpr auto TAG = "NitroArk";
+    };
 
 } // namespace margelo::nitro::nitroark

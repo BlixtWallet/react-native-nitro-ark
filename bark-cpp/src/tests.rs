@@ -1,948 +1,398 @@
-#![cfg(test)]
-
-use crate::ffi::*;
-use crate::ffi_2::*;
-use std::env;
-use std::ffi::{c_char, CStr, CString};
+#![allow(unused_imports)]
+use crate::cxx::{
+    self,
+    ffi::{self, CxxBalance, RefreshModeType},
+};
+use anyhow::Context;
+use bark::ark::bitcoin::Amount;
 use std::fs;
 use std::path::PathBuf;
-use std::ptr;
-use std::sync::Once;
+use std::str::FromStr;
+use tempfile::tempdir;
 
-static INIT: Once = Once::new();
+// --- Test Setup ---
 
-fn setup() {
-    INIT.call_once(|| {
-        // This is important to get logs from the library during tests.
-        bark_init_logger();
-    });
+/// Creates a temporary directory and basic wallet creation options for tests.
+fn setup_test_wallet_opts() -> (tempfile::TempDir, ffi::CreateOpts) {
+    let temp_dir = tempdir().expect("Failed to create temp dir");
+    let mnemonic = cxx::create_mnemonic().expect("Failed to create mnemonic for test");
+
+    let config_opts = ffi::ConfigOpts {
+        // Using placeholder values for services not directly hit in most unit tests.
+        // For real integration tests, these would point to live regtest services.
+        asp: "http://127.0.0.1:50051".to_string(),
+        esplora: "http://127.0.0.1:3002".to_string(),
+        bitcoind: "".to_string(),
+        bitcoind_cookie: "".to_string(),
+        bitcoind_user: "".to_string(),
+        bitcoind_pass: "".to_string(),
+        vtxo_refresh_expiry_threshold: 3600,
+        fallback_fee_rate: 1,
+    };
+
+    let create_opts = ffi::CreateOpts {
+        regtest: true,
+        signet: false,
+        bitcoin: false,
+        mnemonic,
+        birthday_height: 0,
+        config: config_opts,
+    };
+
+    (temp_dir, create_opts)
 }
 
-const VALID_MNEMONIC: &str =
-    "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
-
-// Helper to create CString for tests, panics on failure.
-fn c_string_for_test(s: &str) -> CString {
-    CString::new(s).unwrap_or_else(|e| panic!("Failed to create CString for '{}': {}", s, e))
-}
-
-// A test fixture for managing a temporary wallet directory and loaded wallet state.
-// It loads a wallet on creation and closes it on drop.
-// Tests requiring a loaded wallet should use this.
+/// A test fixture to ensure the wallet is loaded for a test and closed afterward.
 struct WalletTestFixture {
-    temp_dir: PathBuf,
-    // Keep CStrings alive for the duration of the test by holding ownership.
-    _datadir_c: CString,
-    _mnemonic_c: CString,
-    _asp_url_c: CString,
-    _esplora_url_c: CString,
+    _temp_dir: tempfile::TempDir,
 }
 
 impl WalletTestFixture {
-    // This will set up a temporary directory and load a wallet into the GLOBAL_WALLET.
-    // It will panic if wallet loading fails, as tests using this fixture depend on it.
-    fn new(test_name: &str) -> Self {
-        setup(); // Ensure logger is initialized
+    fn new() -> Self {
+        cxx::init_logger();
+        let (temp_dir, opts) = setup_test_wallet_opts();
+        let datadir_str = temp_dir.path().to_str().unwrap();
 
-        let base_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("target")
-            .join("test_wallets");
-        let temp_dir = base_dir.join(test_name);
-
-        if temp_dir.exists() {
-            fs::remove_dir_all(&temp_dir).unwrap();
+        if cxx::is_wallet_loaded() {
+            cxx::close_wallet().unwrap();
         }
-        fs::create_dir_all(&temp_dir).unwrap();
 
-        let datadir_c = c_string_for_test(temp_dir.to_str().unwrap());
-        let mnemonic_c = c_string_for_test(VALID_MNEMONIC);
-        // Note: These ports should ideally be unique per test or managed by a mock server framework.
-        // For now, we assume they are available or the test is ignored.
-        let asp_url_c = c_string_for_test("http://127.0.0.1:12345");
-        let esplora_url_c = c_string_for_test("http://127.0.0.1:3002");
-
-        let config_opts = BarkConfigOpts {
-            asp: asp_url_c.as_ptr(),
-            esplora: esplora_url_c.as_ptr(),
-            bitcoind: ptr::null(),
-            bitcoind_cookie: ptr::null(),
-            bitcoind_user: ptr::null(),
-            bitcoind_pass: ptr::null(),
-            vtxo_refresh_expiry_threshold: 144,
-            fallback_fee_rate: ptr::null(),
-        };
-
-        let create_opts = BarkCreateOpts {
-            regtest: true,
-            signet: false,
-            bitcoin: false,
-            mnemonic: mnemonic_c.as_ptr(),
-            birthday_height: 0,
-            config: config_opts,
-        };
-
-        let err_ptr = bark_load_wallet(datadir_c.as_ptr(), create_opts);
-        if !err_ptr.is_null() {
-            unsafe {
-                let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-                bark_free_error(err_ptr);
-                // We panic here because subsequent tests will fail if the wallet isn't loaded.
-                // The `#[ignore]` attribute should be used for tests requiring a live server.
-                panic!("Wallet loading failed in test setup for '{}': {}. Ensure mock servers or a regtest environment is running.", test_name, msg);
-            }
-        }
+        cxx::load_wallet(datadir_str, opts)
+            .with_context(|| format!("Failed to load wallet in test setup"))
+            .unwrap();
 
         WalletTestFixture {
-            temp_dir,
-            _datadir_c: datadir_c,
-            _mnemonic_c: mnemonic_c,
-            _asp_url_c: asp_url_c,
-            _esplora_url_c: esplora_url_c,
+            _temp_dir: temp_dir,
         }
     }
 }
 
 impl Drop for WalletTestFixture {
     fn drop(&mut self) {
-        // Close the wallet
-        let err_ptr = bark_close_wallet();
-        if !err_ptr.is_null() {
-            unsafe {
-                let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-                // Using eprintln instead of panic in drop is generally safer.
-                eprintln!(
-                    "Warning: bark_close_wallet failed during test teardown for '{}': {}",
-                    self.temp_dir.display(),
-                    msg
-                );
-                bark_free_error(err_ptr);
-            }
-        }
-
-        // Clean up the directory
-        if self.temp_dir.exists() {
-            fs::remove_dir_all(&self.temp_dir).unwrap_or_else(|e| {
-                eprintln!(
-                    "Warning: Failed to clean up test dir {}: {}",
-                    self.temp_dir.display(),
-                    e
-                )
-            });
+        if cxx::is_wallet_loaded() {
+            cxx::close_wallet().expect("Failed to close wallet in test teardown");
         }
     }
 }
 
-// --- Basic FFI Tests ---
+// --- Tests ---
 
 #[test]
-fn test_bark_init_logger_call() {
-    setup(); // Just ensures it can be called without panicking.
+fn test_init_logger_ffi() {
+    // This just ensures the function can be called without panicking.
+    // The logger is initialized globally, so this will be a no-op on subsequent calls.
+    cxx::init_logger();
 }
 
 #[test]
-fn test_bark_create_and_free_mnemonic() {
-    setup();
-    let mnemonic_ptr = bark_create_mnemonic();
+fn test_create_mnemonic_ffi() {
+    cxx::init_logger();
+    let result = cxx::create_mnemonic();
+    assert!(result.is_ok());
+    let mnemonic_str = result.unwrap();
+    assert_eq!(mnemonic_str.split_whitespace().count(), 12);
+}
+
+#[test]
+#[ignore = "requires live regtest backend"]
+fn test_wallet_management_ffi() {
+    cxx::init_logger();
+    let (temp_dir, opts) = setup_test_wallet_opts();
+    let datadir_str = temp_dir.path().to_str().unwrap();
+
+    // 1. Wallet should not be loaded initially
+    assert!(!cxx::is_wallet_loaded());
+
+    // 2. Load wallet
+    let load_result = cxx::load_wallet(datadir_str, opts);
     assert!(
-        !mnemonic_ptr.is_null(),
-        "bark_create_mnemonic should return a valid pointer"
+        load_result.is_ok(),
+        "Failed to load wallet: {:?}",
+        load_result.err()
     );
+    assert!(cxx::is_wallet_loaded());
 
-    unsafe {
-        let mnemonic_c_str = CStr::from_ptr(mnemonic_ptr);
-        let mnemonic_rust_str = mnemonic_c_str
-            .to_str()
-            .expect("Mnemonic is not valid UTF-8");
-        assert_eq!(
-            mnemonic_rust_str.split_whitespace().count(),
-            12,
-            "Mnemonic should have 12 words"
-        );
-        bark_free_string(mnemonic_ptr);
-    }
-}
-
-#[test]
-fn test_bark_free_string_with_null() {
-    setup();
-    bark_free_string(ptr::null_mut()); // Should not panic.
-}
-
-#[test]
-fn test_bark_error_handling_functions() {
-    setup();
-    // Test bark_error_message with null
+    // 3. Try loading again (should fail)
+    let (_temp_dir2, opts2) = setup_test_wallet_opts();
+    let datadir_str2 = _temp_dir2.path().to_str().unwrap();
+    let load_again_result = cxx::load_wallet(datadir_str2, opts2);
     assert!(
-        bark_error_message(ptr::null()).is_null(),
-        "bark_error_message with null should return null"
+        load_again_result.is_err(),
+        "Should not be able to load a second wallet"
     );
 
-    // Test bark_free_error with null
-    bark_free_error(ptr::null_mut()); // Should not panic.
+    // 4. Close wallet
+    let close_result = cxx::close_wallet();
+    assert!(close_result.is_ok());
+    assert!(!cxx::is_wallet_loaded());
 
-    // Create a real error to test message and free
-    let error_message = "This is a test error";
-    let bark_error = BarkError::new(error_message);
-    let error_ptr = Box::into_raw(Box::new(bark_error));
-
-    unsafe {
-        let returned_message_ptr = bark_error_message(error_ptr);
-        assert!(
-            !returned_message_ptr.is_null(),
-            "bark_error_message should return the message pointer"
-        );
-        let returned_message = CStr::from_ptr(returned_message_ptr).to_str().unwrap();
-        assert_eq!(
-            returned_message, error_message,
-            "The returned error message should match the original"
-        );
-
-        bark_free_error(error_ptr);
-    }
-}
-
-// --- Wallet Loading and Closing Tests ---
-
-#[test]
-fn test_bark_load_wallet_null_datadir() {
-    setup();
-    let mnemonic_c = c_string_for_test(VALID_MNEMONIC);
-    let asp_url_c = c_string_for_test("http://127.0.0.1:12345");
-    let esplora_url_c = c_string_for_test("http://127.0.0.1:3002");
-
-    let config_opts = BarkConfigOpts {
-        asp: asp_url_c.as_ptr(),
-        esplora: esplora_url_c.as_ptr(),
-        bitcoind: ptr::null(),
-        bitcoind_cookie: ptr::null(),
-        bitcoind_user: ptr::null(),
-        bitcoind_pass: ptr::null(),
-        vtxo_refresh_expiry_threshold: 144,
-        fallback_fee_rate: ptr::null(),
-    };
-    let create_opts = BarkCreateOpts {
-        regtest: true,
-        signet: false,
-        bitcoin: false,
-        mnemonic: mnemonic_c.as_ptr(),
-        birthday_height: 0,
-        config: config_opts,
-    };
-
-    let err_ptr = bark_load_wallet(ptr::null(), create_opts);
+    // 5. Try closing again (should fail)
+    let close_again_result = cxx::close_wallet();
     assert!(
-        !err_ptr.is_null(),
-        "bark_load_wallet should fail with null datadir"
+        close_again_result.is_err(),
+        "Should not be able to close a non-loaded wallet"
     );
-    unsafe {
-        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-        assert!(msg.contains("datadir is null"));
-        bark_free_error(err_ptr);
-    }
 }
 
 #[test]
-fn test_bark_load_wallet_no_network() {
-    setup();
-    let temp_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("target/test_wallet_no_network");
-    fs::create_dir_all(&temp_dir).unwrap();
-    let datadir_c = c_string_for_test(temp_dir.to_str().unwrap());
-    let mnemonic_c = c_string_for_test(VALID_MNEMONIC);
-    let asp_url_c = c_string_for_test("http://127.0.0.1:12345");
-    let esplora_url_c = c_string_for_test("http://127.0.0.1:3002");
-
-    let config_opts = BarkConfigOpts {
-        asp: asp_url_c.as_ptr(),
-        esplora: esplora_url_c.as_ptr(),
-        bitcoind: ptr::null(),
-        bitcoind_cookie: ptr::null(),
-        bitcoind_user: ptr::null(),
-        bitcoind_pass: ptr::null(),
-        vtxo_refresh_expiry_threshold: 144,
-        fallback_fee_rate: ptr::null(),
-    };
-    // No network flag is set to true
-    let create_opts = BarkCreateOpts {
-        regtest: false,
-        signet: false,
-        bitcoin: false,
-        mnemonic: mnemonic_c.as_ptr(),
-        birthday_height: 0,
-        config: config_opts,
-    };
-
-    let err_ptr = bark_load_wallet(datadir_c.as_ptr(), create_opts);
+#[ignore = "requires live regtest backend"]
+fn test_get_onchain_address_ffi() {
+    let _fixture = WalletTestFixture::new();
+    let address_result = cxx::get_onchain_address();
+    assert!(address_result.is_ok());
+    let address = address_result.unwrap();
     assert!(
-        !err_ptr.is_null(),
-        "bark_load_wallet should fail with no network specified"
+        address.starts_with("bcrt1"),
+        "Address should be a regtest address"
     );
-    unsafe {
-        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-        assert!(msg.contains("A network must be specified"));
-        bark_free_error(err_ptr);
-    }
-    fs::remove_dir_all(&temp_dir).unwrap();
 }
 
 #[test]
-fn test_bark_close_wallet_when_none_loaded() {
-    setup();
-    // Ensure no wallet is loaded by not calling the fixture and checking state before test.
-    let err_ptr = bark_close_wallet();
+#[ignore = "requires live regtest backend"]
+fn test_get_balance_ffi() {
+    let _fixture = WalletTestFixture::new();
+    // Use no_sync = true to avoid network calls in a unit test context.
+    let balance_result = cxx::get_balance(true);
+    assert!(balance_result.is_ok());
+    let balance = balance_result.unwrap();
+    assert_eq!(balance.onchain, 0);
+    assert_eq!(balance.offchain, 0);
+    assert_eq!(balance.pending_exit, 0);
+}
+
+#[test]
+#[ignore = "requires live regtest backend"]
+fn test_get_vtxo_pubkey_ffi() {
+    let _fixture = WalletTestFixture::new();
+    // Request the next available pubkey
+    let pubkey_result = cxx::get_vtxo_pubkey(u32::MAX);
+    assert!(pubkey_result.is_ok());
+    let pubkey1 = pubkey_result.unwrap();
+    assert_eq!(pubkey1.len(), 66); // 33 bytes * 2 hex chars
+
+    // Request a specific index (0)
+    let pubkey_result_2 = cxx::get_vtxo_pubkey(0);
+    assert!(pubkey_result_2.is_ok());
+    let pubkey2 = pubkey_result_2.unwrap();
+    assert_eq!(
+        pubkey1, pubkey2,
+        "Requesting index 0 should yield the same key as the first derived key"
+    );
+}
+
+#[test]
+#[ignore = "requires live regtest backend"]
+fn test_get_utxos_and_vtxos_ffi() {
+    let _fixture = WalletTestFixture::new();
+    // On a fresh wallet, these should return empty JSON arrays.
+    let onchain_utxos_res = cxx::get_onchain_utxos(true);
+    assert!(onchain_utxos_res.is_ok());
+    assert_eq!(onchain_utxos_res.unwrap(), "[]");
+
+    let vtxos_res = cxx::get_vtxos(true);
+    assert!(vtxos_res.is_ok());
+    assert!(vtxos_res.unwrap().contains("[]"));
+}
+
+#[test]
+#[ignore = "requires live regtest backend"]
+fn test_bolt11_invoice_ffi() {
+    let _fixture = WalletTestFixture::new();
+    // This test requires a running LDK node, which is part of the wallet.
+    // It should succeed even without onchain funds.
+    let amount_msat = 100_000; // 100 sat
+    let invoice_res = cxx::bolt11_invoice(amount_msat);
     assert!(
-        !err_ptr.is_null(),
-        "bark_close_wallet should fail if no wallet is loaded"
+        invoice_res.is_ok(),
+        "Failed to create bolt11 invoice: {:?}",
+        invoice_res.err()
     );
-    unsafe {
-        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-        assert!(msg.contains("No wallet is currently loaded"));
-        bark_free_error(err_ptr);
-    }
-}
-
-#[test]
-#[ignore = "This test requires a running regtest environment with esplora and asp servers"]
-fn test_load_and_close_wallet_success() {
-    // The fixture's new() and drop() methods test the success case.
-    // This test just ensures it runs without panicking.
-    let _fixture = WalletTestFixture::new("load_and_close_success");
-    // Wallet is loaded in new() and closed in drop()
-}
-
-#[test]
-#[ignore = "This test requires a running regtest environment with esplora and asp servers"]
-fn test_bark_is_wallet_loaded() {
-    setup();
-
-    // Should be false initially
+    let invoice_str = invoice_res.unwrap();
     assert!(
-        !bark_is_wallet_loaded(),
-        "Wallet should not be loaded initially"
+        invoice_str.starts_with("lnbcrt1"),
+        "Invoice should be for regtest"
     );
+}
 
-    {
-        let _fixture = WalletTestFixture::new("is_wallet_loaded_test");
-        // Should be true inside the fixture's scope
-        assert!(
-            bark_is_wallet_loaded(),
-            "Wallet should be loaded within the fixture's scope"
-        );
-    } // Fixture is dropped, wallet is closed.
+#[test]
+#[ignore = "requires live regtest backend"]
+fn test_onchain_and_boarding_flow_ffi() {
+    let _fixture = WalletTestFixture::new();
+    // This is an integration test and requires a funded regtest node.
+    // 1. Get address
+    let _address = cxx::get_onchain_address().unwrap();
 
-    // Should be false again after the wallet is closed
+    // (Manual step: fund this address from bitcoind-cli)
+    // e.g., `bitcoin-cli -regtest sendtoaddress <address> 1`
+    // (Manual step: mine a block)
+    // e.g., `bitcoin-cli -regtest -generate 1`
+
+    // 2. Check balance (with sync)
+    let balance = cxx::get_balance(false).unwrap();
     assert!(
-        !bark_is_wallet_loaded(),
-        "Wallet should not be loaded after fixture is dropped"
+        balance.onchain > 0,
+        "Wallet should have onchain funds after funding and syncing"
     );
-}
 
-// --- Wallet Functionality Tests ---
+    // 3. Board amount
+    let board_amount_sat = 50_000;
+    let board_res = cxx::board_amount(board_amount_sat, false);
+    assert!(board_res.is_ok(), "Boarding failed: {:?}", board_res.err());
 
-#[test]
-fn test_get_balance_no_wallet_loaded() {
-    setup();
-    let mut balance_out = BarkBalance {
-        onchain: 0,
-        offchain: 0,
-        pending_exit: 0,
-    };
-    let err_ptr = bark_get_balance(true, &mut balance_out);
+    // (Manual step: mine the board transaction)
+
+    // 4. Check balance again
+    let final_balance = cxx::get_balance(false).unwrap();
     assert!(
-        !err_ptr.is_null(),
-        "bark_get_balance should fail if no wallet is loaded"
+        final_balance.offchain >= board_amount_sat,
+        "Offchain balance should increase after boarding"
     );
-    unsafe {
-        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-        assert!(msg.contains("Wallet not loaded"));
-        bark_free_error(err_ptr);
-    }
 }
 
 #[test]
-#[ignore = "This test requires a running regtest environment with esplora and asp servers"]
-fn test_get_balance_null_output_pointer() {
-    // We need a wallet loaded for this check to be reached.
-    let _fixture = WalletTestFixture::new("get_balance_null_output");
-    let err_ptr = bark_get_balance(true, ptr::null_mut());
-    assert!(
-        !err_ptr.is_null(),
-        "bark_get_balance should fail with null output pointer"
-    );
-    unsafe {
-        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-        assert!(msg.contains("balance_out is null"));
-        bark_free_error(err_ptr);
-    }
-}
-
-#[test]
-#[ignore = "This test requires a running regtest environment with esplora and asp servers"]
-fn test_get_balance_success() {
-    let _fixture = WalletTestFixture::new("get_balance_success");
-
-    let mut balance_out = BarkBalance {
-        onchain: 0,
-        offchain: 0,
-        pending_exit: 0,
-    };
-    let err_ptr = bark_get_balance(true, &mut balance_out); // no_sync = true
-
-    if !err_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-            bark_free_error(err_ptr);
-            panic!("bark_get_balance failed: {}", msg);
-        }
-    }
-
-    // For a new wallet, balances should be 0.
-    assert_eq!(balance_out.onchain, 0);
-    assert_eq!(balance_out.offchain, 0);
-    assert_eq!(balance_out.pending_exit, 0);
-}
-
-#[test]
-fn test_get_onchain_address_no_wallet_loaded() {
-    setup();
-    let mut address_out: *mut c_char = ptr::null_mut();
-    let err_ptr = bark_get_onchain_address(&mut address_out);
-    assert!(
-        !err_ptr.is_null(),
-        "bark_get_onchain_address should fail if no wallet is loaded"
-    );
-    unsafe {
-        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-        assert!(msg.contains("Wallet not loaded"));
-        bark_free_error(err_ptr);
-    }
-    assert!(address_out.is_null());
-}
-
-#[test]
-#[ignore = "This test requires a running regtest environment with esplora and asp servers"]
-fn test_get_onchain_address_success() {
-    let _fixture = WalletTestFixture::new("get_onchain_address_success");
-
-    let mut address_out: *mut c_char = ptr::null_mut();
-    let err_ptr = bark_get_onchain_address(&mut address_out);
-
-    if !err_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-            bark_free_error(err_ptr);
-            panic!("bark_get_onchain_address failed: {}", msg);
-        }
-    }
-
-    assert!(
-        !address_out.is_null(),
-        "Address output should not be null on success"
-    );
-    unsafe {
-        let address_str = CStr::from_ptr(address_out).to_str().unwrap();
-        // For regtest, addresses start with "bcrt1".
-        assert!(
-            address_str.starts_with("bcrt1"),
-            "Address should be a regtest address, but was {}",
-            address_str
-        );
-        bark_free_string(address_out);
-    }
-}
-
-#[test]
-#[ignore = "This test requires a running regtest environment with esplora and asp servers"]
-fn test_get_onchain_address_error_null_address_out() {
-    let _fixture = WalletTestFixture::new("get_onchain_address_null_output");
-    let err_ptr = bark_get_onchain_address(ptr::null_mut());
-    assert!(
-        !err_ptr.is_null(),
-        "bark_get_onchain_address should fail with null output pointer"
-    );
-    unsafe {
-        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-        assert!(msg.contains("Null pointer argument provided"));
-        bark_free_error(err_ptr);
-    }
-}
-
-// --- Onchain Send Tests ---
-
-#[test]
-fn test_send_onchain_no_wallet_loaded() {
-    setup();
-    let destination_c = c_string_for_test("bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-    let mut txid_out: *mut c_char = ptr::null_mut();
-    let err_ptr = bark_send_onchain(destination_c.as_ptr(), 1000, true, &mut txid_out);
-    assert!(
-        !err_ptr.is_null(),
-        "bark_send_onchain should fail if no wallet is loaded"
-    );
-    unsafe {
-        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-        assert!(msg.contains("Wallet not loaded"));
-        bark_free_error(err_ptr);
-    }
-    assert!(txid_out.is_null());
-}
-
-#[test]
-#[ignore = "This test requires a running regtest environment with esplora and asp servers"]
-fn test_send_onchain_null_pointers() {
-    let _fixture = WalletTestFixture::new("send_onchain_null_pointers");
-    let mut txid_out: *mut c_char = ptr::null_mut();
-    let destination_c = c_string_for_test("bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-
-    // Null destination
-    let err_ptr = bark_send_onchain(ptr::null(), 1000, true, &mut txid_out);
-    assert!(!err_ptr.is_null());
-    unsafe {
-        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-        assert!(msg.contains("Null pointer argument provided"));
-        bark_free_error(err_ptr);
-    }
-
-    // Null txid_out
-    let err_ptr = bark_send_onchain(destination_c.as_ptr(), 1000, true, ptr::null_mut());
-    assert!(!err_ptr.is_null());
-    unsafe {
-        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-        assert!(msg.contains("Null pointer argument provided"));
-        bark_free_error(err_ptr);
-    }
-}
-
-#[test]
-#[ignore = "This test requires a funded regtest wallet"]
-fn test_send_onchain_success() {
-    let _fixture = WalletTestFixture::new("send_onchain_success");
-    // To make this test pass, you would need to:
-    // 1. Fund the wallet's onchain address.
-    // 2. Provide a valid destination address.
-    let destination_c = c_string_for_test("bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-    let mut txid_out: *mut c_char = ptr::null_mut();
-
-    let err_ptr = bark_send_onchain(destination_c.as_ptr(), 5000, false, &mut txid_out);
-
-    if !err_ptr.is_null() {
-        unsafe {
-            let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-            bark_free_error(err_ptr);
-            panic!("bark_send_onchain failed: {}", msg);
-        }
-    }
-    assert!(!txid_out.is_null());
-    unsafe {
-        let txid_str = CStr::from_ptr(txid_out).to_str().unwrap();
-        assert!(!txid_str.is_empty());
-        bark_free_string(txid_out);
-    }
-}
-
-// --- Drain and SendMany Tests ---
-
-#[test]
-fn test_drain_onchain_no_wallet_loaded() {
-    setup();
-    let destination_c = c_string_for_test("bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-    let mut txid_out: *mut c_char = ptr::null_mut();
-    let err_ptr = bark_drain_onchain(destination_c.as_ptr(), true, &mut txid_out);
-    assert!(!err_ptr.is_null());
-    unsafe {
-        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-        assert!(msg.contains("Wallet not loaded"));
-        bark_free_error(err_ptr);
-    }
-}
-
-#[test]
-#[ignore = "This test requires a running regtest environment with esplora and asp servers"]
-fn test_drain_onchain_null_pointers() {
-    let _fixture = WalletTestFixture::new("drain_onchain_null_pointers");
-    let mut txid_out: *mut c_char = ptr::null_mut();
-    let destination_c = c_string_for_test("bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-
-    // Null destination
-    let err_ptr = bark_drain_onchain(ptr::null(), true, &mut txid_out);
-    assert!(!err_ptr.is_null());
-    unsafe {
-        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-        assert!(msg.contains("Null pointer argument provided"));
-        bark_free_error(err_ptr);
-    }
-
-    // Null txid_out
-    let err_ptr = bark_drain_onchain(destination_c.as_ptr(), true, ptr::null_mut());
-    assert!(!err_ptr.is_null());
-    unsafe {
-        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-        assert!(msg.contains("Null pointer argument provided"));
-        bark_free_error(err_ptr);
-    }
-}
-
-#[test]
-fn test_send_many_onchain_no_wallet_loaded() {
-    setup();
-    let dest_c = c_string_for_test("bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-    let destinations = [dest_c.as_ptr()];
-    let amounts = [1000u64];
-    let mut txid_out: *mut c_char = ptr::null_mut();
-
-    let err_ptr = bark_send_many_onchain(
-        destinations.as_ptr(),
-        amounts.as_ptr(),
-        1,
-        true,
-        &mut txid_out,
-    );
-    assert!(!err_ptr.is_null());
-    unsafe {
-        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-        assert!(msg.contains("Wallet not loaded"));
-        bark_free_error(err_ptr);
-    }
-}
-
-#[test]
-#[ignore = "This test requires a running regtest environment with esplora and asp servers"]
-fn test_send_many_onchain_null_pointers() {
-    let _fixture = WalletTestFixture::new("send_many_onchain_null_pointers");
-    let dest_c = c_string_for_test("bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-    let destinations = [dest_c.as_ptr()];
-    let amounts = [1000u64];
-    let mut txid_out: *mut c_char = ptr::null_mut();
-
-    // Null destinations
-    let err_ptr = bark_send_many_onchain(ptr::null(), amounts.as_ptr(), 1, true, &mut txid_out);
-    assert!(!err_ptr.is_null());
-    unsafe {
-        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-        assert!(msg.contains("Null pointer or zero outputs provided"));
-        bark_free_error(err_ptr);
-    }
-
-    // Null amounts
-    let err_ptr =
-        bark_send_many_onchain(destinations.as_ptr(), ptr::null(), 1, true, &mut txid_out);
-    assert!(!err_ptr.is_null());
-    unsafe {
-        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-        assert!(msg.contains("Null pointer or zero outputs provided"));
-        bark_free_error(err_ptr);
-    }
-
-    // Null txid_out
-    let err_ptr = bark_send_many_onchain(
-        destinations.as_ptr(),
-        amounts.as_ptr(),
-        1,
-        true,
-        ptr::null_mut(),
-    );
-    assert!(!err_ptr.is_null());
-    unsafe {
-        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-        assert!(msg.contains("Null pointer or zero outputs provided"));
-        bark_free_error(err_ptr);
-    }
-
-    // Zero outputs
-    let err_ptr = bark_send_many_onchain(
-        destinations.as_ptr(),
-        amounts.as_ptr(),
-        0,
-        true,
-        &mut txid_out,
-    );
-    assert!(!err_ptr.is_null());
-    unsafe {
-        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-        assert!(msg.contains("Null pointer or zero outputs provided"));
-        bark_free_error(err_ptr);
-    }
-}
-
-// --- VTXO and Refresh Tests ---
-
-#[test]
-fn test_get_vtxos_no_wallet_loaded() {
-    setup();
-    let mut vtxos_json_out: *mut c_char = ptr::null_mut();
-    let err_ptr = bark_get_vtxos(true, &mut vtxos_json_out);
-    assert!(!err_ptr.is_null());
-    unsafe {
-        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-        assert!(msg.contains("Wallet not loaded"));
-        bark_free_error(err_ptr);
-    }
-}
-
-#[test]
-#[ignore = "This test requires a running regtest environment with esplora and asp servers"]
-fn test_get_vtxos_success() {
-    let _fixture = WalletTestFixture::new("get_vtxos_success");
-    let mut vtxos_json_out: *mut c_char = ptr::null_mut();
-    let err_ptr = bark_get_vtxos(true, &mut vtxos_json_out);
-    assert!(err_ptr.is_null());
-    assert!(!vtxos_json_out.is_null());
-    unsafe {
-        let json_str = CStr::from_ptr(vtxos_json_out).to_str().unwrap();
-        assert_eq!(json_str, "[]"); // Expect empty array for new wallet
-        bark_free_string(vtxos_json_out);
-    }
-}
-
-#[test]
-fn test_refresh_vtxos_no_wallet_loaded() {
-    setup();
-    let refresh_opts = BarkRefreshOpts {
-        mode_type: BarkRefreshModeType::DefaultThreshold,
+#[ignore = "requires live regtest backend"]
+fn test_refresh_vtxos_ffi() {
+    let _fixture = WalletTestFixture::new();
+    let opts = ffi::RefreshOpts {
+        mode_type: ffi::RefreshModeType::All,
         threshold_value: 0,
-        specific_vtxo_ids: ptr::null(),
-        num_specific_vtxo_ids: 0,
+        specific_vtxo_ids: vec![],
     };
-    let mut status_json_out: *mut c_char = ptr::null_mut();
-    let err_ptr = bark_refresh_vtxos(refresh_opts, true, &mut status_json_out);
-    assert!(!err_ptr.is_null());
-    unsafe {
-        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-        assert!(msg.contains("Wallet not loaded"));
-        bark_free_error(err_ptr);
-    }
-}
-
-// --- UTXO and Pubkey Tests ---
-
-#[test]
-fn test_get_onchain_utxos_no_wallet_loaded() {
-    setup();
-    let mut utxos_json_out: *mut c_char = ptr::null_mut();
-    let err_ptr = bark_get_onchain_utxos(true, &mut utxos_json_out);
-    assert!(!err_ptr.is_null());
-    unsafe {
-        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-        assert!(msg.contains("Wallet not loaded"));
-        bark_free_error(err_ptr);
-    }
+    // This will likely fail without a running ASP, but we test that the call itself works
+    let refresh_res = cxx::refresh_vtxos(opts, true);
+    assert!(refresh_res.is_ok()); // The call should succeed, even if the refresh does nothing
 }
 
 #[test]
-#[ignore = "This test requires a running regtest environment with esplora and asp servers"]
-fn test_get_onchain_utxos_success() {
-    let _fixture = WalletTestFixture::new("get_onchain_utxos_success");
-    let mut utxos_json_out: *mut c_char = ptr::null_mut();
-    let err_ptr = bark_get_onchain_utxos(true, &mut utxos_json_out);
-    assert!(err_ptr.is_null());
-    assert!(!utxos_json_out.is_null());
-    unsafe {
-        let json_str = CStr::from_ptr(utxos_json_out).to_str().unwrap();
-        assert!(json_str.starts_with("[]"));
-        bark_free_string(utxos_json_out);
-    }
+#[ignore = "requires live regtest backend"]
+fn test_exit_functions_ffi() {
+    let _fixture = WalletTestFixture::new();
+    // On a fresh wallet, these calls should not find any VTXOs to exit.
+    let exit_all_res = cxx::start_exit_for_entire_wallet();
+    assert!(exit_all_res.is_ok());
+
+    let exit_specific_res = cxx::start_exit_for_vtxos(vec![]);
+    assert!(exit_specific_res.is_ok());
+
+    let progress_res = cxx::exit_progress_once();
+    assert!(progress_res.is_ok());
+    let progress_json: serde_json::Value = serde_json::from_str(&progress_res.unwrap()).unwrap();
+    assert_eq!(progress_json["done"], true);
 }
 
 #[test]
-fn test_get_vtxo_pubkey_no_wallet_loaded() {
-    setup();
-    let mut pubkey_hex_out: *mut c_char = ptr::null_mut();
-    let err_ptr = bark_get_vtxo_pubkey(ptr::null(), &mut pubkey_hex_out);
-    assert!(!err_ptr.is_null());
-    unsafe {
-        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-        assert!(msg.contains("Wallet not loaded"));
-        bark_free_error(err_ptr);
-    }
-}
+#[ignore = "requires live regtest backend and a funded wallet"]
+fn test_send_onchain_ffi() {
+    let _fixture = WalletTestFixture::new();
+    let address = cxx::get_onchain_address().unwrap();
 
-#[test]
-#[ignore = "This test requires a running regtest environment with esplora and asp servers"]
-fn test_get_vtxo_pubkey_success() {
-    let _fixture = WalletTestFixture::new("get_vtxo_pubkey_success");
-    let mut pubkey_hex_out: *mut c_char = ptr::null_mut();
-    // Get next available pubkey
-    let err_ptr = bark_get_vtxo_pubkey(ptr::null(), &mut pubkey_hex_out);
-    assert!(err_ptr.is_null());
-    assert!(!pubkey_hex_out.is_null());
-    unsafe {
-        let pubkey_str = CStr::from_ptr(pubkey_hex_out).to_str().unwrap();
-        assert_eq!(pubkey_str.len(), 66); // 33 bytes * 2 hex chars
-        bark_free_string(pubkey_hex_out);
-    }
-}
-
-// --- Boarding Tests ---
-
-#[test]
-fn test_board_amount_no_wallet_loaded() {
-    setup();
-    let mut status_json_out: *mut c_char = ptr::null_mut();
-    let err_ptr = bark_board_amount(10000, true, &mut status_json_out);
-    assert!(!err_ptr.is_null());
-    unsafe {
-        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-        assert!(msg.contains("Wallet not loaded"));
-        bark_free_error(err_ptr);
-    }
-}
-
-#[test]
-#[ignore = "This test requires a running regtest environment with esplora and asp servers"]
-fn test_board_amount_zero_amount() {
-    let _fixture = WalletTestFixture::new("board_amount_zero_amount");
-    let mut status_json_out: *mut c_char = ptr::null_mut();
-    let err_ptr = bark_board_amount(0, true, &mut status_json_out);
-    assert!(!err_ptr.is_null());
-    unsafe {
-        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-        assert!(msg.contains("Board amount cannot be zero"));
-        bark_free_error(err_ptr);
-    }
-}
-
-#[test]
-fn test_board_all_no_wallet_loaded() {
-    setup();
-    let mut status_json_out: *mut c_char = ptr::null_mut();
-    let err_ptr = bark_board_all(true, &mut status_json_out);
-    assert!(!err_ptr.is_null());
-    unsafe {
-        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-        assert!(msg.contains("Wallet not loaded"));
-        bark_free_error(err_ptr);
-    }
-}
-
-// --- Generic Send Tests ---
-
-#[test]
-fn test_send_no_wallet_loaded() {
-    setup();
-    let dest_c = c_string_for_test("bcrt1qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-    let mut status_json_out: *mut c_char = ptr::null_mut();
-
-    let err_ptr = bark_send(
-        dest_c.as_ptr(),
-        ptr::null(),
-        ptr::null(),
-        true,
-        &mut status_json_out,
+    // This test requires the address to be funded manually.
+    let send_res = cxx::send_onchain(&address, 5000, false);
+    assert!(
+        send_res.is_ok(),
+        "send_onchain failed: {:?}",
+        send_res.err()
     );
-    assert!(!err_ptr.is_null());
-    unsafe {
-        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-        assert!(msg.contains("Wallet not loaded"));
-        bark_free_error(err_ptr);
-    }
+    let txid = send_res.unwrap();
+    assert_eq!(txid.len(), 64);
 }
 
-// --- Offboarding Tests ---
-
 #[test]
-fn test_offboard_specific_no_wallet_loaded() {
-    setup();
-    let vtxo_id_c =
-        c_string_for_test("0000000000000000000000000000000000000000000000000000000000000000:0");
-    let vtxo_ids = [vtxo_id_c.as_ptr()];
-    let mut status_json_out: *mut c_char = ptr::null_mut();
+#[ignore = "requires live regtest backend and a funded wallet"]
+fn test_drain_onchain_ffi() {
+    let _fixture = WalletTestFixture::new();
+    let address = cxx::get_onchain_address().unwrap();
 
-    let err_ptr = bark_offboard_specific(
-        vtxo_ids.as_ptr(),
-        1,
-        ptr::null(),
-        true,
-        &mut status_json_out,
+    // This test requires the address to be funded manually.
+    let drain_res = cxx::drain_onchain(&address, false);
+    assert!(
+        drain_res.is_ok(),
+        "drain_onchain failed: {:?}",
+        drain_res.err()
     );
-    assert!(!err_ptr.is_null());
-    unsafe {
-        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-        assert!(msg.contains("Wallet not loaded"));
-        bark_free_error(err_ptr);
-    }
+    let txid = drain_res.unwrap();
+    assert_eq!(txid.len(), 64);
 }
 
 #[test]
-fn test_offboard_all_no_wallet_loaded() {
-    setup();
-    let mut status_json_out: *mut c_char = ptr::null_mut();
-    let err_ptr = bark_offboard_all(ptr::null(), true, &mut status_json_out);
-    assert!(!err_ptr.is_null());
-    unsafe {
-        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-        assert!(msg.contains("Wallet not loaded"));
-        bark_free_error(err_ptr);
-    }
-}
+#[ignore = "requires live regtest backend and a funded wallet"]
+fn test_send_many_onchain_ffi() {
+    let _fixture = WalletTestFixture::new();
+    let address1 = cxx::get_onchain_address().unwrap();
+    let address2 = cxx::get_onchain_address().unwrap();
 
-// --- Exit Flow Tests ---
+    let outputs = vec![
+        ffi::SendManyOutput {
+            destination: address1,
+            amount_sat: 5000,
+        },
+        ffi::SendManyOutput {
+            destination: address2,
+            amount_sat: 6000,
+        },
+    ];
 
-#[test]
-fn test_exit_start_specific_no_wallet_loaded() {
-    setup();
-    let vtxo_id_c =
-        c_string_for_test("0000000000000000000000000000000000000000000000000000000000000000:0");
-    let vtxo_ids = [vtxo_id_c.as_ptr()];
-    let mut status_json_out: *mut c_char = ptr::null_mut();
-
-    let err_ptr = bark_exit_start_specific(vtxo_ids.as_ptr(), 1, &mut status_json_out);
-    assert!(!err_ptr.is_null());
-    unsafe {
-        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-        assert!(msg.contains("Wallet not loaded"));
-        bark_free_error(err_ptr);
-    }
+    let send_many_res = cxx::send_many_onchain(outputs, false);
+    assert!(
+        send_many_res.is_ok(),
+        "send_many_onchain failed: {:?}",
+        send_many_res.err()
+    );
+    let txid = send_many_res.unwrap();
+    assert_eq!(txid.len(), 64);
 }
 
 #[test]
-fn test_exit_start_all_no_wallet_loaded() {
-    setup();
-    let mut status_json_out: *mut c_char = ptr::null_mut();
-    let err_ptr = bark_exit_start_all(&mut status_json_out);
-    assert!(!err_ptr.is_null());
-    unsafe {
-        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-        assert!(msg.contains("Wallet not loaded"));
-        bark_free_error(err_ptr);
-    }
+#[ignore = "requires live regtest backend and a funded wallet"]
+fn test_board_all_ffi() {
+    let _fixture = WalletTestFixture::new();
+    // Requires wallet to be funded.
+    let board_all_res = cxx::board_all(false);
+    assert!(
+        board_all_res.is_ok(),
+        "board_all failed: {:?}",
+        board_all_res.err()
+    );
 }
 
 #[test]
-fn test_exit_progress_once_no_wallet_loaded() {
-    setup();
-    let mut status_json_out: *mut c_char = ptr::null_mut();
-    let err_ptr = bark_exit_progress_once(&mut status_json_out);
-    assert!(!err_ptr.is_null());
-    unsafe {
-        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-        assert!(msg.contains("Wallet not loaded"));
-        bark_free_error(err_ptr);
-    }
-}
-
-// --- BOLT11 Invoice Tests ---
-
-#[test]
-fn test_bolt11_invoice_no_wallet_loaded() {
-    setup();
-    let mut invoice_out: *mut c_char = ptr::null_mut();
-    let err_ptr = bark_bolt11_invoice(1000, &mut invoice_out);
-    assert!(!err_ptr.is_null());
-    unsafe {
-        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-        assert!(msg.contains("Wallet not loaded"));
-        bark_free_error(err_ptr);
-    }
+#[ignore = "requires live regtest backend and a funded wallet with vtxos"]
+fn test_send_payment_ffi() {
+    let _fixture = WalletTestFixture::new();
+    // This is a complex test as it can handle different destination types.
+    // Here we test sending to a VTXO pubkey (OOR).
+    let pubkey = cxx::get_vtxo_pubkey(0).unwrap();
+    let send_res = cxx::send_payment(&pubkey, 5000, "", false);
+    assert!(
+        send_res.is_ok(),
+        "send_payment (OOR) failed: {:?}",
+        send_res.err()
+    );
 }
 
 #[test]
-fn test_claim_bolt11_payment_no_wallet_loaded() {
-    setup();
-    let bolt11_c = c_string_for_test("lnbcrt100n1pjz3zsp5...");
-    let err_ptr = bark_claim_bolt11_payment(bolt11_c.as_ptr());
-    assert!(!err_ptr.is_null());
-    unsafe {
-        let msg = CStr::from_ptr(bark_error_message(err_ptr)).to_string_lossy();
-        assert!(msg.contains("Wallet not loaded"));
-        bark_free_error(err_ptr);
-    }
+#[ignore = "requires live regtest backend and a funded wallet with vtxos"]
+fn test_offboard_ffi() {
+    let _fixture = WalletTestFixture::new();
+    // This test would require creating VTXOs first.
+    // We test that the call with no VTXOs doesn't panic.
+    let offboard_all_res = cxx::offboard_all("", false);
+    assert!(offboard_all_res.is_ok());
+
+    let offboard_specific_res = cxx::offboard_specific(vec![], "", false);
+    assert!(offboard_specific_res.is_ok());
+}
+
+#[test]
+#[ignore = "requires live regtest backend with a funded lightning node"]
+fn test_claim_bolt11_payment_ffi() {
+    let _fixture = WalletTestFixture::new();
+    // This requires another LN node to pay an invoice generated by our wallet.
+    let invoice = cxx::bolt11_invoice(10000).unwrap();
+    // In a real test, you would now pay this invoice from another node.
+    // For this unit test, we just check that trying to claim an unpaid invoice fails gracefully.
+    let claim_res = cxx::claim_bolt11_payment(&invoice);
+    // Depending on the LDK setup, this might error differently.
+    // The key is that it shouldn't panic.
+    assert!(claim_res.is_err(), "Claiming an unpaid invoice should fail");
 }

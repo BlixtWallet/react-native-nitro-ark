@@ -11,9 +11,14 @@ set(LIBS_DIR "${ANDROID_DIR}/src/main/jniLibs/${ANDROID_ABI}")
 
 # Check for required files
 set(BARK_LIB "${LIBS_DIR}/libbark_cpp.a")
+set(BARK_CXX_LIB "${LIBS_DIR}/libcxxbridge1.a")
 
 if(NOT EXISTS "${BARK_LIB}")
   message(FATAL_ERROR "libbark_cpp.a not found at: ${BARK_LIB}")
+endif()
+
+if(NOT EXISTS "${BARK_CXX_LIB}")
+    message(FATAL_ERROR "libcxxbridge1.a not found at: ${BARK_CXX_LIB}")
 endif()
 
 message(STATUS "Using libraries from: ${LIBS_DIR}")
@@ -30,6 +35,7 @@ add_library(
 target_include_directories(${PROJECT_NAME}
     PRIVATE
     ${CPP_DIR}
+    ${CPP_DIR}/generated
     ${ANDROID_DIR}/src/main/cpp
     ${LIBS_DIR}
 )
@@ -41,6 +47,11 @@ find_library(LOG_LIB log)
 add_library(bark_lib STATIC IMPORTED)
 set_target_properties(bark_lib PROPERTIES
     IMPORTED_LOCATION "${BARK_LIB}"
+)
+
+add_library(bark_cxx_lib STATIC IMPORTED)
+set_target_properties(bark_cxx_lib PROPERTIES
+    IMPORTED_LOCATION "${BARK_CXX_LIB}"
 )
 
 # Additional compiler flags
@@ -57,6 +68,7 @@ include(${CMAKE_SOURCE_DIR}/../nitrogen/generated/android/NitroArk+autolinking.c
 target_link_libraries(
     ${PROJECT_NAME}
     bark_lib
+    bark_cxx_lib
     ${LOG_LIB}
     dl
     m
