@@ -1,6 +1,6 @@
 {
   "name": "react-native-nitro-ark",
-  "version": "0.0.24",
+  "version": "0.0.25.rc1",
   "description": "Pure C++ Nitro Modules for Ark client",
   "source": "./src/index.tsx",
   "main": "./lib/module/index.js",
