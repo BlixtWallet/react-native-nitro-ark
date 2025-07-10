@@ -4,14 +4,14 @@ use std::path::Path;
 use std::str::FromStr;
 
 #[cxx::bridge(namespace = "bark_cxx")]
-mod ffi {
-    struct CxxBalance {
+pub(crate) mod ffi {
+    pub struct CxxBalance {
         onchain: u64,
         offchain: u64,
         pending_exit: u64,
     }
 
-    struct ConfigOpts {
+    pub struct ConfigOpts {
         asp: String,
         esplora: String,
         bitcoind: String,
@@ -22,7 +22,7 @@ mod ffi {
         fallback_fee_rate: u64,
     }
 
-    struct CreateOpts {
+    pub struct CreateOpts {
         regtest: bool,
         signet: bool,
         bitcoin: bool,
@@ -31,12 +31,12 @@ mod ffi {
         config: ConfigOpts,
     }
 
-    struct SendManyOutput {
+    pub struct SendManyOutput {
         destination: String,
         amount_sat: u64,
     }
 
-    enum RefreshModeType {
+    pub enum RefreshModeType {
         DefaultThreshold,
         ThresholdBlocks,
         ThresholdHours,
@@ -45,7 +45,7 @@ mod ffi {
         Specific,
     }
 
-    struct RefreshOpts {
+    pub struct RefreshOpts {
         mode_type: RefreshModeType,
         threshold_value: u32,
         specific_vtxo_ids: Vec<String>,
@@ -89,28 +89,28 @@ mod ffi {
     }
 }
 
-fn init_logger() {
+pub(crate) fn init_logger() {
     crate::init_logger()
 }
 
-fn create_mnemonic() -> anyhow::Result<String> {
+pub(crate) fn create_mnemonic() -> anyhow::Result<String> {
     crate::create_mnemonic()
 }
 
-fn is_wallet_loaded() -> bool {
+pub(crate) fn is_wallet_loaded() -> bool {
     crate::TOKIO_RUNTIME.block_on(crate::is_wallet_loaded())
 }
 
-fn close_wallet() -> anyhow::Result<()> {
+pub(crate) fn close_wallet() -> anyhow::Result<()> {
     crate::TOKIO_RUNTIME.block_on(crate::close_wallet())
 }
 
-fn get_onchain_address() -> anyhow::Result<String> {
+pub(crate) fn get_onchain_address() -> anyhow::Result<String> {
     let address = crate::TOKIO_RUNTIME.block_on(crate::get_onchain_address())?;
     Ok(address.to_string())
 }
 
-fn get_balance(no_sync: bool) -> anyhow::Result<ffi::CxxBalance> {
+pub(crate) fn get_balance(no_sync: bool) -> anyhow::Result<ffi::CxxBalance> {
     let balance = crate::TOKIO_RUNTIME.block_on(crate::get_balance(no_sync))?;
     Ok(ffi::CxxBalance {
         onchain: balance.onchain,
@@ -119,28 +119,28 @@ fn get_balance(no_sync: bool) -> anyhow::Result<ffi::CxxBalance> {
     })
 }
 
-fn get_onchain_utxos(no_sync: bool) -> anyhow::Result<String> {
+pub(crate) fn get_onchain_utxos(no_sync: bool) -> anyhow::Result<String> {
     crate::TOKIO_RUNTIME.block_on(crate::get_onchain_utxos(no_sync))
 }
 
-fn get_vtxo_pubkey(index: u32) -> anyhow::Result<String> {
+pub(crate) fn get_vtxo_pubkey(index: u32) -> anyhow::Result<String> {
     let index_opt = if index == u32::MAX { None } else { Some(index) };
     crate::TOKIO_RUNTIME.block_on(crate::get_vtxo_pubkey(index_opt))
 }
 
-fn get_vtxos(no_sync: bool) -> anyhow::Result<String> {
+pub(crate) fn get_vtxos(no_sync: bool) -> anyhow::Result<String> {
     crate::TOKIO_RUNTIME.block_on(crate::get_vtxos(no_sync))
 }
 
-fn bolt11_invoice(amount_msat: u64) -> anyhow::Result<String> {
+pub(crate) fn bolt11_invoice(amount_msat: u64) -> anyhow::Result<String> {
     crate::TOKIO_RUNTIME.block_on(crate::bolt11_invoice(amount_msat))
 }
 
-fn claim_bolt11_payment(bolt11: &str) -> anyhow::Result<()> {
+pub(crate) fn claim_bolt11_payment(bolt11: &str) -> anyhow::Result<()> {
     crate::TOKIO_RUNTIME.block_on(crate::claim_bolt11_payment(bolt11.to_string()))
 }
 
-fn load_wallet(datadir: &str, opts: ffi::CreateOpts) -> anyhow::Result<()> {
+pub(crate) fn load_wallet(datadir: &str, opts: ffi::CreateOpts) -> anyhow::Result<()> {
     let config_opts = utils::ConfigOpts {
         asp: Some(opts.config.asp),
         esplora: Some(opts.config.esplora),
@@ -169,18 +169,25 @@ fn load_wallet(datadir: &str, opts: ffi::CreateOpts) -> anyhow::Result<()> {
     crate::TOKIO_RUNTIME.block_on(crate::load_wallet(Path::new(datadir), create_opts))
 }
 
-fn send_onchain(destination: &str, amount_sat: u64, no_sync: bool) -> anyhow::Result<String> {
+pub(crate) fn send_onchain(
+    destination: &str,
+    amount_sat: u64,
+    no_sync: bool,
+) -> anyhow::Result<String> {
     let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
     let txid = crate::TOKIO_RUNTIME.block_on(crate::send_onchain(destination, amount, no_sync))?;
     Ok(txid.to_string())
 }
 
-fn drain_onchain(destination: &str, no_sync: bool) -> anyhow::Result<String> {
+pub(crate) fn drain_onchain(destination: &str, no_sync: bool) -> anyhow::Result<String> {
     let txid = crate::TOKIO_RUNTIME.block_on(crate::drain_onchain(destination, no_sync))?;
     Ok(txid.to_string())
 }
 
-fn send_many_onchain(outputs: Vec<ffi::SendManyOutput>, no_sync: bool) -> anyhow::Result<String> {
+pub(crate) fn send_many_onchain(
+    outputs: Vec<ffi::SendManyOutput>,
+    no_sync: bool,
+) -> anyhow::Result<String> {
     let txid = crate::TOKIO_RUNTIME.block_on(async {
         let mut rust_outputs = Vec::new();
         let wallet_guard = crate::GLOBAL_WALLET.lock().await;
@@ -199,7 +206,7 @@ fn send_many_onchain(outputs: Vec<ffi::SendManyOutput>, no_sync: bool) -> anyhow
     Ok(txid.to_string())
 }
 
-fn refresh_vtxos(opts: ffi::RefreshOpts, no_sync: bool) -> anyhow::Result<String> {
+pub(crate) fn refresh_vtxos(opts: ffi::RefreshOpts, no_sync: bool) -> anyhow::Result<String> {
     let rust_mode = match opts.mode_type {
         ffi::RefreshModeType::DefaultThreshold => crate::RefreshMode::DefaultThreshold,
         ffi::RefreshModeType::ThresholdBlocks => {
@@ -223,16 +230,16 @@ fn refresh_vtxos(opts: ffi::RefreshOpts, no_sync: bool) -> anyhow::Result<String
     crate::TOKIO_RUNTIME.block_on(crate::refresh_vtxos(rust_mode, no_sync))
 }
 
-fn board_amount(amount_sat: u64, no_sync: bool) -> anyhow::Result<String> {
+pub(crate) fn board_amount(amount_sat: u64, no_sync: bool) -> anyhow::Result<String> {
     let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
     crate::TOKIO_RUNTIME.block_on(crate::board_amount(amount, no_sync))
 }
 
-fn board_all(no_sync: bool) -> anyhow::Result<String> {
+pub(crate) fn board_all(no_sync: bool) -> anyhow::Result<String> {
     crate::TOKIO_RUNTIME.block_on(crate::board_all(no_sync))
 }
 
-fn send_payment(
+pub(crate) fn send_payment(
     destination: &str,
     amount_sat: u64,
     comment: &str,
@@ -256,12 +263,16 @@ fn send_payment(
     ))
 }
 
-fn send_round_onchain(destination: &str, amount_sat: u64, no_sync: bool) -> anyhow::Result<String> {
+pub(crate) fn send_round_onchain(
+    destination: &str,
+    amount_sat: u64,
+    no_sync: bool,
+) -> anyhow::Result<String> {
     let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
     crate::TOKIO_RUNTIME.block_on(crate::send_round_onchain(destination, amount, no_sync))
 }
 
-fn offboard_specific(
+pub(crate) fn offboard_specific(
     vtxo_ids: Vec<String>,
     destination_address: &str,
     no_sync: bool,
@@ -278,7 +289,7 @@ fn offboard_specific(
     crate::TOKIO_RUNTIME.block_on(crate::offboard_specific(ids, address_opt, no_sync))
 }
 
-fn offboard_all(destination_address: &str, no_sync: bool) -> anyhow::Result<String> {
+pub(crate) fn offboard_all(destination_address: &str, no_sync: bool) -> anyhow::Result<String> {
     let address_opt = if destination_address.is_empty() {
         None
     } else {
@@ -287,7 +298,7 @@ fn offboard_all(destination_address: &str, no_sync: bool) -> anyhow::Result<Stri
     crate::TOKIO_RUNTIME.block_on(crate::offboard_all(address_opt, no_sync))
 }
 
-fn start_exit_for_vtxos(vtxo_ids: Vec<String>) -> anyhow::Result<String> {
+pub(crate) fn start_exit_for_vtxos(vtxo_ids: Vec<String>) -> anyhow::Result<String> {
     let ids = vtxo_ids
         .into_iter()
         .map(|s| bark::ark::VtxoId::from_str(&s))
@@ -295,10 +306,10 @@ fn start_exit_for_vtxos(vtxo_ids: Vec<String>) -> anyhow::Result<String> {
     crate::TOKIO_RUNTIME.block_on(crate::start_exit_for_vtxos(ids))
 }
 
-fn start_exit_for_entire_wallet() -> anyhow::Result<String> {
+pub(crate) fn start_exit_for_entire_wallet() -> anyhow::Result<String> {
     crate::TOKIO_RUNTIME.block_on(crate::start_exit_for_entire_wallet())
 }
 
-fn exit_progress_once() -> anyhow::Result<String> {
+pub(crate) fn exit_progress_once() -> anyhow::Result<String> {
     crate::TOKIO_RUNTIME.block_on(crate::exit_progress_once())
 }

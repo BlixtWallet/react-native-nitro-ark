@@ -885,3 +885,6 @@ pub async fn exit_progress_once() -> anyhow::Result<String> {
     .context("Failed to serialize exit status to JSON")?;
     Ok(json_string)
 }
+
+#[cfg(test)]
+mod tests;

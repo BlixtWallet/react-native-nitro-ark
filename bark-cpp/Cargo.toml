@@ -48,3 +48,7 @@ lto = true        # Enable Link Time Optimization
 codegen-units = 1 # Reduce parallel code generation units
 panic = 'abort'   # Remove panic unwinding code
 strip = true      # Strip symbols from binary
+
+[dev-dependencies]
+tempfile = "3.3.0"
+serde_json = "1.0"
