@@ -4,6 +4,8 @@ pub extern crate log;
 #[cfg(target_os = "android")]
 use android_logger::Config;
 use log::LevelFilter;
+#[cfg(target_os = "ios")]
+use oslog::OsLogger;
 
 pub struct Logger {}
 
@@ -20,7 +22,16 @@ impl Logger {
             log::info!("Android logger initialized.");
         }
 
-        #[cfg(not(target_os = "android"))]
+        #[cfg(target_os = "ios")]
+        {
+            OsLogger::new("com.nitro.ark")
+                .level_filter(LevelFilter::Debug)
+                .init()
+                .unwrap();
+            log::info!("oslog initialized.");
+        }
+
+        #[cfg(not(any(target_os = "android", target_os = "ios")))]
         {
             // Standard logger for non-Android platforms (e.g., iOS, desktop)
             // The RUST_LOG environment variable can be used to control verbosity.

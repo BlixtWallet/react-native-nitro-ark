@@ -34,8 +34,8 @@ async fn main() -> anyhow::Result<()> {
         esplora: None,
         bitcoind: Some("http://127.0.0.1:18443".to_string()),
         bitcoind_cookie: None,
-        bitcoind_user: Some("polaruser".to_string()),
-        bitcoind_pass: Some("polarpass".to_string()),
+        bitcoind_user: Some("second".to_string()),
+        bitcoind_pass: Some("ark".to_string()),
         fallback_fee_rate: Some(FeeRate::from_sat_per_kwu(100000)),
         vtxo_refresh_expiry_threshold: 288,
     };
