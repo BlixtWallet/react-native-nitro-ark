@@ -236,7 +236,7 @@ fn test_onchain_and_boarding_flow_ffi() {
 
     // 3. Board amount
     let board_amount_sat = 50_000;
-    let board_res = cxx::board_amount(board_amount_sat, false);
+    let board_res = cxx::board_amount(board_amount_sat);
     assert!(board_res.is_ok(), "Boarding failed: {:?}", board_res.err());
 
     // (Manual step: mine the board transaction)
@@ -347,7 +347,7 @@ fn test_send_many_onchain_ffi() {
 fn test_board_all_ffi() {
     let _fixture = WalletTestFixture::new();
     // Requires wallet to be funded.
-    let board_all_res = cxx::board_all(false);
+    let board_all_res = cxx::board_all();
     assert!(
         board_all_res.is_ok(),
         "board_all failed: {:?}",
@@ -357,15 +357,30 @@ fn test_board_all_ffi() {
 
 #[test]
 #[ignore = "requires live regtest backend and a funded wallet with vtxos"]
-fn test_send_payment_ffi() {
+fn test_send_arkoot_payment_ffi() {
     let _fixture = WalletTestFixture::new();
     // This is a complex test as it can handle different destination types.
     // Here we test sending to a VTXO pubkey (OOR).
     let pubkey = cxx::get_vtxo_pubkey(0).unwrap();
-    let send_res = cxx::send_payment(&pubkey, 5000, "", false);
+    let send_res = cxx::send_arkoor_payment(&pubkey, 5000);
     assert!(
         send_res.is_ok(),
         "send_payment (OOR) failed: {:?}",
+        send_res.err()
+    );
+}
+
+#[test]
+#[ignore = "requires live regtest backend and a funded wallet with vtxos"]
+fn test_send_bolt11_payment_ffi() {
+    let _fixture = WalletTestFixture::new();
+    // This is a complex test as it can handle different destination types.
+    // Here we test sending to a bolt11 invoice.
+    let invoice = cxx::bolt11_invoice(10000).unwrap();
+    let send_res = cxx::send_bolt11_payment(&invoice, 5000);
+    assert!(
+        send_res.is_ok(),
+        "send_payment (bolt11) failed: {:?}",
         send_res.err()
     );
 }

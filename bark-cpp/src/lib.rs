@@ -1,18 +1,24 @@
 use anyhow;
 use anyhow::bail;
+use anyhow::Ok;
 use bark;
 use bark::ark::bitcoin::address;
 use bark::ark::bitcoin::hex::DisplayHex;
+
 use bark::ark::bitcoin::Address;
 use bark::ark::bitcoin::Amount;
 use bark::ark::bitcoin::Network;
+
 use bark::ark::bitcoin::Txid;
+
 use bark::ark::ArkInfo;
 use bark::ark::VtxoId;
 use bark::json::cli::ExitProgressResponse;
 use bark::json::cli::Refresh;
 use bark::json::VtxoInfo;
 use bark::lightning_invoice::Bolt11Invoice;
+
+use bark::lnurllib::lightning_address::LightningAddress;
 use bark::vtxo_selection::VtxoFilter;
 use bark::Config;
 use bark::SqliteClient;
@@ -122,6 +128,21 @@ pub async fn close_wallet() -> anyhow::Result<()> {
 pub async fn is_wallet_loaded() -> bool {
     let wallet_guard = GLOBAL_WALLET.lock().await;
     wallet_guard.is_some()
+}
+
+/// Change the wallet config
+pub async fn persist_config(config: Config) -> anyhow::Result<()> {
+    let mut wallet_guard = GLOBAL_WALLET.lock().await;
+    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
+
+    // Persist the config to the wallet
+    w.set_config(config);
+
+    w.persist_config()
+        .context("Failed to persist wallet config to disk")?;
+
+    info!("Wallet configuration updated successfully.");
+    Ok(())
 }
 
 pub struct Balance {
@@ -381,6 +402,33 @@ pub async fn claim_bolt11_payment(bolt11: String) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Performs maintenance tasks on the wallet
+///
+/// This tasks include onchain-sync, off-chain sync,
+/// registering onboard with the server.
+///
+/// This tasks will only include anything that has to wait
+/// for a round. The maintenance call cannot be used to
+/// refresh VTXOs.
+pub async fn maintenance() -> anyhow::Result<()> {
+    let mut wallet_guard = GLOBAL_WALLET.lock().await;
+    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
+
+    w.maintenance()
+        .await
+        .context("Failed to perform wallet maintenance")?;
+    Ok(())
+}
+
+/// Sync both the onchain and offchain wallet.
+pub async fn sync() -> anyhow::Result<()> {
+    let mut wallet_guard = GLOBAL_WALLET.lock().await;
+    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
+
+    w.sync().await.context("Failed to sync wallet")?;
+    Ok(())
+}
+
 /// Get the list of VTXOs from the wallet as a JSON string
 pub async fn get_vtxos(no_sync: bool) -> anyhow::Result<String> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
@@ -426,16 +474,9 @@ pub async fn refresh_vtxos(mode: RefreshMode, no_sync: bool) -> anyhow::Result<S
 }
 
 /// Board a specific amount from the onchain wallet to Ark. Returns JSON status.
-pub async fn board_amount(amount: Amount, no_sync: bool) -> anyhow::Result<String> {
+pub async fn board_amount(amount: Amount) -> anyhow::Result<String> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
     let w = wallet_guard.as_mut().context("Wallet not loaded")?;
-
-    if !no_sync {
-        info!("Syncing onchain wallet before boarding amount...");
-        if let Err(e) = w.onchain.sync().await {
-            warn!("Onchain sync error during board_amount: {}", e);
-        }
-    }
 
     info!("Attempting to board amount: {}", amount);
     let board_result = w.board_amount(amount).await?;
@@ -446,16 +487,9 @@ pub async fn board_amount(amount: Amount, no_sync: bool) -> anyhow::Result<Strin
     Ok(json_string)
 }
 
-pub async fn board_all(no_sync: bool) -> anyhow::Result<String> {
+pub async fn board_all() -> anyhow::Result<String> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
     let w = wallet_guard.as_mut().context("Wallet not loaded")?;
-
-    if !no_sync {
-        info!("Syncing onchain wallet before boarding all...");
-        if let Err(e) = w.onchain.sync().await {
-            warn!("Onchain sync error during board_all: {}", e);
-        }
-    }
 
     info!("Attempting to board all onchain funds...");
     let board_result = w.board_all().await?;
@@ -466,145 +500,77 @@ pub async fn board_all(no_sync: bool) -> anyhow::Result<String> {
     Ok(json_string)
 }
 
-/// Send a payment based on destination type. Returns JSON status.
-pub async fn send_payment(
-    destination_str: &str,
-    amount_sat: Option<u64>,
-    comment: Option<String>,
-    no_sync: bool,
-) -> anyhow::Result<String> {
+/// Sync with the Ark and look for received vtxos.
+pub async fn sync_ark() -> anyhow::Result<()> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
     let w = wallet_guard.as_mut().context("Wallet not loaded")?;
 
-    let destination = parse_send_destination(destination_str)?;
+    w.sync_ark().await.context("Failed to sync ark")?;
 
-    // Convert optional amount_sat to Option<Amount>
-    let user_amount_opt = amount_sat.map(Amount::from_sat);
+    Ok(())
+}
 
-    // --- Logic per destination type ---
-    let result_json = match destination {
-        SendDestination::VtxoPubkey(pk) => {
-            let amount = user_amount_opt
-                .context("Amount (amount_sat) is required when sending to a VTXO pubkey")?;
-            if amount <= Amount::ZERO {
-                bail!("Amount must be positive");
-            }
-            if comment.is_some() {
-                bail!("Comment is not supported when sending to a VTXO pubkey");
-            }
+/// Fetch new rounds from the Ark Server and check if one of their VTXOs
+/// is in the provided set of public keys
+pub async fn sync_rounds() -> anyhow::Result<()> {
+    let mut wallet_guard = GLOBAL_WALLET.lock().await;
+    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
 
-            if !no_sync {
-                info!("Syncing wallet before sending OOR payment...");
-                // Maintenance sync likely needed for OOR
-                if let Err(e) = w.maintenance().await {
-                    warn!("Wallet maintenance sync error during send (OOR): {}", e);
-                }
-            }
+    w.sync_rounds().await.context("Failed to sync rounds")?;
 
-            info!(
-                "Attempting to send OOR payment of {} to pubkey {}",
-                amount, pk
-            );
-            let _oor_result = w.send_arkoor_payment(pk, amount).await?; // Use result if it contains info
+    Ok(())
+}
 
-            serde_json::json!({
-                "type": "oor",
-                "success": true,
-                "destination_pubkey": pk.to_string(),
-                "amount_sat": amount.to_sat()
-            })
-        }
-        SendDestination::Bolt11(invoice) => {
-            // Validate amount:
-            // 1. If user provided amount, it MUST match invoice amount if invoice has one.
-            // 2. If user didn't provide amount, invoice MUST have one.
-            let invoice_amount_opt = invoice
-                .amount_milli_satoshis()
-                .map(|msat| Amount::from_sat(msat.div_ceil(1000)));
-            let final_amount = match (user_amount_opt, invoice_amount_opt) {
-                (Some(user), Some(inv)) if user != inv => {
-                    bail!(
-                        "Provided amount {} does not match invoice amount {}",
-                        user,
-                        inv
-                    );
-                }
-                (Some(user), _) => user,
-                (None, Some(inv)) => inv,
-                (None, None) => {
-                    bail!("Amount (amount_sat) is required for invoices without an amount");
-                }
-            };
-            if final_amount <= Amount::ZERO {
-                bail!("Amount must be positive");
-            }
-            // Check again if invoice required an amount but user didn't supply one (covered by None, None case above)
-            if invoice_amount_opt.is_none() && user_amount_opt.is_none() {
-                bail!("Amount (amount_sat) is required for invoices without an amount");
-            }
+/// Send a payment based on destination type. Returns JSON status.
+pub async fn send_arkoor_payment(destination: &str, amount_sat: Amount) -> anyhow::Result<String> {
+    let mut wallet_guard = GLOBAL_WALLET.lock().await;
+    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
 
-            if comment.is_some() {
-                bail!("Comment is not supported when sending to a bolt11 invoice");
-            }
-
-            if !no_sync {
-                info!("Syncing wallet before sending bolt11 payment...");
-                // sync_ark likely needed for paying LN
-                if let Err(e) = w.sync_ark().await {
-                    warn!("Wallet sync error during send (bolt11): {}", e);
-                }
-            }
-
-            info!(
-                "Attempting to send bolt11 payment of {} for invoice {}",
-                final_amount, invoice
-            );
-            let bolt11_result = w.send_bolt11_payment(&invoice, user_amount_opt).await?; // Pass user_amount_opt
-
-            serde_json::json!({
-                "type": "bolt11",
-                "success": true,
-                "destination_invoice": invoice.to_string(),
-                "amount_sat": final_amount.to_sat(), // Use final_amount derived logic
-                "preimage": bolt11_result.to_lower_hex_string()
-            })
-        }
-        SendDestination::LnAddress(lnaddr) => {
-            let amount = user_amount_opt
-                .context("Amount (amount_sat) is required when sending to a lightning address")?;
-            if amount <= Amount::ZERO {
-                bail!("Amount must be positive");
-            }
-            // Comment is allowed here
-
-            if !no_sync {
-                info!("Syncing wallet before sending to lightning address...");
-                // sync_ark likely needed for paying LN
-                if let Err(e) = w.sync_ark().await {
-                    warn!("Wallet sync error during send (lnaddr): {}", e);
-                }
-            }
-
-            info!(
-                "Attempting to send {} to lightning address {} (comment: {:?})",
-                amount, lnaddr, comment
-            );
-            let (lnaddr_result, _) = w.send_lnaddr(&lnaddr, amount, comment.as_deref()).await?;
-
-            serde_json::json!({
-                "type": "ln_address",
-                "success": true,
-                "destination_address": lnaddr.to_string(),
-                "amount_sat": amount.to_sat(),
-                "paid_invoice": lnaddr_result.to_string(),
-            })
-        }
+    // Parse the destination as a public key
+    let destination = parse_send_destination(destination).context("Invalid destination")?;
+    let pubkey = match destination {
+        SendDestination::VtxoPubkey(pk) => pk,
+        _ => bail!("Invalid destination type for send_payment"),
     };
+
+    info!(
+        "Attempting to send OOR payment of {} to pubkey {:?}",
+        amount_sat, pubkey
+    );
+    let _oor_result = w.send_arkoor_payment(pubkey, amount_sat).await?; // Use result if it contains info
+
+    let result_json = serde_json::json!({
+        "type": "oor",
+        "success": true,
+        "destination_pubkey": pubkey.to_string(),
+        "amount_sat": amount_sat.to_sat()
+    });
 
     let json_string = serde_json::to_string_pretty(&result_json)
         .context("Failed to serialize send status to JSON")?;
 
     Ok(json_string)
+}
+
+/// Send bolt11 payment via Ark. Returns JSON status.
+pub async fn send_bolt11_payment(
+    destination: &str,
+    amount_sat: Option<Amount>,
+) -> anyhow::Result<String> {
+    let mut wallet_guard = GLOBAL_WALLET.lock().await;
+    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
+
+    let destination = parse_send_destination(destination)?;
+
+    // --- Logic per destination type ---
+    let invoice = match destination {
+        SendDestination::Bolt11(invoice) => invoice,
+        _ => bail!("Invalid destination type for send_bolt11_payment"),
+    };
+
+    let result = w.send_bolt11_payment(&invoice, amount_sat).await?;
+
+    Ok(result.to_lower_hex_string())
 }
 
 /// Send an onchain payment via an Ark round. Returns JSON status.
@@ -663,6 +629,31 @@ pub async fn send_round_onchain(
         .context("Failed to serialize send_round_onchain status to JSON")?;
 
     Ok(json_string)
+}
+
+/// Send a Lightning Address payment. Returns JSON status.
+pub async fn send_lnaddr(
+    addr: &str,
+    amount: Amount,
+    comment: Option<&str>,
+) -> anyhow::Result<String> {
+    let mut wallet_guard = GLOBAL_WALLET.lock().await;
+    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
+
+    let lightning_address = LightningAddress::from_str(addr)
+        .with_context(|| format!("Invalid Lightning Address format: '{}'", addr))?;
+
+    let (bolt11, preimage) = w.send_lnaddr(&lightning_address, amount, comment).await?;
+
+    let json_result = serde_json::json!({
+        "type": "lnaddr",
+        "success": true,
+        "destination": bolt11.to_string(),
+        "amount_sat": amount.to_sat(),
+        "preimage": preimage.to_lower_hex_string(),
+    });
+
+    Ok(serde_json::to_string_pretty(&json_result)?)
 }
 
 /// Offboard specific VTXOs. Returns JSON result.
