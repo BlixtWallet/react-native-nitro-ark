@@ -121,7 +121,8 @@
       "releaseName": "v${version}",
       "assets": [
         "../release_assets/jniLibs.zip",
-        "../release_assets/Ark.xcframework.zip"
+        "../release_assets/Ark.xcframework.zip",
+        "../release_assets/ArkCxxBridge.xcframework.zip"
       ]
     },
     "plugins": {

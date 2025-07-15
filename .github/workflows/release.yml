@@ -118,6 +118,12 @@ jobs:
           name: Ark.xcframework-zip
           path: release_assets/
 
+      - name: Download iOS Rust cxx bridge binary artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ArkCxxBridge.xcframework-zip
+          path: release_assets/
+
       - name: List downloaded artifacts
         run: ls -R release_assets
 
