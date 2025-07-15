@@ -32,7 +32,7 @@ cxx = "1.0"
 cxx-build = "1.0"
 
 [lib]
-crate-type = ["rlib", "staticlib"]
+crate-type = ["staticlib"]
 name = "bark_cpp"
 path = "src/lib.rs"
 
