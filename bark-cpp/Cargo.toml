@@ -36,11 +36,6 @@ crate-type = ["staticlib"]
 name = "bark_cpp"
 path = "src/lib.rs"
 
-
-[[bin]]
-name = "bark_cpp"
-path = "src/main.rs"
-
 # Add these profile configurations
 [profile.release]
 opt-level = 's'   # Optimize for size
