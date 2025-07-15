@@ -73,6 +73,16 @@ jobs:
           name: Ark.xcframework-zip
           path: bark-cpp/target/Ark.xcframework.zip
 
+      - name: Zip iOS Rust cxx bridge Framework
+        run: cd bark-cpp && zip -r target/ArkCxxBridge.xcframework.zip target/ArkCxxBridge.xcframework
+        shell: bash
+
+      - name: Upload iOS Rust cxx bridge binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ArkCxxBridge.xcframework-zip
+          path: bark-cpp/target/ArkCxxBridge.xcframework.zip
+
       - name: Install React Native app dependencies and Bundle for iOS example
         run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install --immutable && yarn example ios:prebuild"
 
