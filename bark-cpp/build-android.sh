@@ -92,6 +92,7 @@ export CARGO_TARGET_AARCH64_LINUX_ANDROID_RANLIB="$TOOLCHAIN_PATH/bin/llvm-ranli
 export OPENSSL_INCLUDE_DIR="$PWD/target/$TARGET_ARCH_ARM64/$BUILD_TYPE/build/openssl-sys-*/out/include"
 export OPENSSL_LIB_DIR="$PWD/target/$TARGET_ARCH_ARM64/$BUILD_TYPE/build/openssl-sys-*/out/lib"
 
+rustup target add $TARGET_ARCH_ARM64
 cargo build --target=$TARGET_ARCH_ARM64 $CARGO_FLAG --lib
 cp "$TARGET_DIR_ARM64/$BINARY_NAME" "$OUTPUT_DIR/arm64-v8a/"
 ARM64_CXX_LIB_PATH=$(find "$TARGET_DIR_ARM64/build" -name "$CXX_BINARY_NAME" | head -n 1)
@@ -115,6 +116,7 @@ export CARGO_TARGET_X86_64_LINUX_ANDROID_RANLIB="$TOOLCHAIN_PATH/bin/llvm-ranlib
 export OPENSSL_INCLUDE_DIR="$PWD/target/$TARGET_ARCH_X86_64/$BUILD_TYPE/build/openssl-sys-*/out/include"
 export OPENSSL_LIB_DIR="$PWD/target/$TARGET_ARCH_X86_64/$BUILD_TYPE/build/openssl-sys-*/out/lib"
 
+rustup target add $TARGET_ARCH_X86_64
 cargo build --target=$TARGET_ARCH_X86_64 $CARGO_FLAG --lib
 cp "$TARGET_DIR_X86_64/$BINARY_NAME" "$OUTPUT_DIR/x86_64/"
 X86_64_CXX_LIB_PATH=$(find "$TARGET_DIR_X86_64/build" -name "$CXX_BINARY_NAME" | head -n 1)
