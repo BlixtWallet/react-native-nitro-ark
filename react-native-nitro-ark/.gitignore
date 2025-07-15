@@ -84,4 +84,5 @@ android/generated
 
 # Ark stuff
 Ark.xcframework
+ArkCxxBridge.xcframework
 libbark_cpp.a
