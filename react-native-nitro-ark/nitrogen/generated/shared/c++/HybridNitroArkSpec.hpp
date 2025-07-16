@@ -15,21 +15,21 @@
 
 // Forward declaration of `BarkCreateOpts` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct BarkCreateOpts; }
-// Forward declaration of `BarkBalance` to properly resolve imports.
-namespace margelo::nitro::nitroark { struct BarkBalance; }
+// Forward declaration of `BarkConfigOpts` to properly resolve imports.
+namespace margelo::nitro::nitroark { struct BarkConfigOpts; }
+// Forward declaration of `BarkArkInfo` to properly resolve imports.
+namespace margelo::nitro::nitroark { struct BarkArkInfo; }
 // Forward declaration of `BarkSendManyOutput` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct BarkSendManyOutput; }
-// Forward declaration of `BarkRefreshOpts` to properly resolve imports.
-namespace margelo::nitro::nitroark { struct BarkRefreshOpts; }
 
 #include <NitroModules/Promise.hpp>
 #include <string>
 #include "BarkCreateOpts.hpp"
-#include "BarkBalance.hpp"
+#include "BarkConfigOpts.hpp"
+#include "BarkArkInfo.hpp"
 #include <optional>
 #include <vector>
 #include "BarkSendManyOutput.hpp"
-#include "BarkRefreshOpts.hpp"
 
 namespace margelo::nitro::nitroark {
 
@@ -66,7 +66,14 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<void>> loadWallet(const std::string& datadir, const BarkCreateOpts& opts) = 0;
       virtual std::shared_ptr<Promise<void>> closeWallet() = 0;
       virtual std::shared_ptr<Promise<bool>> isWalletLoaded() = 0;
-      virtual std::shared_ptr<Promise<BarkBalance>> getBalance(bool no_sync) = 0;
+      virtual std::shared_ptr<Promise<void>> persistConfig(const BarkConfigOpts& opts) = 0;
+      virtual std::shared_ptr<Promise<void>> maintenance() = 0;
+      virtual std::shared_ptr<Promise<void>> sync() = 0;
+      virtual std::shared_ptr<Promise<void>> syncArk() = 0;
+      virtual std::shared_ptr<Promise<void>> syncRounds() = 0;
+      virtual std::shared_ptr<Promise<BarkArkInfo>> getArkInfo() = 0;
+      virtual std::shared_ptr<Promise<double>> onchainBalance() = 0;
+      virtual std::shared_ptr<Promise<double>> offchainBalance() = 0;
       virtual std::shared_ptr<Promise<std::string>> getOnchainAddress() = 0;
       virtual std::shared_ptr<Promise<std::string>> getOnchainUtxos(bool no_sync) = 0;
       virtual std::shared_ptr<Promise<std::string>> getVtxoPubkey(std::optional<double> index) = 0;
@@ -74,15 +81,16 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<std::string>> sendOnchain(const std::string& destination, double amountSat, bool no_sync) = 0;
       virtual std::shared_ptr<Promise<std::string>> drainOnchain(const std::string& destination, bool no_sync) = 0;
       virtual std::shared_ptr<Promise<std::string>> sendManyOnchain(const std::vector<BarkSendManyOutput>& outputs, bool no_sync) = 0;
-      virtual std::shared_ptr<Promise<std::string>> refreshVtxos(const BarkRefreshOpts& refreshOpts, bool no_sync) = 0;
-      virtual std::shared_ptr<Promise<std::string>> boardAmount(double amountSat, bool no_sync) = 0;
-      virtual std::shared_ptr<Promise<std::string>> boardAll(bool no_sync) = 0;
-      virtual std::shared_ptr<Promise<std::string>> send(const std::string& destination, std::optional<double> amountSat, const std::optional<std::string>& comment, bool no_sync) = 0;
+      virtual std::shared_ptr<Promise<std::string>> boardAmount(double amountSat) = 0;
+      virtual std::shared_ptr<Promise<std::string>> boardAll() = 0;
+      virtual std::shared_ptr<Promise<std::string>> sendArkoorPayment(const std::string& destination, double amountSat) = 0;
+      virtual std::shared_ptr<Promise<std::string>> sendBolt11Payment(const std::string& destination, double amountSat) = 0;
+      virtual std::shared_ptr<Promise<std::string>> sendLnaddr(const std::string& addr, double amountSat, const std::string& comment) = 0;
       virtual std::shared_ptr<Promise<std::string>> sendRoundOnchain(const std::string& destination, double amountSat, bool no_sync) = 0;
       virtual std::shared_ptr<Promise<std::string>> bolt11Invoice(double amountMsat) = 0;
       virtual std::shared_ptr<Promise<void>> claimBolt11Payment(const std::string& bolt11) = 0;
-      virtual std::shared_ptr<Promise<std::string>> offboardSpecific(const std::vector<std::string>& vtxoIds, const std::optional<std::string>& optionalAddress, bool no_sync) = 0;
-      virtual std::shared_ptr<Promise<std::string>> offboardAll(const std::optional<std::string>& optionalAddress, bool no_sync) = 0;
+      virtual std::shared_ptr<Promise<std::string>> offboardSpecific(const std::vector<std::string>& vtxoIds, const std::string& destinationAddress, bool no_sync) = 0;
+      virtual std::shared_ptr<Promise<std::string>> offboardAll(const std::string& destinationAddress, bool no_sync) = 0;
       virtual std::shared_ptr<Promise<std::string>> exitStartSpecific(const std::vector<std::string>& vtxoIds) = 0;
       virtual std::shared_ptr<Promise<std::string>> exitStartAll() = 0;
       virtual std::shared_ptr<Promise<std::string>> exitProgressOnce() = 0;

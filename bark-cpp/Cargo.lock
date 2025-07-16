@@ -143,16 +143,16 @@ dependencies = [
 
 [[package]]
 name = "ark-lib"
-version = "0.0.0-alpha.16"
-source = "git+https://codeberg.org/ark-bitcoin/bark.git?tag=all-0.0.0-alpha.16#35a31ea5f959ea669b6b752549666a480d1c276b"
+version = "0.0.0-alpha.17"
+source = "git+https://codeberg.org/ark-bitcoin/bark.git?tag=bark-0.0.0-alpha.17#90062408b0163864739a71be078f816f73a3f810"
 dependencies = [
  "bark-bitcoin-ext",
  "bitcoin",
- "ciborium",
+ "hex-conservative 0.3.0",
  "lazy_static",
  "lightning-invoice",
  "rand 0.9.1",
- "secp256k1 0.30.0",
+ "secp256k1 0.31.1",
  "serde",
  "thiserror 2.0.12",
 ]
@@ -165,8 +165,8 @@ checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 
 [[package]]
 name = "aspd-rpc"
-version = "0.0.0-alpha.16"
-source = "git+https://codeberg.org/ark-bitcoin/bark.git?tag=all-0.0.0-alpha.16#35a31ea5f959ea669b6b752549666a480d1c276b"
+version = "0.0.0-alpha.17"
+source = "git+https://codeberg.org/ark-bitcoin/bark.git?tag=bark-0.0.0-alpha.17#90062408b0163864739a71be078f816f73a3f810"
 dependencies = [
  "ark-lib",
  "bitcoin",
@@ -287,7 +287,7 @@ dependencies = [
 [[package]]
 name = "bark-bitcoin-ext"
 version = "0.0.0"
-source = "git+https://codeberg.org/ark-bitcoin/bark.git?tag=all-0.0.0-alpha.16#35a31ea5f959ea669b6b752549666a480d1c276b"
+source = "git+https://codeberg.org/ark-bitcoin/bark.git?tag=bark-0.0.0-alpha.17#90062408b0163864739a71be078f816f73a3f810"
 dependencies = [
  "async-trait",
  "bdk_bitcoind_rpc",
@@ -303,8 +303,8 @@ dependencies = [
 
 [[package]]
 name = "bark-client"
-version = "0.0.0-alpha.16"
-source = "git+https://codeberg.org/ark-bitcoin/bark.git?tag=all-0.0.0-alpha.16#35a31ea5f959ea669b6b752549666a480d1c276b"
+version = "0.0.0-alpha.17"
+source = "git+https://codeberg.org/ark-bitcoin/bark.git?tag=bark-0.0.0-alpha.17#90062408b0163864739a71be078f816f73a3f810"
 dependencies = [
  "anyhow",
  "ark-lib",
@@ -317,7 +317,6 @@ dependencies = [
  "bip39",
  "bitcoin",
  "chrono",
- "ciborium",
  "clap",
  "fern",
  "humantime",
@@ -340,13 +339,11 @@ name = "bark-cpp"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "bark-bitcoin-ext",
  "bark-client",
  "bip39",
  "cxx",
  "cxx-build",
  "logger",
- "once_cell",
  "serde",
  "serde_json",
  "tempfile",
@@ -357,7 +354,7 @@ dependencies = [
 [[package]]
 name = "bark-json"
 version = "0.0.0"
-source = "git+https://codeberg.org/ark-bitcoin/bark.git?tag=all-0.0.0-alpha.16#35a31ea5f959ea669b6b752549666a480d1c276b"
+source = "git+https://codeberg.org/ark-bitcoin/bark.git?tag=bark-0.0.0-alpha.17#90062408b0163864739a71be078f816f73a3f810"
 dependencies = [
  "ark-lib",
  "bark-bitcoin-ext",
@@ -470,9 +467,9 @@ checksum = "d965446196e3b7decd44aa7ee49e31d630118f90ef12f97900f262eb915c951d"
 
 [[package]]
 name = "bip39"
-version = "2.1.0"
+version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33415e24172c1b7d6066f6d999545375ab8e1d95421d6784bdfff9496f292387"
+checksum = "43d193de1f7487df1914d3a568b772458861d33f9c54249612cc2893d6915054"
 dependencies = [
  "bitcoin_hashes 0.13.0",
  "rand 0.8.5",
@@ -649,33 +646,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ciborium"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42e69ffd6f0917f5c029256a24d0161db17cea3997d185db0d35926308770f0e"
-dependencies = [
- "ciborium-io",
- "ciborium-ll",
- "serde",
-]
-
-[[package]]
-name = "ciborium-io"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "05afea1e0a06c9be33d539b876f1ce3692f4afea2cb41f740e7743225ed1c757"
-
-[[package]]
-name = "ciborium-ll"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57663b653d948a338bfb3eeba9bb2fd5fcfaecb9e199e87e1eda4d9e8b240fd9"
-dependencies = [
- "ciborium-io",
- "half",
-]
-
-[[package]]
 name = "cipher"
 version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -776,12 +746,6 @@ checksum = "a97769d94ddab943e4510d138150169a2758b5ef3eb191a9ee688de3e23ef7b3"
 dependencies = [
  "cfg-if",
 ]
-
-[[package]]
-name = "crunchy"
-version = "0.2.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "460fbee9c2c2f33933d720630a6a0bac33ba7053db5344fac858d4b8952d77d5"
 
 [[package]]
 name = "crypto-common"
@@ -1164,16 +1128,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "half"
-version = "2.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "459196ed295495a68f7d7fe1d84f6c4b7ff0e21fe3017b2f283c6fac3ad803c9"
-dependencies = [
- "cfg-if",
- "crunchy",
-]
-
-[[package]]
 name = "hashbrown"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1227,6 +1181,15 @@ name = "hex-conservative"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5313b072ce3c597065a808dbf612c4c8e8590bdbf8b579508bf7a762c5eae6cd"
+dependencies = [
+ "arrayvec",
+]
+
+[[package]]
+name = "hex-conservative"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4afe881d0527571892c4034822e59bb10c6c991cce6abe8199b6f5cf10766f55"
 dependencies = [
  "arrayvec",
 ]
@@ -2325,11 +2288,11 @@ dependencies = [
 
 [[package]]
 name = "secp256k1"
-version = "0.30.0"
-source = "git+https://github.com/jlest01/rust-secp256k1.git?rev=1cc7410df436b73d06db3c8ff7cbb29a78916b06#1cc7410df436b73d06db3c8ff7cbb29a78916b06"
+version = "0.31.1"
+source = "git+https://github.com/rust-bitcoin/rust-secp256k1.git?rev=72822e16b1433337baceb0abb5134cc24a062adb#72822e16b1433337baceb0abb5134cc24a062adb"
 dependencies = [
  "bitcoin_hashes 0.14.0",
- "rand 0.8.5",
+ "rand 0.9.1",
  "secp256k1-sys 0.11.0",
  "serde",
 ]
@@ -2346,7 +2309,7 @@ dependencies = [
 [[package]]
 name = "secp256k1-sys"
 version = "0.11.0"
-source = "git+https://github.com/jlest01/rust-secp256k1.git?rev=1cc7410df436b73d06db3c8ff7cbb29a78916b06#1cc7410df436b73d06db3c8ff7cbb29a78916b06"
+source = "git+https://github.com/rust-bitcoin/rust-secp256k1.git?rev=72822e16b1433337baceb0abb5134cc24a062adb#72822e16b1433337baceb0abb5134cc24a062adb"
 dependencies = [
  "cc",
 ]

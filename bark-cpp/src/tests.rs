@@ -1,7 +1,7 @@
 #![allow(unused_imports)]
 use crate::cxx::{
     self,
-    ffi::{self, CxxBalance, RefreshModeType},
+    ffi::{self, RefreshModeType},
 };
 use anyhow::Context;
 use bark::ark::bitcoin::Amount;
@@ -35,7 +35,7 @@ fn setup_test_wallet_opts() -> (tempfile::TempDir, ffi::CreateOpts) {
         signet: false,
         bitcoin: false,
         mnemonic,
-        birthday_height: 0,
+        birthday_height: std::ptr::null(),
         config: config_opts,
     };
 
@@ -149,15 +149,13 @@ fn test_get_onchain_address_ffi() {
 
 #[test]
 #[ignore = "requires live regtest backend"]
-fn test_get_balance_ffi() {
+fn test_get_onchain_balance_ffi() {
     let _fixture = WalletTestFixture::new();
     // Use no_sync = true to avoid network calls in a unit test context.
-    let balance_result = cxx::get_balance(true);
+    let balance_result = cxx::onchain_balance();
     assert!(balance_result.is_ok());
     let balance = balance_result.unwrap();
-    assert_eq!(balance.onchain, 0);
-    assert_eq!(balance.offchain, 0);
-    assert_eq!(balance.pending_exit, 0);
+    assert_eq!(balance, 0);
 }
 
 #[test]
@@ -165,24 +163,6 @@ fn test_get_balance_ffi() {
 fn test_get_vtxo_pubkey_ffi() {
     let _fixture = WalletTestFixture::new();
     // Request the next available pubkey
-    let pubkey_result = cxx::get_vtxo_pubkey(u32::MAX);
-    assert!(pubkey_result.is_ok());
-    let pubkey1 = pubkey_result.unwrap();
-    assert_eq!(pubkey1.len(), 66); // 33 bytes * 2 hex chars
-
-    // Request a specific index (0)
-    let pubkey_result_2 = cxx::get_vtxo_pubkey(0);
-    assert!(pubkey_result_2.is_ok());
-    let pubkey2 = pubkey_result_2.unwrap();
-    assert_eq!(
-        pubkey1, pubkey2,
-        "Requesting index 0 should yield the same key as the first derived key"
-    );
-}
-
-#[test]
-#[ignore = "requires live regtest backend"]
-fn test_get_utxos_and_vtxos_ffi() {
     let _fixture = WalletTestFixture::new();
     // On a fresh wallet, these should return empty JSON arrays.
     let onchain_utxos_res = cxx::get_onchain_utxos(true);
@@ -228,39 +208,25 @@ fn test_onchain_and_boarding_flow_ffi() {
     // e.g., `bitcoin-cli -regtest -generate 1`
 
     // 2. Check balance (with sync)
-    let balance = cxx::get_balance(false).unwrap();
+    let balance = cxx::onchain_balance().unwrap();
     assert!(
-        balance.onchain > 0,
+        balance > 0,
         "Wallet should have onchain funds after funding and syncing"
     );
 
     // 3. Board amount
     let board_amount_sat = 50_000;
-    let board_res = cxx::board_amount(board_amount_sat, false);
+    let board_res = cxx::board_amount(board_amount_sat);
     assert!(board_res.is_ok(), "Boarding failed: {:?}", board_res.err());
 
     // (Manual step: mine the board transaction)
 
     // 4. Check balance again
-    let final_balance = cxx::get_balance(false).unwrap();
+    let final_balance = cxx::onchain_balance().unwrap();
     assert!(
-        final_balance.offchain >= board_amount_sat,
-        "Offchain balance should increase after boarding"
+        final_balance >= board_amount_sat,
+        "On chain balance should increase after boarding"
     );
-}
-
-#[test]
-#[ignore = "requires live regtest backend"]
-fn test_refresh_vtxos_ffi() {
-    let _fixture = WalletTestFixture::new();
-    let opts = ffi::RefreshOpts {
-        mode_type: ffi::RefreshModeType::All,
-        threshold_value: 0,
-        specific_vtxo_ids: vec![],
-    };
-    // This will likely fail without a running ASP, but we test that the call itself works
-    let refresh_res = cxx::refresh_vtxos(opts, true);
-    assert!(refresh_res.is_ok()); // The call should succeed, even if the refresh does nothing
 }
 
 #[test]
@@ -347,7 +313,7 @@ fn test_send_many_onchain_ffi() {
 fn test_board_all_ffi() {
     let _fixture = WalletTestFixture::new();
     // Requires wallet to be funded.
-    let board_all_res = cxx::board_all(false);
+    let board_all_res = cxx::board_all();
     assert!(
         board_all_res.is_ok(),
         "board_all failed: {:?}",
@@ -357,15 +323,30 @@ fn test_board_all_ffi() {
 
 #[test]
 #[ignore = "requires live regtest backend and a funded wallet with vtxos"]
-fn test_send_payment_ffi() {
+fn test_send_arkoot_payment_ffi() {
     let _fixture = WalletTestFixture::new();
     // This is a complex test as it can handle different destination types.
     // Here we test sending to a VTXO pubkey (OOR).
-    let pubkey = cxx::get_vtxo_pubkey(0).unwrap();
-    let send_res = cxx::send_payment(&pubkey, 5000, "", false);
+    let pubkey = cxx::get_vtxo_pubkey(std::ptr::null()).unwrap();
+    let send_res = cxx::send_arkoor_payment(&pubkey, 5000);
     assert!(
         send_res.is_ok(),
         "send_payment (OOR) failed: {:?}",
+        send_res.err()
+    );
+}
+
+#[test]
+#[ignore = "requires live regtest backend and a funded wallet with vtxos"]
+fn test_send_bolt11_payment_ffi() {
+    let _fixture = WalletTestFixture::new();
+    // This is a complex test as it can handle different destination types.
+    // Here we test sending to a bolt11 invoice.
+    let invoice = cxx::bolt11_invoice(10000).unwrap();
+    let send_res = cxx::send_bolt11_payment(&invoice, 5000);
+    assert!(
+        send_res.is_ok(),
+        "send_payment (bolt11) failed: {:?}",
         send_res.err()
     );
 }

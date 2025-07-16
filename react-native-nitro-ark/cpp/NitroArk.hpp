@@ -58,7 +58,8 @@ namespace margelo::nitro::nitroark
                 create_opts.signet = opts.signet.value_or(false);
                 create_opts.bitcoin = opts.bitcoin.value_or(true);
                 create_opts.mnemonic = opts.mnemonic;
-                create_opts.birthday_height = static_cast<uint32_t>(opts.birthday_height.value_or(0));
+                uint32_t birthday_height_val = opts.birthday_height.value_or(0);
+                create_opts.birthday_height = opts.birthday_height.has_value() ? &birthday_height_val : nullptr;
                 create_opts.config = config_opts;
 
                 bark_cxx::load_wallet(datadir, create_opts);
@@ -84,18 +85,110 @@ namespace margelo::nitro::nitroark
                                         { return bark_cxx::is_wallet_loaded(); });
         }
 
+        std::shared_ptr<Promise<void>>
+        persistConfig(const BarkConfigOpts &opts) override
+        {
+            return Promise<void>::async([opts]()
+                                        {
+            try {
+                bark_cxx::ConfigOpts config_opts;
+                config_opts.asp = opts.asp.value_or("");
+                config_opts.esplora = opts.esplora.value_or("");
+                config_opts.bitcoind = opts.bitcoind.value_or("");
+                config_opts.bitcoind_cookie = opts.bitcoind_cookie.value_or("");
+                config_opts.bitcoind_user = opts.bitcoind_user.value_or("");
+                config_opts.bitcoind_pass = opts.bitcoind_pass.value_or("");
+                config_opts.vtxo_refresh_expiry_threshold = static_cast<uint32_t>(opts.vtxo_refresh_expiry_threshold.value_or(0));
+                config_opts.fallback_fee_rate = static_cast<uint64_t>(opts.fallback_fee_rate.value_or(0));
+                bark_cxx::persist_config(config_opts);
+            } catch (const rust::Error &e) {
+                throw std::runtime_error(e.what());
+            } });
+        }
+
+        std::shared_ptr<Promise<void>> maintenance() override
+        {
+            return Promise<void>::async([]()
+                                        {
+            try {
+                bark_cxx::maintenance();
+            } catch (const rust::Error &e) {
+                throw std::runtime_error(e.what());
+            } });
+        }
+
+        std::shared_ptr<Promise<void>> sync() override
+        {
+            return Promise<void>::async([]()
+                                        {
+            try {
+                bark_cxx::sync();
+            } catch (const rust::Error &e) {
+                throw std::runtime_error(e.what());
+            } });
+        }
+
+        std::shared_ptr<Promise<void>> syncArk() override
+        {
+            return Promise<void>::async([]()
+                                        {
+            try {
+                bark_cxx::sync_ark();
+            } catch (const rust::Error &e) {
+                throw std::runtime_error(e.what());
+            } });
+        }
+
+        std::shared_ptr<Promise<void>> syncRounds() override
+        {
+            return Promise<void>::async([]()
+                                        {
+            try {
+                bark_cxx::sync_rounds();
+            } catch (const rust::Error &e) {
+                throw std::runtime_error(e.what());
+            } });
+        }
+
         // --- Wallet Info ---
 
-        std::shared_ptr<Promise<BarkBalance>>
-        getBalance(bool no_sync) override
+        std::shared_ptr<Promise<BarkArkInfo>> getArkInfo() override
         {
-            return Promise<BarkBalance>::async([no_sync]()
+            return Promise<BarkArkInfo>::async([]()
                                                {
             try {
-                bark_cxx::CxxBalance c_balance = bark_cxx::get_balance(no_sync);
-                return BarkBalance{static_cast<double>(c_balance.onchain),
-                                   static_cast<double>(c_balance.offchain),
-                                   static_cast<double>(c_balance.pending_exit)};
+                bark_cxx::CxxArkInfo rust_info = bark_cxx::get_ark_info();
+                BarkArkInfo info;
+                info.network = std::string(rust_info.network.data(), rust_info.network.length());
+                info.asp_pubkey = std::string(rust_info.asp_pubkey.data(), rust_info.asp_pubkey.length());
+                info.round_interval_secs = static_cast<double>(rust_info.round_interval_secs);
+                info.vtxo_exit_delta = static_cast<double>(rust_info.vtxo_exit_delta);
+                info.vtxo_expiry_delta = static_cast<double>(rust_info.vtxo_expiry_delta);
+                info.htlc_expiry_delta = static_cast<double>(rust_info.htlc_expiry_delta);
+                info.max_vtxo_amount_sat = static_cast<double>(rust_info.max_vtxo_amount_sat);
+                return info;
+            } catch (const rust::Error &e) {
+                throw std::runtime_error(e.what());
+            } });
+        }
+
+        std::shared_ptr<Promise<double>> onchainBalance() override
+        {
+            return Promise<double>::async([]()
+                                          {
+            try {
+                return static_cast<double>(bark_cxx::onchain_balance());
+            } catch (const rust::Error &e) {
+                throw std::runtime_error(e.what());
+            } });
+        }
+
+        std::shared_ptr<Promise<double>> offchainBalance() override
+        {
+            return Promise<double>::async([]()
+                                          {
+            try {
+                return static_cast<double>(bark_cxx::offchain_balance());
             } catch (const rust::Error &e) {
                 throw std::runtime_error(e.what());
             } });
@@ -133,8 +226,8 @@ namespace margelo::nitro::nitroark
             return Promise<std::string>::async([index]()
                                                {
             try {
-                uint32_t index_val = index.has_value() ? static_cast<uint32_t>(index.value()) : UINT32_MAX;
-                rust::String pubkey_rs = bark_cxx::get_vtxo_pubkey(index_val);
+                uint32_t index_val = index.has_value() ? static_cast<uint32_t>(index.value()) : 0;
+                rust::String pubkey_rs = bark_cxx::get_vtxo_pubkey(index.has_value() ? &index_val : nullptr);
                 return std::string(pubkey_rs.data(), pubkey_rs.length());
             } catch (const rust::Error &e) {
                 throw std::runtime_error(e.what());
@@ -205,69 +298,26 @@ namespace margelo::nitro::nitroark
             } });
         }
 
-        // --- Ark Operations ---
+        // --- Ark & Lightning Payments ---
 
-        std::shared_ptr<Promise<std::string>>
-        refreshVtxos(const BarkRefreshOpts &refreshOpts, bool no_sync) override
+        std::shared_ptr<Promise<std::string>> boardAmount(double amountSat) override
         {
-            return Promise<std::string>::async([refreshOpts,
-                                                no_sync]()
+            return Promise<std::string>::async([amountSat]()
                                                {
             try {
-                bark_cxx::RefreshOpts opts;
-                switch (refreshOpts.mode_type) {
-                    case BarkRefreshModeType::DEFAULTTHRESHOLD:
-                        opts.mode_type = bark_cxx::RefreshModeType::DefaultThreshold;
-                        break;
-                    case BarkRefreshModeType::THRESHOLDBLOCKS:
-                        opts.mode_type = bark_cxx::RefreshModeType::ThresholdBlocks;
-                        break;
-                    case BarkRefreshModeType::THRESHOLDHOURS:
-                        opts.mode_type = bark_cxx::RefreshModeType::ThresholdHours;
-                        break;
-                    case BarkRefreshModeType::COUNTERPARTY:
-                        opts.mode_type = bark_cxx::RefreshModeType::Counterparty;
-                        break;
-                    case BarkRefreshModeType::ALL:
-                        opts.mode_type = bark_cxx::RefreshModeType::All;
-                        break;
-                    case BarkRefreshModeType::SPECIFIC:
-                        opts.mode_type = bark_cxx::RefreshModeType::Specific;
-                        break;
-                }
-                opts.threshold_value = static_cast<uint32_t>(refreshOpts.threshold_value.value_or(0));
-                if (refreshOpts.specific_vtxo_ids.has_value()) {
-                    for (const auto &id : refreshOpts.specific_vtxo_ids.value()) {
-                        opts.specific_vtxo_ids.push_back(id);
-                    }
-                }
-                rust::String status_rs = bark_cxx::refresh_vtxos(opts, no_sync);
+                rust::String status_rs = bark_cxx::board_amount(static_cast<uint64_t>(amountSat));
                 return std::string(status_rs.data(), status_rs.length());
             } catch (const rust::Error &e) {
                 throw std::runtime_error(e.what());
             } });
         }
 
-        std::shared_ptr<Promise<std::string>> boardAmount(double amountSat,
-                                                          bool no_sync) override
+        std::shared_ptr<Promise<std::string>> boardAll() override
         {
-            return Promise<std::string>::async([amountSat,
-                                                no_sync]()
+            return Promise<std::string>::async([]()
                                                {
             try {
-                rust::String status_rs = bark_cxx::board_amount(static_cast<uint64_t>(amountSat), no_sync);
-                return std::string(status_rs.data(), status_rs.length());
-            } catch (const rust::Error &e) {
-                throw std::runtime_error(e.what());
-            } });
-        }
-
-        std::shared_ptr<Promise<std::string>> boardAll(bool no_sync) override
-        {
-            return Promise<std::string>::async([no_sync]()
-                                               {
-            try {
-                rust::String status_rs = bark_cxx::board_all(no_sync);
+                rust::String status_rs = bark_cxx::board_all();
                 return std::string(status_rs.data(), status_rs.length());
             } catch (const rust::Error &e) {
                 throw std::runtime_error(e.what());
@@ -275,21 +325,38 @@ namespace margelo::nitro::nitroark
         }
 
         std::shared_ptr<Promise<std::string>>
-        send(const std::string &destination, std::optional<double> amountSat,
-             const std::optional<std::string> &comment, bool no_sync) override
+        sendArkoorPayment(const std::string &destination, double amountSat) override
         {
-            return Promise<std::string>::async([destination, amountSat, comment, no_sync]()
+            return Promise<std::string>::async([destination, amountSat]()
                                                {
             try {
-                uint64_t amount_val = 0;
-                if (amountSat.has_value()) {
-                    amount_val = static_cast<uint64_t>(amountSat.value());
-                }
-                std::string comment_val = "";
-                if (comment.has_value()) {
-                    comment_val = comment.value();
-                }
-                rust::String status_rs = bark_cxx::send_payment(destination, amount_val, comment_val, no_sync);
+                rust::String status_rs = bark_cxx::send_arkoor_payment(destination, static_cast<uint64_t>(amountSat));
+                return std::string(status_rs.data(), status_rs.length());
+            } catch (const rust::Error &e) {
+                throw std::runtime_error(e.what());
+            } });
+        }
+
+        std::shared_ptr<Promise<std::string>>
+        sendBolt11Payment(const std::string &destination, double amountSat) override
+        {
+            return Promise<std::string>::async([destination, amountSat]()
+                                               {
+            try {
+                rust::String status_rs = bark_cxx::send_bolt11_payment(destination, static_cast<uint64_t>(amountSat));
+                return std::string(status_rs.data(), status_rs.length());
+            } catch (const rust::Error &e) {
+                throw std::runtime_error(e.what());
+            } });
+        }
+
+        std::shared_ptr<Promise<std::string>>
+        sendLnaddr(const std::string &addr, double amountSat, const std::string &comment) override
+        {
+            return Promise<std::string>::async([addr, amountSat, comment]()
+                                               {
+            try {
+                rust::String status_rs = bark_cxx::send_lnaddr(addr, static_cast<uint64_t>(amountSat), comment);
                 return std::string(status_rs.data(), status_rs.length());
             } catch (const rust::Error &e) {
                 throw std::runtime_error(e.what());
@@ -315,7 +382,7 @@ namespace margelo::nitro::nitroark
                 });
         }
 
-        // --- Lightning Operations ---
+        // --- Lightning Invoicing ---
 
         std::shared_ptr<Promise<std::string>>
         bolt11Invoice(double amountMsat) override
@@ -346,11 +413,11 @@ namespace margelo::nitro::nitroark
 
         std::shared_ptr<Promise<std::string>>
         offboardSpecific(const std::vector<std::string> &vtxoIds,
-                         const std::optional<std::string> &optionalAddress,
+                         const std::string &destinationAddress,
                          bool no_sync) override
         {
             return Promise<std::string>::async(
-                [vtxoIds, optionalAddress, no_sync]()
+                [vtxoIds, destinationAddress, no_sync]()
                 {
                     try
                     {
@@ -359,8 +426,7 @@ namespace margelo::nitro::nitroark
                         {
                             rust_vtxo_ids.push_back(rust::String(id));
                         }
-                        std::string address = optionalAddress.has_value() ? optionalAddress.value() : "";
-                        rust::String status_rs = bark_cxx::offboard_specific(std::move(rust_vtxo_ids), address, no_sync);
+                        rust::String status_rs = bark_cxx::offboard_specific(std::move(rust_vtxo_ids), destinationAddress, no_sync);
                         return std::string(status_rs.data(), status_rs.length());
                     }
                     catch (const rust::Error &e)
@@ -371,15 +437,14 @@ namespace margelo::nitro::nitroark
         }
 
         std::shared_ptr<Promise<std::string>>
-        offboardAll(const std::optional<std::string> &optionalAddress,
+        offboardAll(const std::string &destinationAddress,
                     bool no_sync) override
         {
-            return Promise<std::string>::async([optionalAddress,
+            return Promise<std::string>::async([destinationAddress,
                                                 no_sync]()
                                                {
             try {
-                std::string address = optionalAddress.has_value() ? optionalAddress.value() : "";
-                rust::String status_rs = bark_cxx::offboard_all(address, no_sync);
+                rust::String status_rs = bark_cxx::offboard_all(destinationAddress, no_sync);
                 return std::string(status_rs.data(), status_rs.length());
             } catch (const rust::Error &e) {
                 throw std::runtime_error(e.what());

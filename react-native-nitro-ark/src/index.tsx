@@ -2,8 +2,8 @@ import { NitroModules } from 'react-native-nitro-modules';
 import type {
   NitroArk,
   BarkCreateOpts,
-  BarkBalance,
-  BarkRefreshOpts,
+  BarkConfigOpts,
+  BarkArkInfo,
   BarkSendManyOutput,
 } from './NitroArk.nitro';
 
@@ -51,15 +51,71 @@ export function isWalletLoaded(): Promise<boolean> {
   return NitroArkHybridObject.isWalletLoaded();
 }
 
+/**
+ * Persists wallet configuration.
+ * @param opts The configuration options to persist.
+ * @returns A promise that resolves on success or rejects on error.
+ */
+export function persistConfig(opts: BarkConfigOpts): Promise<void> {
+  return NitroArkHybridObject.persistConfig(opts);
+}
+
+/**
+ * Runs wallet maintenance tasks.
+ * @returns A promise that resolves on success.
+ */
+export function maintenance(): Promise<void> {
+  return NitroArkHybridObject.maintenance();
+}
+
+/**
+ * Synchronizes the wallet with the blockchain.
+ * @returns A promise that resolves on success.
+ */
+export function sync(): Promise<void> {
+  return NitroArkHybridObject.sync();
+}
+
+/**
+ * Synchronizes the Ark-specific parts of the wallet.
+ * @returns A promise that resolves on success.
+ */
+export function syncArk(): Promise<void> {
+  return NitroArkHybridObject.syncArk();
+}
+
+/**
+ * Synchronizes the rounds of the wallet.
+ * @returns A promise that resolves on success.
+ */
+export function syncRounds(): Promise<void> {
+  return NitroArkHybridObject.syncRounds();
+}
+
 // --- Wallet Info ---
 
 /**
- * Gets the onchain and offchain balances for the loaded wallet.
- * @param no_sync If true, skips synchronization with the blockchain. Defaults to false.
- * @returns A promise resolving to the BarkBalance object.
+ * Gets the Ark-specific information.
+ * @returns A promise resolving to the BarkArkInfo object.
  */
-export function getBalance(no_sync: boolean = false): Promise<BarkBalance> {
-  return NitroArkHybridObject.getBalance(no_sync);
+export function getArkInfo(): Promise<BarkArkInfo> {
+  return NitroArkHybridObject.getArkInfo();
+}
+
+/**
+ * Gets the onchain balance for the loaded wallet.
+ * @returns A promise resolving to the onchain balance in satoshis.
+ */
+export function onchainBalance(): Promise<number> {
+  return NitroArkHybridObject.onchainBalance();
+}
+
+/**
+ * Gets the offchain balance for the loaded wallet.
+ * @returns A promise resolving to the offchain balance in satoshis.
+ */
+export function offchainBalance(): Promise<number> {
+  return NitroArkHybridObject.offchainBalance();
 }
 
 /**
@@ -81,7 +137,7 @@ export function getOnchainUtxos(no_sync: boolean = false): Promise<string> {
 
 /**
  * Gets the wallet's VTXO public key (hex string).
- * @param index Optional index of the VTXO pubkey to retrieve.
+ * @param index Index of the VTXO pubkey to retrieve. Use u32::MAX for a new one.
  * @returns A promise resolving to the hex-encoded public key string.
  */
 export function getVtxoPubkey(index?: number): Promise<string> {
@@ -163,83 +219,61 @@ export function claimBolt11Payment(bolt11: string): Promise<void> {
 // --- Ark Operations ---
 
 /**
- * Refreshes VTXOs based on specified criteria for the loaded wallet.
- * @param refreshOpts Options specifying which VTXOs to refresh.
- * @param no_sync If true, skips synchronization with the blockchain. Defaults to false.
- * @returns A promise resolving to a JSON status string.
- */
-export function refreshVtxos(
-  refreshOpts: BarkRefreshOpts,
-  no_sync: boolean = false
-): Promise<string> {
-  if (!refreshOpts.mode_type) {
-    return Promise.reject(
-      new Error('refreshVtxos requires refreshOpts.mode_type')
-    );
-  }
-  if (
-    refreshOpts.mode_type === 'Specific' &&
-    (!refreshOpts.specific_vtxo_ids ||
-      refreshOpts.specific_vtxo_ids.length === 0)
-  ) {
-    return Promise.reject(
-      new Error(
-        "refreshVtxos with mode_type 'Specific' requires non-empty specific_vtxo_ids array"
-      )
-    );
-  }
-  if (
-    (refreshOpts.mode_type === 'ThresholdBlocks' ||
-      refreshOpts.mode_type === 'ThresholdHours') &&
-    (refreshOpts.threshold_value === undefined ||
-      refreshOpts.threshold_value <= 0)
-  ) {
-    return Promise.reject(
-      new Error(
-        `refreshVtxos with mode_type '${refreshOpts.mode_type}' requires a positive threshold_value`
-      )
-    );
-  }
-  return NitroArkHybridObject.refreshVtxos(refreshOpts, no_sync);
-}
-
-/**
  * Boards a specific amount from the onchain wallet into Ark.
  * @param amountSat The amount in satoshis to board.
- * @param no_sync If true, skips synchronization with the onchain wallet. Defaults to false.
  * @returns A promise resolving to a JSON status string.
  */
-export function boardAmount(
-  amountSat: number,
-  no_sync: boolean = false
-): Promise<string> {
-  return NitroArkHybridObject.boardAmount(amountSat, no_sync);
+export function boardAmount(amountSat: number): Promise<string> {
+  return NitroArkHybridObject.boardAmount(amountSat);
 }
 
 /**
  * Boards all available funds from the onchain wallet into Ark.
- * @param no_sync If true, skips synchronization with the onchain wallet. Defaults to false.
  * @returns A promise resolving to a JSON status string.
  */
-export function boardAll(no_sync: boolean = false): Promise<string> {
-  return NitroArkHybridObject.boardAll(no_sync);
+export function boardAll(): Promise<string> {
+  return NitroArkHybridObject.boardAll();
 }
 
 /**
- * Sends funds offchain using Ark VTXOs.
- * @param destination Ark address (VTXO pubkey) or onchain Bitcoin address.
+ * Sends an Arkoor payment.
+ * @param destination The destination Arkoor address.
  * @param amountSat The amount in satoshis to send.
- * @param comment Optional comment.
- * @param no_sync If true, skips synchronization with the wallet. Defaults to false.
- * @returns A promise resolving to a JSON status string.
+ * @returns A promise resolving to a result string.
  */
-export function send(
+export function sendArkoorPayment(
   destination: string,
-  amountSat: number | null,
-  comment: string | null = null,
-  no_sync: boolean = false
+  amountSat: number
 ): Promise<string> {
-  return NitroArkHybridObject.send(destination, amountSat, comment, no_sync);
+  return NitroArkHybridObject.sendArkoorPayment(destination, amountSat);
+}
+
+/**
+ * Sends a Bolt11 payment.
+ * @param destination The Bolt11 invoice.
+ * @param amountSat The amount in satoshis to send. Use 0 for invoice amount.
+ * @returns A promise resolving to a result string.
+ */
+export function sendBolt11Payment(
+  destination: string,
+  amountSat: number
+): Promise<string> {
+  return NitroArkHybridObject.sendBolt11Payment(destination, amountSat);
+}
+
+/**
+ * Sends a payment to a Lightning Address.
+ * @param addr The Lightning Address.
+ * @param amountSat The amount in satoshis to send.
+ * @param comment An optional comment.
+ * @returns A promise resolving to a result string.
+ */
+export function sendLnaddr(
+  addr: string,
+  amountSat: number,
+  comment: string
+): Promise<string> {
+  return NitroArkHybridObject.sendLnaddr(addr, amountSat, comment);
 }
 
 /**
@@ -260,35 +294,35 @@ export function sendRoundOnchain(
 // --- Offboarding / Exiting ---
 
 /**
- * Offboards specific VTXOs to an optional onchain address.
+ * Offboards specific VTXOs to a destination address.
  * @param vtxoIds Array of VtxoId strings to offboard.
- * @param optionalAddress Optional destination Bitcoin address (null if sending to internal wallet).
+ * @param destinationAddress Destination Bitcoin address (if empty, sends to internal wallet).
  * @param no_sync If true, skips synchronization with the wallet. Defaults to false.
  * @returns A promise resolving to a JSON result string.
  */
 export function offboardSpecific(
   vtxoIds: string[],
-  optionalAddress: string | null = null,
+  destinationAddress: string,
   no_sync: boolean = false
 ): Promise<string> {
   return NitroArkHybridObject.offboardSpecific(
     vtxoIds,
-    optionalAddress,
+    destinationAddress,
     no_sync
   );
 }
 
 /**
- * Offboards all VTXOs to an optional onchain address.
- * @param optionalAddress Optional destination Bitcoin address (null if sending to internal wallet).
+ * Offboards all VTXOs to a destination address.
+ * @param destinationAddress Destination Bitcoin address (if empty, sends to internal wallet).
  * @param no_sync If true, skips synchronization with the wallet. Defaults to false.
  * @returns A promise resolving to a JSON result string.
  */
 export function offboardAll(
-  optionalAddress: string | null = null,
+  destinationAddress: string,
   no_sync: boolean = false
 ): Promise<string> {
-  return NitroArkHybridObject.offboardAll(optionalAddress, no_sync);
+  return NitroArkHybridObject.offboardAll(destinationAddress, no_sync);
 }
 
 /**
@@ -296,7 +330,7 @@ export function offboardAll(
  * @param vtxoIds Array of VtxoId strings to start exiting.
  * @returns A promise resolving to a JSON status string.
  */
-export function exitStartSpecific(vtxoIds: string[]): Promise<string> {
+export function startExitForVtxos(vtxoIds: string[]): Promise<string> {
   return NitroArkHybridObject.exitStartSpecific(vtxoIds);
 }
 
@@ -304,7 +338,7 @@ export function exitStartSpecific(vtxoIds: string[]): Promise<string> {
  * Starts the exit process for all VTXOs in the wallet.
  * @returns A promise resolving to a JSON status string.
  */
-export function exitStartAll(): Promise<string> {
+export function startExitForEntireWallet(): Promise<string> {
   return NitroArkHybridObject.exitStartAll();
 }
 
@@ -318,10 +352,9 @@ export function exitProgressOnce(): Promise<string> {
 
 // --- Re-export types and enums ---
 export type {
+  NitroArk,
   BarkCreateOpts,
   BarkConfigOpts,
-  BarkBalance,
-  BarkRefreshOpts,
-  BarkRefreshModeType,
+  BarkArkInfo,
   BarkSendManyOutput,
 } from './NitroArk.nitro';

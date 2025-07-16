@@ -18,8 +18,8 @@ import {
 } from '@dr.pogodin/react-native-fs';
 import * as NitroArk from 'react-native-nitro-ark';
 import type {
-  BarkBalance,
-  BarkRefreshModeType,
+  BarkArkInfo,
+  BarkConfigOpts,
   BarkSendManyOutput,
 } from 'react-native-nitro-ark';
 
@@ -39,9 +39,9 @@ const formatSats = (sats: number): string => {
 
 export default function ArkApp() {
   const [mnemonic, setMnemonic] = useState<string | undefined>(undefined);
-  const [balanceState, setBalanceState] = useState<
-    Partial<BarkBalance> & { error?: string }
-  >({});
+  const [arkInfo, setArkInfo] = useState<BarkArkInfo | undefined>();
+  const [onchainBalance, setOnchainBalance] = useState<number | undefined>();
+  const [offchainBalance, setOffchainBalance] = useState<number | undefined>();
   const [results, setResults] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -220,23 +220,52 @@ export default function ArkApp() {
     runOperation('isWalletLoaded', () => NitroArk.isWalletLoaded());
   };
 
-  const handleGetBalance = (noSync: boolean) => {
-    if (!mnemonic) {
-      setError('Mnemonic required');
-      return;
-    }
-    const opName = `getBalance (noSync: ${noSync})`;
+  const handlePersistConfig = () => {
+    // Example config, ideally from UI inputs
+    const opts: BarkConfigOpts = {
+      fallback_fee_rate: 1200,
+    };
+    runOperation('persistConfig', () => NitroArk.persistConfig(opts));
+  };
+
+  const handleMaintenance = () => {
+    runOperation('maintenance', () => NitroArk.maintenance());
+  };
+
+  const handleSync = () => {
+    runOperation('sync', () => NitroArk.sync());
+  };
+
+  const handleSyncArk = () => {
+    runOperation('syncArk', () => NitroArk.syncArk());
+  };
+
+  const handleSyncRounds = () => {
+    runOperation('syncRounds', () => NitroArk.syncRounds());
+  };
+
+  const handleGetArkInfo = () => {
+    runOperation('getArkInfo', () => NitroArk.getArkInfo(), setArkInfo);
+  };
+
+  const handleGetOnchainBalance = () => {
     runOperation(
-      opName,
-      () => NitroArk.getBalance(noSync),
-      (balance: BarkBalance) => {
-        setBalanceState({
-          onchain: balance.onchain,
-          offchain: balance.offchain,
-          pending_exit: balance.pending_exit, // Ensure key matches TS definition
-          error: undefined,
-        });
-        setResults(''); // Clear generic results as balance has its own display
+      'onchainBalance',
+      () => NitroArk.onchainBalance(),
+      (balance) => {
+        setOnchainBalance(balance);
+        setResults(`Onchain Balance: ${balance}`);
+      }
+    );
+  };
+
+  const handleGetOffchainBalance = () => {
+    runOperation(
+      'offchainBalance',
+      () => NitroArk.offchainBalance(),
+      (balance) => {
+        setOffchainBalance(balance);
+        setResults(`Offchain Balance: ${balance}`);
       }
     );
   };
@@ -264,6 +293,7 @@ export default function ArkApp() {
       setError('Mnemonic required');
       return;
     }
+    // Pass a default index of 0, or use an input for more specific key retrieval
     runOperation('getVtxoPubkey', () => NitroArk.getVtxoPubkey());
   };
 
@@ -324,34 +354,7 @@ export default function ArkApp() {
     );
   };
 
-  const handleRefreshVtxos = (mode: BarkRefreshModeType, noSync: boolean) => {
-    if (!mnemonic) {
-      setError('Mnemonic required');
-      return;
-    }
-    let refreshOpts: NitroArk.BarkRefreshOpts = { mode_type: mode };
-
-    if (mode === 'Specific') {
-      const ids = vtxoIdsInput
-        .split(',')
-        .map((id) => id.trim())
-        .filter((id) => id);
-      if (ids.length === 0) {
-        setError('Specific VTXO IDs are required for this refresh mode.');
-        return;
-      }
-      refreshOpts.specific_vtxo_ids = ids;
-    } else if (mode === 'ThresholdBlocks' || mode === 'ThresholdHours') {
-      // Example threshold - ideally get from input
-      refreshOpts.threshold_value = 10; // Example: 10 blocks/hours
-    }
-
-    runOperation(`refreshVtxos (mode: ${mode}, noSync: ${noSync})`, () =>
-      NitroArk.refreshVtxos(refreshOpts, noSync)
-    );
-  };
-
-  const handleBoardAmount = (noSync: boolean) => {
+  const handleBoardAmount = () => {
     if (!mnemonic || !amountSat) {
       setError('Mnemonic and Amount are required.');
       return;
@@ -361,22 +364,18 @@ export default function ArkApp() {
       setError('Invalid amount specified.');
       return;
     }
-    runOperation(`boardAmount (noSync: ${noSync})`, () =>
-      NitroArk.boardAmount(amountNum, noSync)
-    );
+    runOperation('boardAmount', () => NitroArk.boardAmount(amountNum));
   };
 
-  const handleBoardAll = (noSync: boolean) => {
+  const handleBoardAll = () => {
     if (!mnemonic) {
       setError('Mnemonic required');
       return;
     }
-    runOperation(`boardAll (noSync: ${noSync})`, () =>
-      NitroArk.boardAll(noSync)
-    );
+    runOperation('boardAll', () => NitroArk.boardAll());
   };
 
-  const handleSendArk = (noSync: boolean) => {
+  const handleSendArkoorPayment = () => {
     if (!mnemonic || !destinationAddress || !amountSat) {
       setError('Mnemonic, Destination, and Amount are required.');
       return;
@@ -386,10 +385,39 @@ export default function ArkApp() {
       setError('Invalid amount specified.');
       return;
     }
-    // Use comment from state, pass null if empty
-    const commentToSend = comment.trim() === '' ? null : comment.trim();
-    runOperation(`send (Ark) (noSync: ${noSync})`, () =>
-      NitroArk.send(destinationAddress, amountNum, commentToSend, noSync)
+    runOperation('sendArkoorPayment', () =>
+      NitroArk.sendArkoorPayment(destinationAddress, amountNum)
+    );
+  };
+
+  const handleSendBolt11Payment = () => {
+    if (!mnemonic || !destinationAddress) {
+      setError('Mnemonic and Destination (invoice) are required.');
+      return;
+    }
+    // Amount can be 0 to use invoice's amount
+    const amountNum = parseInt(amountSat, 10) || 0;
+    if (isNaN(amountNum) || amountNum < 0) {
+      setError('Invalid amount specified.');
+      return;
+    }
+    runOperation('sendBolt11Payment', () =>
+      NitroArk.sendBolt11Payment(destinationAddress, amountNum)
+    );
+  };
+
+  const handleSendLnaddr = () => {
+    if (!mnemonic || !destinationAddress || !amountSat) {
+      setError('Mnemonic, Destination (lnaddr), and Amount are required.');
+      return;
+    }
+    const amountNum = parseInt(amountSat, 10);
+    if (isNaN(amountNum) || amountNum <= 0) {
+      setError('Invalid amount specified.');
+      return;
+    }
+    runOperation('sendLnaddr', () =>
+      NitroArk.sendLnaddr(destinationAddress, amountNum, comment)
     );
   };
 
@@ -409,8 +437,8 @@ export default function ArkApp() {
   };
 
   const handleOffboardSpecific = (noSync: boolean) => {
-    if (!mnemonic || !vtxoIdsInput) {
-      setError('Mnemonic and VTXO IDs are required.');
+    if (!mnemonic || !vtxoIdsInput || !optionalAddress) {
+      setError('Mnemonic, VTXO IDs, and Destination Address are required.');
       return;
     }
     const ids = vtxoIdsInput
@@ -421,26 +449,22 @@ export default function ArkApp() {
       setError('At least one VTXO ID is required.');
       return;
     }
-    const addrToSend =
-      optionalAddress.trim() === '' ? null : optionalAddress.trim();
     runOperation(`offboardSpecific (noSync: ${noSync})`, () =>
-      NitroArk.offboardSpecific(ids, addrToSend, noSync)
+      NitroArk.offboardSpecific(ids, optionalAddress, noSync)
     );
   };
 
   const handleOffboardAll = (noSync: boolean) => {
-    if (!mnemonic) {
-      setError('Mnemonic required');
+    if (!mnemonic || !optionalAddress) {
+      setError('Mnemonic and Destination Address are required.');
       return;
     }
-    const addrToSend =
-      optionalAddress.trim() === '' ? null : optionalAddress.trim();
     runOperation(`offboardAll (noSync: ${noSync})`, () =>
-      NitroArk.offboardAll(addrToSend, noSync)
+      NitroArk.offboardAll(optionalAddress, noSync)
     );
   };
 
-  const handleExitStartSpecific = (noSync: boolean) => {
+  const handleExitStartSpecific = () => {
     if (!mnemonic || !vtxoIdsInput) {
       setError('Mnemonic and VTXO IDs are required.');
       return;
@@ -453,18 +477,16 @@ export default function ArkApp() {
       setError('At least one VTXO ID is required.');
       return;
     }
-    runOperation(`exitStartSpecific (noSync: ${noSync})`, () =>
-      NitroArk.exitStartSpecific(ids)
-    );
+    runOperation('startExitForVtxos', () => NitroArk.startExitForVtxos(ids));
   };
 
-  const handleExitStartAll = (noSync: boolean) => {
+  const handleExitStartAll = () => {
     if (!mnemonic) {
       setError('Mnemonic required');
       return;
     }
-    runOperation(`exitStartAll (noSync: ${noSync})`, () =>
-      NitroArk.exitStartAll()
+    runOperation('startExitForEntireWallet', () =>
+      NitroArk.startExitForEntireWallet()
     );
   };
 
@@ -563,15 +585,49 @@ export default function ArkApp() {
           <Button
             title="Close Wallet"
             onPress={handleCloseWallet}
-            disabled={isLoading || !mnemonic} // Disable if no mnemonic or already created
+            disabled={walletOpsButtonDisabled}
           />
         </View>
-
         <View style={styles.buttonContainer}>
           <Button
             title="Check Wallet Status"
             onPress={handleIsWalletLoaded}
             disabled={isLoading}
+          />
+        </View>
+        <View style={styles.buttonContainer}>
+          <Button
+            title="Persist Config"
+            onPress={handlePersistConfig}
+            disabled={walletOpsButtonDisabled}
+          />
+        </View>
+        <View style={styles.buttonContainer}>
+          <Button
+            title="Maintenance"
+            onPress={handleMaintenance}
+            disabled={walletOpsButtonDisabled}
+          />
+        </View>
+        <View style={styles.buttonContainer}>
+          <Button
+            title="Sync"
+            onPress={handleSync}
+            disabled={walletOpsButtonDisabled}
+          />
+        </View>
+        <View style={styles.buttonContainer}>
+          <Button
+            title="Sync Ark"
+            onPress={handleSyncArk}
+            disabled={walletOpsButtonDisabled}
+          />
+        </View>
+        <View style={styles.buttonContainer}>
+          <Button
+            title="Sync Rounds"
+            onPress={handleSyncRounds}
+            disabled={walletOpsButtonDisabled}
           />
         </View>
 
@@ -580,18 +636,21 @@ export default function ArkApp() {
         <View style={styles.balanceContainer}>
           <Text style={styles.balanceHeader}>Wallet Balance</Text>
           <Text style={styles.balanceText}>
-            Onchain: {formatSats(balanceState.onchain ?? 0)}
+            Onchain: {formatSats(onchainBalance ?? 0)}
           </Text>
           <Text style={styles.balanceText}>
-            Offchain: {formatSats(balanceState.offchain ?? 0)}
+            Offchain: {formatSats(offchainBalance ?? 0)}
           </Text>
-          <Text style={styles.balanceText}>
-            Pending Exit: {formatSats(balanceState.pending_exit ?? 0)}
-          </Text>
-          {balanceState.error && (
-            <Text style={styles.errorText}>Error: {balanceState.error}</Text>
-          )}
         </View>
+
+        {arkInfo && (
+          <View style={styles.resultContainer}>
+            <Text style={styles.resultHeader}>Ark Info:</Text>
+            <Text style={styles.resultText} selectable={true}>
+              {JSON.stringify(arkInfo, null, 2)}
+            </Text>
+          </View>
+        )}
 
         {results && (
           <View style={styles.resultContainer}>
@@ -611,15 +670,22 @@ export default function ArkApp() {
         )}
         <View style={styles.buttonContainer}>
           <Button
-            title="Get Balance (Sync)"
-            onPress={() => handleGetBalance(false)}
+            title="Get Ark Info"
+            onPress={handleGetArkInfo}
             disabled={walletOpsButtonDisabled}
           />
         </View>
         <View style={styles.buttonContainer}>
           <Button
-            title="Get Balance (No Sync)"
-            onPress={() => handleGetBalance(true)}
+            title="Get Onchain Balance"
+            onPress={handleGetOnchainBalance}
+            disabled={walletOpsButtonDisabled}
+          />
+        </View>
+        <View style={styles.buttonContainer}>
+          <Button
+            title="Get Offchain Balance"
+            onPress={handleGetOffchainBalance}
             disabled={walletOpsButtonDisabled}
           />
         </View>
@@ -784,49 +850,40 @@ export default function ArkApp() {
         </View>
 
         {/* --- Ark Operations --- */}
-        <Text style={styles.sectionHeader}>Ark Operations</Text>
-        {/* Add buttons for different refresh modes */}
-        <View style={styles.buttonContainer}>
-          <Button
-            title="Refresh VTXOs (Default)"
-            onPress={() => handleRefreshVtxos('DefaultThreshold', false)}
-            disabled={walletOpsButtonDisabled}
-          />
-        </View>
-        <View style={styles.buttonContainer}>
-          <Button
-            title="Refresh VTXOs (Specific - Use Input)"
-            onPress={() => handleRefreshVtxos('Specific', false)}
-            disabled={walletOpsButtonDisabled}
-          />
-        </View>
-        <View style={styles.buttonContainer}>
-          <Button
-            title="Refresh VTXOs (All)"
-            onPress={() => handleRefreshVtxos('All', false)}
-            disabled={walletOpsButtonDisabled}
-          />
-        </View>
-        <View style={styles.buttonSpacer} />
+        <Text style={styles.sectionHeader}>Ark & Lightning Payments</Text>
         <View style={styles.buttonContainer}>
           <Button
             title="Board Amount (Use Input)"
-            onPress={() => handleBoardAmount(false)} // Default to sync=false
+            onPress={handleBoardAmount}
             disabled={walletOpsButtonDisabled}
           />
         </View>
         <View style={styles.buttonContainer}>
           <Button
             title="Board All"
-            onPress={() => handleBoardAll(false)} // Default to sync=false
+            onPress={handleBoardAll}
             disabled={walletOpsButtonDisabled}
           />
         </View>
         <View style={styles.buttonSpacer} />
         <View style={styles.buttonContainer}>
           <Button
-            title="Send (Ark - Use Inputs)"
-            onPress={() => handleSendArk(false)} // Default to sync=false
+            title="Send Arkoor Payment"
+            onPress={handleSendArkoorPayment}
+            disabled={walletOpsButtonDisabled}
+          />
+        </View>
+        <View style={styles.buttonContainer}>
+          <Button
+            title="Send Bolt11 Payment"
+            onPress={handleSendBolt11Payment}
+            disabled={walletOpsButtonDisabled}
+          />
+        </View>
+        <View style={styles.buttonContainer}>
+          <Button
+            title="Send to Lightning Address"
+            onPress={handleSendLnaddr}
             disabled={walletOpsButtonDisabled}
           />
         </View>
@@ -843,14 +900,14 @@ export default function ArkApp() {
         <View style={styles.buttonContainer}>
           <Button
             title="Offboard Specific (Use Inputs)"
-            onPress={() => handleOffboardSpecific(false)} // Default to sync=false
+            onPress={() => handleOffboardSpecific(false)}
             disabled={walletOpsButtonDisabled}
           />
         </View>
         <View style={styles.buttonContainer}>
           <Button
             title="Offboard All (Use Optional Address)"
-            onPress={() => handleOffboardAll(false)} // Default to sync=false
+            onPress={() => handleOffboardAll(false)}
             disabled={walletOpsButtonDisabled}
           />
         </View>
@@ -858,14 +915,14 @@ export default function ArkApp() {
         <View style={styles.buttonContainer}>
           <Button
             title="Exit Start Specific (Use VTXO ID Input)"
-            onPress={() => handleExitStartSpecific(false)} // Default to sync=false
+            onPress={handleExitStartSpecific}
             disabled={walletOpsButtonDisabled}
           />
         </View>
         <View style={styles.buttonContainer}>
           <Button
             title="Exit Start All"
-            onPress={() => handleExitStartAll(false)} // Default to sync=false
+            onPress={handleExitStartAll}
             disabled={walletOpsButtonDisabled}
           />
         </View>

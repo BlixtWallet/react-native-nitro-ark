@@ -797,25 +797,28 @@ std::size_t align_of() {
 #endif
 
 namespace bark_cxx {
-  struct CxxBalance;
+  struct CxxArkInfo;
   struct ConfigOpts;
   struct CreateOpts;
   struct SendManyOutput;
   enum class RefreshModeType : ::std::uint8_t;
-  struct RefreshOpts;
 }
 
 namespace bark_cxx {
-#ifndef CXXBRIDGE1_STRUCT_bark_cxx$CxxBalance
-#define CXXBRIDGE1_STRUCT_bark_cxx$CxxBalance
-struct CxxBalance final {
-  ::std::uint64_t onchain CXX_DEFAULT_VALUE(0);
-  ::std::uint64_t offchain CXX_DEFAULT_VALUE(0);
-  ::std::uint64_t pending_exit CXX_DEFAULT_VALUE(0);
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$CxxArkInfo
+#define CXXBRIDGE1_STRUCT_bark_cxx$CxxArkInfo
+struct CxxArkInfo final {
+  ::rust::String network;
+  ::rust::String asp_pubkey;
+  ::std::uint64_t round_interval_secs CXX_DEFAULT_VALUE(0);
+  ::std::uint16_t vtxo_exit_delta CXX_DEFAULT_VALUE(0);
+  ::std::uint16_t vtxo_expiry_delta CXX_DEFAULT_VALUE(0);
+  ::std::uint16_t htlc_expiry_delta CXX_DEFAULT_VALUE(0);
+  ::std::uint64_t max_vtxo_amount_sat CXX_DEFAULT_VALUE(0);
 
   using IsRelocatable = ::std::true_type;
 };
-#endif // CXXBRIDGE1_STRUCT_bark_cxx$CxxBalance
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$CxxArkInfo
 
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$ConfigOpts
 #define CXXBRIDGE1_STRUCT_bark_cxx$ConfigOpts
@@ -840,7 +843,7 @@ struct CreateOpts final {
   bool signet CXX_DEFAULT_VALUE(false);
   bool bitcoin CXX_DEFAULT_VALUE(false);
   ::rust::String mnemonic;
-  ::std::uint32_t birthday_height CXX_DEFAULT_VALUE(0);
+  ::std::uint32_t const *birthday_height CXX_DEFAULT_VALUE(nullptr);
   ::bark_cxx::ConfigOpts config;
 
   using IsRelocatable = ::std::true_type;
@@ -869,17 +872,6 @@ enum class RefreshModeType : ::std::uint8_t {
 };
 #endif // CXXBRIDGE1_ENUM_bark_cxx$RefreshModeType
 
-#ifndef CXXBRIDGE1_STRUCT_bark_cxx$RefreshOpts
-#define CXXBRIDGE1_STRUCT_bark_cxx$RefreshOpts
-struct RefreshOpts final {
-  ::bark_cxx::RefreshModeType mode_type;
-  ::std::uint32_t threshold_value CXX_DEFAULT_VALUE(0);
-  ::rust::Vec<::rust::String> specific_vtxo_ids;
-
-  using IsRelocatable = ::std::true_type;
-};
-#endif // CXXBRIDGE1_STRUCT_bark_cxx$RefreshOpts
-
 void init_logger() noexcept;
 
 ::rust::String create_mnemonic();
@@ -888,19 +880,33 @@ bool is_wallet_loaded() noexcept;
 
 void close_wallet();
 
+void persist_config(::bark_cxx::ConfigOpts opts);
+
+::bark_cxx::CxxArkInfo get_ark_info();
+
 ::rust::String get_onchain_address();
 
-::bark_cxx::CxxBalance get_balance(bool no_sync);
+::std::uint64_t offchain_balance();
+
+::std::uint64_t onchain_balance();
 
 ::rust::String get_onchain_utxos(bool no_sync);
 
-::rust::String get_vtxo_pubkey(::std::uint32_t index);
+::rust::String get_vtxo_pubkey(::std::uint32_t const *index);
 
 ::rust::String get_vtxos(bool no_sync);
 
 ::rust::String bolt11_invoice(::std::uint64_t amount_msat);
 
 void claim_bolt11_payment(::rust::Str bolt11);
+
+void maintenance();
+
+void sync();
+
+void sync_ark();
+
+void sync_rounds();
 
 void load_wallet(::rust::Str datadir, ::bark_cxx::CreateOpts opts);
 
@@ -910,13 +916,15 @@ void load_wallet(::rust::Str datadir, ::bark_cxx::CreateOpts opts);
 
 ::rust::String send_many_onchain(::rust::Vec<::bark_cxx::SendManyOutput> outputs, bool no_sync);
 
-::rust::String refresh_vtxos(::bark_cxx::RefreshOpts opts, bool no_sync);
+::rust::String board_amount(::std::uint64_t amount_sat);
 
-::rust::String board_amount(::std::uint64_t amount_sat, bool no_sync);
+::rust::String board_all();
 
-::rust::String board_all(bool no_sync);
+::rust::String send_arkoor_payment(::rust::Str destination, ::std::uint64_t amount_sat);
 
-::rust::String send_payment(::rust::Str destination, ::std::uint64_t amount_sat, ::rust::Str comment, bool no_sync);
+::rust::String send_bolt11_payment(::rust::Str destination, ::std::uint64_t amount_sat);
+
+::rust::String send_lnaddr(::rust::Str addr, ::std::uint64_t amount_sat, ::rust::Str comment);
 
 ::rust::String send_round_onchain(::rust::Str destination, ::std::uint64_t amount_sat, bool no_sync);
 
