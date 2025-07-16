@@ -24,7 +24,6 @@ use bark::Config;
 use bark::SqliteClient;
 use bark::UtxoInfo;
 use bark::Wallet;
-use once_cell::sync::Lazy;
 use tokio::runtime::Runtime;
 use tokio::sync::Mutex;
 mod cxx;
@@ -33,6 +32,7 @@ mod utils;
 use bip39::Mnemonic;
 use logger::log::{debug, info, warn};
 use std::path::Path;
+use std::sync::LazyLock;
 use std::sync::Once;
 use utils::try_create_wallet;
 use utils::DB_FILE;
@@ -45,9 +45,14 @@ use anyhow::Context;
 
 // Use a static Once to ensure the logger is initialized only once.
 static LOGGER_INIT: Once = Once::new();
-static GLOBAL_WALLET: Lazy<Mutex<Option<Wallet>>> = Lazy::new(|| Mutex::new(None));
-pub static TOKIO_RUNTIME: Lazy<Runtime> =
-    Lazy::new(|| Runtime::new().expect("Failed to create Tokio runtime"));
+static GLOBAL_WALLET: LazyLock<Mutex<Option<Wallet>>> = LazyLock::new(|| Mutex::new(None));
+pub static TOKIO_RUNTIME: LazyLock<Runtime> = LazyLock::new(|| {
+    tokio::runtime::Builder::new_current_thread()
+        .enable_io()
+        .enable_time()
+        .build()
+        .expect("Failed to create Tokio runtime")
+});
 
 // function to explicitly initialize the logger.
 // This should be called once from your FFI entry point.
@@ -61,7 +66,7 @@ pub fn init_logger() {
 
 pub fn create_mnemonic() -> anyhow::Result<String> {
     info!("Attempting to create a new mnemonic using cxx bridge...");
-    let mnemonic = bip39::Mnemonic::generate(12).context("failed to generate mnemonic")?;
+    let mnemonic = Mnemonic::generate(12).context("failed to generate mnemonic")?;
     info!("Successfully created a new mnemonic using cxx bridge.");
     Ok(mnemonic.to_string())
 }

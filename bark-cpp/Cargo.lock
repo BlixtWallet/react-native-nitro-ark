@@ -340,13 +340,11 @@ name = "bark-cpp"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "bark-bitcoin-ext",
  "bark-client",
  "bip39",
  "cxx",
  "cxx-build",
  "logger",
- "once_cell",
  "serde",
  "serde_json",
  "tempfile",
@@ -470,9 +468,9 @@ checksum = "d965446196e3b7decd44aa7ee49e31d630118f90ef12f97900f262eb915c951d"
 
 [[package]]
 name = "bip39"
-version = "2.1.0"
+version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33415e24172c1b7d6066f6d999545375ab8e1d95421d6784bdfff9496f292387"
+checksum = "43d193de1f7487df1914d3a568b772458861d33f9c54249612cc2893d6915054"
 dependencies = [
  "bitcoin_hashes 0.13.0",
  "rand 0.8.5",

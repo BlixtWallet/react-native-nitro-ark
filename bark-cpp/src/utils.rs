@@ -14,7 +14,6 @@ use bark::{
     Config, SqliteClient, Wallet,
 };
 
-use bitcoin_ext::BlockHeight;
 use logger::log::{debug, info, warn};
 use tokio::fs;
 use tonic::transport::Uri;
@@ -93,7 +92,7 @@ pub struct ConfigOpts {
     pub bitcoind_cookie: Option<String>,
     pub bitcoind_user: Option<String>,
     pub bitcoind_pass: Option<String>,
-    pub vtxo_refresh_expiry_threshold: BlockHeight,
+    pub vtxo_refresh_expiry_threshold: u32,
     pub fallback_fee_rate: Option<FeeRate>,
 }
 pub struct CreateOpts {

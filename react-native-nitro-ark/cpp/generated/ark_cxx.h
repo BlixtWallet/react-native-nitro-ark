@@ -798,6 +798,7 @@ std::size_t align_of() {
 
 namespace bark_cxx {
   struct CxxBalance;
+  struct CxxArkInfo;
   struct ConfigOpts;
   struct CreateOpts;
   struct SendManyOutput;
@@ -816,6 +817,21 @@ struct CxxBalance final {
   using IsRelocatable = ::std::true_type;
 };
 #endif // CXXBRIDGE1_STRUCT_bark_cxx$CxxBalance
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$CxxArkInfo
+#define CXXBRIDGE1_STRUCT_bark_cxx$CxxArkInfo
+struct CxxArkInfo final {
+  ::rust::String network;
+  ::rust::String asp_pubkey;
+  ::std::uint64_t round_interval_secs CXX_DEFAULT_VALUE(0);
+  ::std::uint16_t vtxo_exit_delta CXX_DEFAULT_VALUE(0);
+  ::std::uint16_t vtxo_expiry_delta CXX_DEFAULT_VALUE(0);
+  ::std::uint16_t htlc_expiry_delta CXX_DEFAULT_VALUE(0);
+  ::std::uint64_t max_vtxo_amount_sat CXX_DEFAULT_VALUE(0);
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$CxxArkInfo
 
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$ConfigOpts
 #define CXXBRIDGE1_STRUCT_bark_cxx$ConfigOpts
@@ -888,6 +904,10 @@ bool is_wallet_loaded() noexcept;
 
 void close_wallet();
 
+void persist_config(::bark_cxx::ConfigOpts opts);
+
+::bark_cxx::CxxArkInfo get_ark_info();
+
 ::rust::String get_onchain_address();
 
 ::bark_cxx::CxxBalance get_balance(bool no_sync);
@@ -902,6 +922,14 @@ void close_wallet();
 
 void claim_bolt11_payment(::rust::Str bolt11);
 
+void maintenance();
+
+void sync();
+
+void sync_ark();
+
+void sync_rounds();
+
 void load_wallet(::rust::Str datadir, ::bark_cxx::CreateOpts opts);
 
 ::rust::String send_onchain(::rust::Str destination, ::std::uint64_t amount_sat, bool no_sync);
@@ -912,11 +940,15 @@ void load_wallet(::rust::Str datadir, ::bark_cxx::CreateOpts opts);
 
 ::rust::String refresh_vtxos(::bark_cxx::RefreshOpts opts, bool no_sync);
 
-::rust::String board_amount(::std::uint64_t amount_sat, bool no_sync);
+::rust::String board_amount(::std::uint64_t amount_sat);
 
-::rust::String board_all(bool no_sync);
+::rust::String board_all();
 
-::rust::String send_payment(::rust::Str destination, ::std::uint64_t amount_sat, ::rust::Str comment, bool no_sync);
+::rust::String send_arkoor_payment(::rust::Str destination, ::std::uint64_t amount_sat);
+
+::rust::String send_bolt11_payment(::rust::Str destination, ::std::uint64_t amount_sat);
+
+::rust::String send_lnaddr(::rust::Str addr, ::std::uint64_t amount_sat, ::rust::Str comment);
 
 ::rust::String send_round_onchain(::rust::Str destination, ::std::uint64_t amount_sat, bool no_sync);
 
