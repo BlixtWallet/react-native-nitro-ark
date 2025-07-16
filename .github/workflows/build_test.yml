@@ -59,7 +59,9 @@ jobs:
 
   android_build:
     runs-on: self-hosted
-    needs: check_if_release_commit
+    needs:
+      - check_if_release_commit
+      - rust_typescript_checks_and_tests
     if: needs.check_if_release_commit.outputs.is_release == 'false'
     steps:
       - name: Checkout code
@@ -82,7 +84,9 @@ jobs:
 
   ios_build:
     runs-on: self-hosted
-    needs: check_if_release_commit
+    needs:
+      - check_if_release_commit
+      - rust_typescript_checks_and_tests
     if: needs.check_if_release_commit.outputs.is_release == 'false'
     steps:
       - name: Checkout code
