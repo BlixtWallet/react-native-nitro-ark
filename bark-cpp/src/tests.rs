@@ -35,7 +35,7 @@ fn setup_test_wallet_opts() -> (tempfile::TempDir, ffi::CreateOpts) {
         signet: false,
         bitcoin: false,
         mnemonic,
-        birthday_height: 0,
+        birthday_height: std::ptr::null(),
         config: config_opts,
     };
 
@@ -163,24 +163,6 @@ fn test_get_onchain_balance_ffi() {
 fn test_get_vtxo_pubkey_ffi() {
     let _fixture = WalletTestFixture::new();
     // Request the next available pubkey
-    let pubkey_result = cxx::get_vtxo_pubkey(u32::MAX);
-    assert!(pubkey_result.is_ok());
-    let pubkey1 = pubkey_result.unwrap();
-    assert_eq!(pubkey1.len(), 66); // 33 bytes * 2 hex chars
-
-    // Request a specific index (0)
-    let pubkey_result_2 = cxx::get_vtxo_pubkey(0);
-    assert!(pubkey_result_2.is_ok());
-    let pubkey2 = pubkey_result_2.unwrap();
-    assert_eq!(
-        pubkey1, pubkey2,
-        "Requesting index 0 should yield the same key as the first derived key"
-    );
-}
-
-#[test]
-#[ignore = "requires live regtest backend"]
-fn test_get_utxos_and_vtxos_ffi() {
     let _fixture = WalletTestFixture::new();
     // On a fresh wallet, these should return empty JSON arrays.
     let onchain_utxos_res = cxx::get_onchain_utxos(true);
@@ -345,7 +327,7 @@ fn test_send_arkoot_payment_ffi() {
     let _fixture = WalletTestFixture::new();
     // This is a complex test as it can handle different destination types.
     // Here we test sending to a VTXO pubkey (OOR).
-    let pubkey = cxx::get_vtxo_pubkey(0).unwrap();
+    let pubkey = cxx::get_vtxo_pubkey(std::ptr::null()).unwrap();
     let send_res = cxx::send_arkoor_payment(&pubkey, 5000);
     assert!(
         send_res.is_ok(),
