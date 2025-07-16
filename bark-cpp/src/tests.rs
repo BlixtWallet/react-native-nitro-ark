@@ -1,7 +1,7 @@
 #![allow(unused_imports)]
 use crate::cxx::{
     self,
-    ffi::{self, CxxBalance, RefreshModeType},
+    ffi::{self, RefreshModeType},
 };
 use anyhow::Context;
 use bark::ark::bitcoin::Amount;
@@ -149,15 +149,13 @@ fn test_get_onchain_address_ffi() {
 
 #[test]
 #[ignore = "requires live regtest backend"]
-fn test_get_balance_ffi() {
+fn test_get_onchain_balance_ffi() {
     let _fixture = WalletTestFixture::new();
     // Use no_sync = true to avoid network calls in a unit test context.
-    let balance_result = cxx::get_balance(true);
+    let balance_result = cxx::onchain_balance();
     assert!(balance_result.is_ok());
     let balance = balance_result.unwrap();
-    assert_eq!(balance.onchain, 0);
-    assert_eq!(balance.offchain, 0);
-    assert_eq!(balance.pending_exit, 0);
+    assert_eq!(balance, 0);
 }
 
 #[test]
@@ -228,9 +226,9 @@ fn test_onchain_and_boarding_flow_ffi() {
     // e.g., `bitcoin-cli -regtest -generate 1`
 
     // 2. Check balance (with sync)
-    let balance = cxx::get_balance(false).unwrap();
+    let balance = cxx::onchain_balance().unwrap();
     assert!(
-        balance.onchain > 0,
+        balance > 0,
         "Wallet should have onchain funds after funding and syncing"
     );
 
@@ -242,25 +240,11 @@ fn test_onchain_and_boarding_flow_ffi() {
     // (Manual step: mine the board transaction)
 
     // 4. Check balance again
-    let final_balance = cxx::get_balance(false).unwrap();
+    let final_balance = cxx::onchain_balance().unwrap();
     assert!(
-        final_balance.offchain >= board_amount_sat,
-        "Offchain balance should increase after boarding"
+        final_balance >= board_amount_sat,
+        "On chain balance should increase after boarding"
     );
-}
-
-#[test]
-#[ignore = "requires live regtest backend"]
-fn test_refresh_vtxos_ffi() {
-    let _fixture = WalletTestFixture::new();
-    let opts = ffi::RefreshOpts {
-        mode_type: ffi::RefreshModeType::All,
-        threshold_value: 0,
-        specific_vtxo_ids: vec![],
-    };
-    // This will likely fail without a running ASP, but we test that the call itself works
-    let refresh_res = cxx::refresh_vtxos(opts, true);
-    assert!(refresh_res.is_ok()); // The call should succeed, even if the refresh does nothing
 }
 
 #[test]

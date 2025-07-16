@@ -11,10 +11,11 @@ use bark::ark::bitcoin::Network;
 
 use bark::ark::bitcoin::Txid;
 
+use bark::ark::rounds::RoundId;
 use bark::ark::ArkInfo;
+use bark::ark::Vtxo;
 use bark::ark::VtxoId;
 use bark::json::cli::ExitProgressResponse;
-use bark::json::cli::Refresh;
 use bark::json::VtxoInfo;
 use bark::lightning_invoice::Bolt11Invoice;
 
@@ -157,27 +158,18 @@ pub struct Balance {
 }
 
 /// Get offchain and onchain balances
-pub async fn get_balance(no_sync: bool) -> anyhow::Result<Balance> {
+pub async fn onchain_balance() -> anyhow::Result<Amount> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
     let w = wallet_guard.as_mut().context("Wallet not loaded")?;
 
-    if !no_sync {
-        info!("Syncing wallet...");
-        if let Err(e) = w.sync().await {
-            warn!("Sync error: {}", e)
-        }
-    }
+    Ok(w.onchain.balance())
+}
 
-    let onchain = w.onchain.balance().to_sat();
-    let offchain = w.offchain_balance()?.to_sat();
-    let pending_exit = w.exit.pending_total().await?.to_sat();
+pub async fn offchain_balance() -> anyhow::Result<Amount> {
+    let mut wallet_guard = GLOBAL_WALLET.lock().await;
+    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
 
-    let balances = Balance {
-        onchain,
-        offchain,
-        pending_exit,
-    };
-    Ok(balances)
+    Ok(w.offchain_balance()?)
 }
 
 pub async fn open_wallet(datadir: &Path, mnemonic: Mnemonic) -> anyhow::Result<Wallet> {
@@ -460,22 +452,20 @@ pub async fn get_vtxos(no_sync: bool) -> anyhow::Result<String> {
 }
 
 /// Refresh VTXOs based on specified criteria. Returns JSON status.
-pub async fn refresh_vtxos(mode: RefreshMode, no_sync: bool) -> anyhow::Result<String> {
-    let round_id_opt = refresh_vtxos_internal(mode, no_sync).await?;
+pub async fn refresh_vtxos(vtxos: Vec<Vtxo>) -> anyhow::Result<Option<RoundId>> {
+    let mut wallet_guard = GLOBAL_WALLET.lock().await;
+    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
 
-    // Convert Option<RoundId> to Option<String> for JSON
-    let round_string_opt = round_id_opt.map(|id| id.to_string());
+    let round_id = w
+        .refresh_vtxos(vtxos)
+        .await
+        .context("Failed to refresh vtxos")?;
 
-    // Construct CLI JSON response
-    let refresh_output = Refresh {
-        participate_round: round_string_opt.is_some(),
-        round: round_id_opt,
-    };
-
-    let json_string = serde_json::to_string_pretty(&refresh_output)
-        .context("Failed to serialize refresh status to JSON")?;
-
-    Ok(json_string)
+    if let Some(round_id) = round_id {
+        Ok(Some(round_id))
+    } else {
+        Ok(None)
+    }
 }
 
 /// Board a specific amount from the onchain wallet to Ark. Returns JSON status.

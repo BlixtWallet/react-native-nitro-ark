@@ -5,12 +5,6 @@ use std::str::FromStr;
 
 #[cxx::bridge(namespace = "bark_cxx")]
 pub(crate) mod ffi {
-    pub struct CxxBalance {
-        onchain: u64,
-        offchain: u64,
-        pending_exit: u64,
-    }
-
     pub struct CxxArkInfo {
         network: String,
         asp_pubkey: String,
@@ -37,7 +31,7 @@ pub(crate) mod ffi {
         signet: bool,
         bitcoin: bool,
         mnemonic: String,
-        birthday_height: u32,
+        birthday_height: *const u32,
         config: ConfigOpts,
     }
 
@@ -55,12 +49,6 @@ pub(crate) mod ffi {
         Specific,
     }
 
-    pub struct RefreshOpts {
-        mode_type: RefreshModeType,
-        threshold_value: u32,
-        specific_vtxo_ids: Vec<String>,
-    }
-
     extern "Rust" {
         fn init_logger();
         fn create_mnemonic() -> Result<String>;
@@ -69,9 +57,10 @@ pub(crate) mod ffi {
         fn persist_config(opts: ConfigOpts) -> Result<()>;
         fn get_ark_info() -> Result<CxxArkInfo>;
         fn get_onchain_address() -> Result<String>;
-        fn get_balance(no_sync: bool) -> Result<CxxBalance>;
+        fn offchain_balance() -> Result<u64>;
+        fn onchain_balance() -> Result<u64>;
         fn get_onchain_utxos(no_sync: bool) -> Result<String>;
-        fn get_vtxo_pubkey(index: u32) -> Result<String>;
+        unsafe fn get_vtxo_pubkey(index: *const u32) -> Result<String>;
         fn get_vtxos(no_sync: bool) -> Result<String>;
         fn bolt11_invoice(amount_msat: u64) -> Result<String>;
         fn claim_bolt11_payment(bolt11: &str) -> Result<()>;
@@ -83,7 +72,6 @@ pub(crate) mod ffi {
         fn send_onchain(destination: &str, amount_sat: u64, no_sync: bool) -> Result<String>;
         fn drain_onchain(destination: &str, no_sync: bool) -> Result<String>;
         fn send_many_onchain(outputs: Vec<SendManyOutput>, no_sync: bool) -> Result<String>;
-        fn refresh_vtxos(opts: RefreshOpts, no_sync: bool) -> Result<String>;
         fn board_amount(amount_sat: u64) -> Result<String>;
         fn board_all() -> Result<String>;
         fn send_arkoor_payment(destination: &str, amount_sat: u64) -> Result<String>;
@@ -161,21 +149,22 @@ pub(crate) fn get_ark_info() -> anyhow::Result<ffi::CxxArkInfo> {
     })
 }
 
-pub(crate) fn get_balance(no_sync: bool) -> anyhow::Result<ffi::CxxBalance> {
-    let balance = crate::TOKIO_RUNTIME.block_on(crate::get_balance(no_sync))?;
-    Ok(ffi::CxxBalance {
-        onchain: balance.onchain,
-        offchain: balance.offchain,
-        pending_exit: balance.pending_exit,
-    })
+pub(crate) fn offchain_balance() -> anyhow::Result<u64> {
+    let balance = crate::TOKIO_RUNTIME.block_on(crate::offchain_balance())?;
+    Ok(balance.to_sat())
+}
+
+pub(crate) fn onchain_balance() -> anyhow::Result<u64> {
+    let balance = crate::TOKIO_RUNTIME.block_on(crate::onchain_balance())?;
+    Ok(balance.to_sat())
 }
 
 pub(crate) fn get_onchain_utxos(no_sync: bool) -> anyhow::Result<String> {
     crate::TOKIO_RUNTIME.block_on(crate::get_onchain_utxos(no_sync))
 }
 
-pub(crate) fn get_vtxo_pubkey(index: u32) -> anyhow::Result<String> {
-    let index_opt = if index == u32::MAX { None } else { Some(index) };
+pub(crate) fn get_vtxo_pubkey(index: *const u32) -> anyhow::Result<String> {
+    let index_opt = unsafe { index.as_ref().map(|r| *r) };
     crate::TOKIO_RUNTIME.block_on(crate::get_vtxo_pubkey(index_opt))
 }
 
@@ -226,11 +215,7 @@ pub(crate) fn load_wallet(datadir: &str, opts: ffi::CreateOpts) -> anyhow::Resul
         signet: opts.signet,
         bitcoin: opts.bitcoin,
         mnemonic: bip39::Mnemonic::from_str(&opts.mnemonic)?,
-        birthday_height: if opts.birthday_height == 0 {
-            None
-        } else {
-            Some(opts.birthday_height)
-        },
+        birthday_height: unsafe { opts.birthday_height.as_ref().map(|r| *r) },
         config: config_opts,
     };
     crate::TOKIO_RUNTIME.block_on(crate::load_wallet(Path::new(datadir), create_opts))
@@ -271,30 +256,6 @@ pub(crate) fn send_many_onchain(
         crate::send_many_onchain(rust_outputs, no_sync).await
     })?;
     Ok(txid.to_string())
-}
-
-pub(crate) fn refresh_vtxos(opts: ffi::RefreshOpts, no_sync: bool) -> anyhow::Result<String> {
-    let rust_mode = match opts.mode_type {
-        ffi::RefreshModeType::DefaultThreshold => crate::RefreshMode::DefaultThreshold,
-        ffi::RefreshModeType::ThresholdBlocks => {
-            crate::RefreshMode::ThresholdBlocks(opts.threshold_value)
-        }
-        ffi::RefreshModeType::ThresholdHours => {
-            crate::RefreshMode::ThresholdHours(opts.threshold_value)
-        }
-        ffi::RefreshModeType::Counterparty => crate::RefreshMode::Counterparty,
-        ffi::RefreshModeType::All => crate::RefreshMode::All,
-        ffi::RefreshModeType::Specific => {
-            let ids = opts
-                .specific_vtxo_ids
-                .into_iter()
-                .map(|s| bark::ark::VtxoId::from_str(&s))
-                .collect::<Result<Vec<_>, _>>()?;
-            crate::RefreshMode::Specific(ids)
-        }
-        _ => return Err(anyhow::anyhow!("Unknown refresh mode")),
-    };
-    crate::TOKIO_RUNTIME.block_on(crate::refresh_vtxos(rust_mode, no_sync))
 }
 
 pub(crate) fn board_amount(amount_sat: u64) -> anyhow::Result<String> {

@@ -797,27 +797,14 @@ std::size_t align_of() {
 #endif
 
 namespace bark_cxx {
-  struct CxxBalance;
   struct CxxArkInfo;
   struct ConfigOpts;
   struct CreateOpts;
   struct SendManyOutput;
   enum class RefreshModeType : ::std::uint8_t;
-  struct RefreshOpts;
 }
 
 namespace bark_cxx {
-#ifndef CXXBRIDGE1_STRUCT_bark_cxx$CxxBalance
-#define CXXBRIDGE1_STRUCT_bark_cxx$CxxBalance
-struct CxxBalance final {
-  ::std::uint64_t onchain CXX_DEFAULT_VALUE(0);
-  ::std::uint64_t offchain CXX_DEFAULT_VALUE(0);
-  ::std::uint64_t pending_exit CXX_DEFAULT_VALUE(0);
-
-  using IsRelocatable = ::std::true_type;
-};
-#endif // CXXBRIDGE1_STRUCT_bark_cxx$CxxBalance
-
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$CxxArkInfo
 #define CXXBRIDGE1_STRUCT_bark_cxx$CxxArkInfo
 struct CxxArkInfo final {
@@ -856,7 +843,7 @@ struct CreateOpts final {
   bool signet CXX_DEFAULT_VALUE(false);
   bool bitcoin CXX_DEFAULT_VALUE(false);
   ::rust::String mnemonic;
-  ::std::uint32_t birthday_height CXX_DEFAULT_VALUE(0);
+  ::std::uint32_t const *birthday_height CXX_DEFAULT_VALUE(nullptr);
   ::bark_cxx::ConfigOpts config;
 
   using IsRelocatable = ::std::true_type;
@@ -885,17 +872,6 @@ enum class RefreshModeType : ::std::uint8_t {
 };
 #endif // CXXBRIDGE1_ENUM_bark_cxx$RefreshModeType
 
-#ifndef CXXBRIDGE1_STRUCT_bark_cxx$RefreshOpts
-#define CXXBRIDGE1_STRUCT_bark_cxx$RefreshOpts
-struct RefreshOpts final {
-  ::bark_cxx::RefreshModeType mode_type;
-  ::std::uint32_t threshold_value CXX_DEFAULT_VALUE(0);
-  ::rust::Vec<::rust::String> specific_vtxo_ids;
-
-  using IsRelocatable = ::std::true_type;
-};
-#endif // CXXBRIDGE1_STRUCT_bark_cxx$RefreshOpts
-
 void init_logger() noexcept;
 
 ::rust::String create_mnemonic();
@@ -910,11 +886,13 @@ void persist_config(::bark_cxx::ConfigOpts opts);
 
 ::rust::String get_onchain_address();
 
-::bark_cxx::CxxBalance get_balance(bool no_sync);
+::std::uint64_t offchain_balance();
+
+::std::uint64_t onchain_balance();
 
 ::rust::String get_onchain_utxos(bool no_sync);
 
-::rust::String get_vtxo_pubkey(::std::uint32_t index);
+::rust::String get_vtxo_pubkey(::std::uint32_t const *index);
 
 ::rust::String get_vtxos(bool no_sync);
 
@@ -937,8 +915,6 @@ void load_wallet(::rust::Str datadir, ::bark_cxx::CreateOpts opts);
 ::rust::String drain_onchain(::rust::Str destination, bool no_sync);
 
 ::rust::String send_many_onchain(::rust::Vec<::bark_cxx::SendManyOutput> outputs, bool no_sync);
-
-::rust::String refresh_vtxos(::bark_cxx::RefreshOpts opts, bool no_sync);
 
 ::rust::String board_amount(::std::uint64_t amount_sat);
 

@@ -25,6 +25,7 @@
     "files.associations": {
         "__node_handle": "cpp",
         "optional": "cpp",
-        "regex": "cpp"
+        "regex": "cpp",
+        "*.rs": "cpp"
     }
 }

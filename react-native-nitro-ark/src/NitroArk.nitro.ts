@@ -2,14 +2,6 @@ import type { HybridObject } from 'react-native-nitro-modules';
 
 // --- Interfaces matching C structs ---
 
-export type BarkRefreshModeType =
-  | 'DefaultThreshold'
-  | 'ThresholdBlocks'
-  | 'ThresholdHours'
-  | 'Counterparty'
-  | 'All'
-  | 'Specific';
-
 // Note: BarkError is handled via Promise rejection, not exposed directly.
 
 export interface BarkConfigOpts {
@@ -28,20 +20,18 @@ export interface BarkCreateOpts {
   signet?: boolean;
   bitcoin?: boolean;
   mnemonic: string;
-  birthday_height?: number; // uint64_t might exceed safe integer, but JS number is often used. Be mindful.
+  birthday_height?: number;
   config?: BarkConfigOpts;
 }
 
-export interface BarkBalance {
-  onchain: number; // uint64_t -> number
-  offchain: number; // uint64_t -> number
-  pending_exit: number; // uint64_t -> number
-}
-
-export interface BarkRefreshOpts {
-  mode_type: BarkRefreshModeType;
-  threshold_value?: number; // uint32_t -> number (Only relevant for Threshold modes)
-  specific_vtxo_ids?: string[]; // const char *const * -> string[] (Only relevant for Specific mode)
+export interface BarkArkInfo {
+  network: string;
+  asp_pubkey: string;
+  round_interval_secs: number; // u64
+  vtxo_exit_delta: number; // u16
+  vtxo_expiry_delta: number; // u16
+  htlc_expiry_delta: number; // u16
+  max_vtxo_amount_sat: number; // u64
 }
 
 // Helper interface for sendManyOnchain
@@ -58,9 +48,16 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   loadWallet(datadir: string, opts: BarkCreateOpts): Promise<void>;
   closeWallet(): Promise<void>;
   isWalletLoaded(): Promise<boolean>;
+  persistConfig(opts: BarkConfigOpts): Promise<void>;
+  maintenance(): Promise<void>;
+  sync(): Promise<void>;
+  syncArk(): Promise<void>;
+  syncRounds(): Promise<void>;
 
   // --- Wallet Info ---
-  getBalance(no_sync: boolean): Promise<BarkBalance>;
+  getArkInfo(): Promise<BarkArkInfo>;
+  onchainBalance(): Promise<number>;
+  offchainBalance(): Promise<number>;
   getOnchainAddress(): Promise<string>;
   getOnchainUtxos(no_sync: boolean): Promise<string>; // Returns JSON string
   getVtxoPubkey(index?: number): Promise<string>;
@@ -78,37 +75,30 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
     no_sync: boolean
   ): Promise<string>; // Returns txid
 
-  // --- Ark Operations ---
-  refreshVtxos(refreshOpts: BarkRefreshOpts, no_sync: boolean): Promise<string>; // Returns JSON status
-  boardAmount(amountSat: number, no_sync: boolean): Promise<string>; // Returns JSON status
-  boardAll(no_sync: boolean): Promise<string>; // Returns JSON status
-  send(
-    destination: string,
-    amountSat: number | null,
-    comment: string | null,
-    no_sync: boolean
-  ): Promise<string>; // Returns JSON status
+  // --- Ark & Lightning Payments ---
+  boardAmount(amountSat: number): Promise<string>; // Returns JSON status
+  boardAll(): Promise<string>; // Returns JSON status
+  sendArkoorPayment(destination: string, amountSat: number): Promise<string>;
+  sendBolt11Payment(destination: string, amountSat: number): Promise<string>;
+  sendLnaddr(addr: string, amountSat: number, comment: string): Promise<string>;
   sendRoundOnchain(
     destination: string,
     amountSat: number,
     no_sync: boolean
   ): Promise<string>; // Returns JSON status
 
-  // --- Lightning Operations ---
+  // --- Lightning Invoicing ---
   bolt11Invoice(amountMsat: number): Promise<string>; // Returns invoice string
   claimBolt11Payment(bolt11: string): Promise<void>; // Throws on error
 
   // --- Offboarding / Exiting ---
   offboardSpecific(
     vtxoIds: string[],
-    optionalAddress: string | null,
+    destinationAddress: string,
     no_sync: boolean
   ): Promise<string>; // Returns JSON result
-  offboardAll(
-    optionalAddress: string | null,
-    no_sync: boolean
-  ): Promise<string>; // Returns JSON result
-  exitStartSpecific(vtxoIds: string[]): Promise<string>; // Returns JSON status
-  exitStartAll(): Promise<string>; // Returns JSON status
-  exitProgressOnce(): Promise<string>; // Returns JSON status
+  offboardAll(destinationAddress: string, no_sync: boolean): Promise<string>; // Returns JSON result
+  exitStartSpecific(vtxoIds: string[]): Promise<string>;
+  exitStartAll(): Promise<string>;
+  exitProgressOnce(): Promise<string>;
 }

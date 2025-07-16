@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bark-client = { git = "https://codeberg.org/ark-bitcoin/bark.git", tag = "all-0.0.0-alpha.16", features = [
+bark-client = { git = "https://codeberg.org/ark-bitcoin/bark.git", tag = "bark-0.0.0-alpha.17", features = [
     "tls-webpki-roots",
 ], default-features = false }
 
@@ -42,5 +42,5 @@ panic = 'abort'   # Remove panic unwinding code
 strip = true      # Strip symbols from binary
 
 [dev-dependencies]
-tempfile = "3.3.0"
+tempfile = "3.20.0"
 serde_json = "1.0"
