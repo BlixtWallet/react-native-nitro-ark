@@ -21,11 +21,9 @@
         "editor.defaultFormatter": "ms-vscode.cpptools"
     },
     "C_Cpp.errorSquiggles": "disabled",
-    "java.configuration.updateBuildConfiguration": "interactive",
     "files.associations": {
         "__node_handle": "cpp",
         "optional": "cpp",
         "regex": "cpp",
-        "*.rs": "cpp"
     }
 }
