@@ -58,8 +58,13 @@ namespace margelo::nitro::nitroark
                 create_opts.signet = opts.signet.value_or(false);
                 create_opts.bitcoin = opts.bitcoin.value_or(true);
                 create_opts.mnemonic = opts.mnemonic;
-                uint32_t birthday_height_val = opts.birthday_height.value_or(0);
-                create_opts.birthday_height = opts.birthday_height.has_value() ? &birthday_height_val : nullptr;
+                uint32_t birthday_height_val;
+                if (opts.birthday_height.has_value()) {
+                    birthday_height_val = static_cast<uint32_t>(opts.birthday_height.value());
+                    create_opts.birthday_height = &birthday_height_val;
+                } else {
+                    create_opts.birthday_height = nullptr;
+                }
                 create_opts.config = config_opts;
 
                 bark_cxx::load_wallet(datadir, create_opts);
@@ -226,8 +231,13 @@ namespace margelo::nitro::nitroark
             return Promise<std::string>::async([index]()
                                                {
             try {
-                uint32_t index_val = index.has_value() ? static_cast<uint32_t>(index.value()) : 0;
-                rust::String pubkey_rs = bark_cxx::get_vtxo_pubkey(index.has_value() ? &index_val : nullptr);
+                rust::String pubkey_rs;
+                if (index.has_value()) {
+                    uint32_t index_val = static_cast<uint32_t>(index.value());
+                    pubkey_rs = bark_cxx::get_vtxo_pubkey(&index_val);
+                } else {
+                    pubkey_rs = bark_cxx::get_vtxo_pubkey(nullptr);
+                }
                 return std::string(pubkey_rs.data(), pubkey_rs.length());
             } catch (const rust::Error &e) {
                 throw std::runtime_error(e.what());
@@ -338,12 +348,18 @@ namespace margelo::nitro::nitroark
         }
 
         std::shared_ptr<Promise<std::string>>
-        sendBolt11Payment(const std::string &destination, double amountSat) override
+        sendBolt11Payment(const std::string &destination, std::optional<double> amountSat) override
         {
             return Promise<std::string>::async([destination, amountSat]()
                                                {
             try {
-                rust::String status_rs = bark_cxx::send_bolt11_payment(destination, static_cast<uint64_t>(amountSat));
+                rust::String status_rs;
+                if (amountSat.has_value()) {
+                    uint64_t amountSat_val = static_cast<uint64_t>(amountSat.value());
+                    status_rs = bark_cxx::send_bolt11_payment(destination, &amountSat_val);
+                } else {
+                    status_rs = bark_cxx::send_bolt11_payment(destination, nullptr);
+                }
                 return std::string(status_rs.data(), status_rs.length());
             } catch (const rust::Error &e) {
                 throw std::runtime_error(e.what());

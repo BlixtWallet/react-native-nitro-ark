@@ -343,7 +343,8 @@ fn test_send_bolt11_payment_ffi() {
     // This is a complex test as it can handle different destination types.
     // Here we test sending to a bolt11 invoice.
     let invoice = cxx::bolt11_invoice(10000).unwrap();
-    let send_res = cxx::send_bolt11_payment(&invoice, 5000);
+    let amount: u64 = 5000;
+    let send_res = cxx::send_bolt11_payment(&invoice, &amount as *const u64);
     assert!(
         send_res.is_ok(),
         "send_payment (bolt11) failed: {:?}",

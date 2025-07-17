@@ -84,7 +84,7 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<std::string>> boardAmount(double amountSat) = 0;
       virtual std::shared_ptr<Promise<std::string>> boardAll() = 0;
       virtual std::shared_ptr<Promise<std::string>> sendArkoorPayment(const std::string& destination, double amountSat) = 0;
-      virtual std::shared_ptr<Promise<std::string>> sendBolt11Payment(const std::string& destination, double amountSat) = 0;
+      virtual std::shared_ptr<Promise<std::string>> sendBolt11Payment(const std::string& destination, std::optional<double> amountSat) = 0;
       virtual std::shared_ptr<Promise<std::string>> sendLnaddr(const std::string& addr, double amountSat, const std::string& comment) = 0;
       virtual std::shared_ptr<Promise<std::string>> sendRoundOnchain(const std::string& destination, double amountSat, bool no_sync) = 0;
       virtual std::shared_ptr<Promise<std::string>> bolt11Invoice(double amountMsat) = 0;

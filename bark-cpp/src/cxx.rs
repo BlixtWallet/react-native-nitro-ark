@@ -75,7 +75,7 @@ pub(crate) mod ffi {
         fn board_amount(amount_sat: u64) -> Result<String>;
         fn board_all() -> Result<String>;
         fn send_arkoor_payment(destination: &str, amount_sat: u64) -> Result<String>;
-        fn send_bolt11_payment(destination: &str, amount_sat: u64) -> Result<String>;
+        unsafe fn send_bolt11_payment(destination: &str, amount_sat: *const u64) -> Result<String>;
         fn send_lnaddr(addr: &str, amount_sat: u64, comment: &str) -> Result<String>;
         fn send_round_onchain(destination: &str, amount_sat: u64, no_sync: bool) -> Result<String>;
         fn offboard_specific(
@@ -272,12 +272,15 @@ pub(crate) fn send_arkoor_payment(destination: &str, amount_sat: u64) -> anyhow:
     crate::TOKIO_RUNTIME.block_on(crate::send_arkoor_payment(destination, amount))
 }
 
-pub(crate) fn send_bolt11_payment(destination: &str, amount_sat: u64) -> anyhow::Result<String> {
-    let amount_opt = if amount_sat == 0 {
-        None
-    } else {
-        Some(bark::ark::bitcoin::Amount::from_sat(amount_sat))
+pub(crate) fn send_bolt11_payment(
+    destination: &str,
+    amount_sat: *const u64,
+) -> anyhow::Result<String> {
+    let amount_opt = match unsafe { amount_sat.as_ref().map(|r| *r) } {
+        Some(amount) => Some(bark::ark::bitcoin::Amount::from_sat(amount)),
+        None => None,
     };
+
     crate::TOKIO_RUNTIME.block_on(crate::send_bolt11_payment(destination, amount_opt))
 }
 

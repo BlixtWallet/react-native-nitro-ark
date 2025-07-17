@@ -922,7 +922,7 @@ void load_wallet(::rust::Str datadir, ::bark_cxx::CreateOpts opts);
 
 ::rust::String send_arkoor_payment(::rust::Str destination, ::std::uint64_t amount_sat);
 
-::rust::String send_bolt11_payment(::rust::Str destination, ::std::uint64_t amount_sat);
+::rust::String send_bolt11_payment(::rust::Str destination, ::std::uint64_t const *amount_sat);
 
 ::rust::String send_lnaddr(::rust::Str addr, ::std::uint64_t amount_sat, ::rust::Str comment);
 

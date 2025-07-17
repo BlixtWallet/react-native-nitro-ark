@@ -79,7 +79,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   boardAmount(amountSat: number): Promise<string>; // Returns JSON status
   boardAll(): Promise<string>; // Returns JSON status
   sendArkoorPayment(destination: string, amountSat: number): Promise<string>;
-  sendBolt11Payment(destination: string, amountSat: number): Promise<string>;
+  sendBolt11Payment(destination: string, amountSat?: number): Promise<string>;
   sendLnaddr(addr: string, amountSat: number, comment: string): Promise<string>;
   sendRoundOnchain(
     destination: string,

@@ -256,7 +256,7 @@ export function sendArkoorPayment(
  */
 export function sendBolt11Payment(
   destination: string,
-  amountSat: number
+  amountSat?: number
 ): Promise<string> {
   return NitroArkHybridObject.sendBolt11Payment(destination, amountSat);
 }
