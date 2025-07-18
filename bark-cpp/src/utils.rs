@@ -11,6 +11,7 @@ use bark::{
     Config, SqliteClient, Wallet,
 };
 
+use bitcoin_ext::FeeRateExt;
 use logger::log::{debug, info};
 use tokio::fs;
 use tonic::transport::Uri;
@@ -18,39 +19,37 @@ use tonic::transport::Uri;
 pub(crate) const DB_FILE: &str = "db.sqlite";
 
 impl ConfigOpts {
-    pub fn merge_into(&self, cfg: &mut Config) -> anyhow::Result<()> {
-        if let Some(url) = &self.asp {
-            cfg.asp_address = https_default_scheme(url.clone()).context("invalid asp url")?;
+    pub fn merge_into(self, cfg: &mut Config) -> anyhow::Result<()> {
+        if let Some(url) = self.asp {
+            cfg.asp_address = https_default_scheme(url).context("invalid asp url")?;
         }
-        if let Some(v) = &self.esplora {
+        if let Some(v) = self.esplora {
             cfg.esplora_address = match v.is_empty() {
                 true => None,
-                false => Some(https_default_scheme(v.clone()).context("invalid esplora url")?),
+                false => Some(https_default_scheme(v).context("invalid esplora url")?),
             };
         }
-        if let Some(v) = &self.bitcoind {
-            cfg.bitcoind_address = if v.is_empty() { None } else { Some(v.clone()) };
+        if let Some(v) = self.bitcoind {
+            cfg.bitcoind_address = if v == "" { None } else { Some(v) };
         }
-        if let Some(v) = &self.bitcoind_cookie {
-            cfg.bitcoind_cookiefile = if v.is_empty() {
-                None
-            } else {
-                Some(v.clone().into())
-            };
+        if let Some(v) = self.bitcoind_cookie {
+            cfg.bitcoind_cookiefile = if v == "" { None } else { Some(v.into()) };
         }
-        if let Some(v) = &self.bitcoind_user {
-            cfg.bitcoind_user = if v.is_empty() { None } else { Some(v.clone()) };
+        if let Some(v) = self.bitcoind_user {
+            cfg.bitcoind_user = if v == "" { None } else { Some(v) };
         }
-        if let Some(v) = &self.bitcoind_pass {
-            cfg.bitcoind_pass = if v.is_empty() { None } else { Some(v.clone()) };
+        if let Some(v) = self.bitcoind_pass {
+            cfg.bitcoind_pass = if v == "" { None } else { Some(v) };
         }
+        if let Some(v) = self.vtxo_refresh_expiry_threshold {
+            cfg.vtxo_refresh_expiry_threshold = v;
+        }
+        cfg.fallback_fee_rate = self
+            .fallback_fee_rate
+            .map(|f| FeeRate::from_sat_per_kvb_ceil(f));
+
         if cfg.esplora_address.is_none() && cfg.bitcoind_address.is_none() {
             bail!("Provide either an esplora or bitcoind url as chain source.");
-        }
-
-        cfg.vtxo_refresh_expiry_threshold = self.vtxo_refresh_expiry_threshold;
-        if self.fallback_fee_rate.is_some() {
-            cfg.fallback_fee_rate = self.fallback_fee_rate;
         }
 
         Ok(())
@@ -79,6 +78,7 @@ pub fn https_default_scheme(url: String) -> anyhow::Result<String> {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct ConfigOpts {
     pub asp: Option<String>,
 
@@ -89,9 +89,11 @@ pub struct ConfigOpts {
     pub bitcoind_cookie: Option<String>,
     pub bitcoind_user: Option<String>,
     pub bitcoind_pass: Option<String>,
-    pub vtxo_refresh_expiry_threshold: u32,
-    pub fallback_fee_rate: Option<FeeRate>,
+    pub vtxo_refresh_expiry_threshold: Option<u32>,
+    pub fallback_fee_rate: Option<u64>,
 }
+
+#[derive(Debug, Clone)]
 pub struct CreateOpts {
     /// Use regtest network.
     pub regtest: bool,
@@ -133,9 +135,9 @@ pub(crate) async fn try_create_wallet(
         .await
         .context("can't create dir")?;
 
-    debug!("datadir {:?} ", datadir);
-    debug!("network {:?}", net);
-    debug!("config {:?}", config);
+    debug!("try_create_wallet datadir {:?} ", datadir);
+    debug!("try_create_walletnetwork {:?}", net);
+    debug!("try_create_wallet config {:?}", config);
 
     // open db
     let db = SqliteClient::open(datadir.join(DB_FILE))?;

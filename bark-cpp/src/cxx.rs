@@ -4,9 +4,8 @@ use crate::cxx::ffi::{
 use crate::{parse_send_destination, utils, SendDestination};
 use anyhow::{bail, Context, Ok};
 use bark::ark::bitcoin::hex::DisplayHex;
-use bark::ark::bitcoin::{address, Address, FeeRate};
-use bitcoin_ext::FeeRateExt;
-use logger::log::info;
+use bark::ark::bitcoin::{address, Address};
+use logger::log::{self, info};
 use std::path::Path;
 use std::str::FromStr;
 
@@ -155,8 +154,8 @@ pub(crate) fn persist_config(opts: ffi::ConfigOpts) -> anyhow::Result<()> {
         bitcoind_cookie: Some(opts.bitcoind_cookie),
         bitcoind_user: Some(opts.bitcoind_user),
         bitcoind_pass: Some(opts.bitcoind_pass),
-        vtxo_refresh_expiry_threshold: opts.vtxo_refresh_expiry_threshold,
-        fallback_fee_rate: Some(FeeRate::from_sat_per_kvb_ceil(opts.fallback_fee_rate)),
+        vtxo_refresh_expiry_threshold: Some(opts.vtxo_refresh_expiry_threshold),
+        fallback_fee_rate: Some(opts.fallback_fee_rate),
     };
 
     crate::TOKIO_RUNTIME.block_on(async {
@@ -238,11 +237,18 @@ pub(crate) fn load_wallet(datadir: &str, opts: ffi::CreateOpts) -> anyhow::Resul
         bitcoind_cookie: Some(opts.config.bitcoind_cookie),
         bitcoind_user: Some(opts.config.bitcoind_user),
         bitcoind_pass: Some(opts.config.bitcoind_pass),
-        vtxo_refresh_expiry_threshold: opts.config.vtxo_refresh_expiry_threshold,
-        fallback_fee_rate: Some(FeeRate::from_sat_per_kvb_ceil(
-            opts.config.fallback_fee_rate,
-        )),
+        vtxo_refresh_expiry_threshold: Some(opts.config.vtxo_refresh_expiry_threshold),
+        fallback_fee_rate: Some(opts.config.fallback_fee_rate),
     };
+
+    log::info!(
+        "Loading wallet with datadir: {}, regtest: {}, signet: {}, bitcoin: {}, birthday_height: {:?}",
+        datadir,
+        opts.regtest,
+        opts.signet,
+        opts.bitcoin,
+        unsafe { opts.birthday_height.as_ref().map(|r| *r) }
+    );
 
     let create_opts = utils::CreateOpts {
         regtest: opts.regtest,
@@ -252,6 +258,9 @@ pub(crate) fn load_wallet(datadir: &str, opts: ffi::CreateOpts) -> anyhow::Resul
         birthday_height: unsafe { opts.birthday_height.as_ref().map(|r| *r) },
         config: config_opts,
     };
+
+    log::info!("Creating wallet with options: {:?}", create_opts);
+
     crate::TOKIO_RUNTIME.block_on(crate::load_wallet(Path::new(datadir), create_opts))
 }
 
