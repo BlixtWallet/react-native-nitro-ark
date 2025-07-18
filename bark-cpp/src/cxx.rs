@@ -4,7 +4,8 @@ use crate::cxx::ffi::{
 use crate::{parse_send_destination, utils, SendDestination};
 use anyhow::{bail, Context, Ok};
 use bark::ark::bitcoin::hex::DisplayHex;
-use bark::ark::bitcoin::{address, Address};
+use bark::ark::bitcoin::{address, Address, FeeRate};
+use bitcoin_ext::FeeRateExt;
 use logger::log::info;
 use std::path::Path;
 use std::str::FromStr;
@@ -155,9 +156,7 @@ pub(crate) fn persist_config(opts: ffi::ConfigOpts) -> anyhow::Result<()> {
         bitcoind_user: Some(opts.bitcoind_user),
         bitcoind_pass: Some(opts.bitcoind_pass),
         vtxo_refresh_expiry_threshold: opts.vtxo_refresh_expiry_threshold,
-        fallback_fee_rate: Some(bark::ark::bitcoin::FeeRate::from_sat_per_vb_unchecked(
-            opts.fallback_fee_rate,
-        )),
+        fallback_fee_rate: Some(FeeRate::from_sat_per_kvb_ceil(opts.fallback_fee_rate)),
     };
 
     crate::TOKIO_RUNTIME.block_on(async {
@@ -240,7 +239,7 @@ pub(crate) fn load_wallet(datadir: &str, opts: ffi::CreateOpts) -> anyhow::Resul
         bitcoind_user: Some(opts.config.bitcoind_user),
         bitcoind_pass: Some(opts.config.bitcoind_pass),
         vtxo_refresh_expiry_threshold: opts.config.vtxo_refresh_expiry_threshold,
-        fallback_fee_rate: Some(bark::ark::bitcoin::FeeRate::from_sat_per_vb_unchecked(
+        fallback_fee_rate: Some(FeeRate::from_sat_per_kvb_ceil(
             opts.config.fallback_fee_rate,
         )),
     };

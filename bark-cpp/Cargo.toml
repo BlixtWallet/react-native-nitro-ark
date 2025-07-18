@@ -8,6 +8,8 @@ bark-client = { git = "https://codeberg.org/ark-bitcoin/bark.git", tag = "bark-0
     "tls-webpki-roots",
 ], default-features = false }
 
+bark-bitcoin-ext = { git = "https://codeberg.org/ark-bitcoin/bark.git", tag = "bark-0.0.0-alpha.17", default-features = false }
+
 tokio = { version = "1", default-features = false, features = [
     "rt-multi-thread",
     "macros",
