@@ -10,24 +10,6 @@
 
 namespace margelo::nitro::nitroark
 {
-    using namespace margelo::nitro;
-    // Helper function to convert rust cxx payment type to nitrogen payment type
-    inline PaymentTypes convertPaymentType(bark_cxx::PaymentTypes type)
-    {
-        switch (type)
-        {
-        case bark_cxx::PaymentTypes::Bolt11:
-            return PaymentTypes::BOLT11;
-        case bark_cxx::PaymentTypes::Lnurl:
-            return PaymentTypes::LNURL;
-        case bark_cxx::PaymentTypes::Arkoor:
-            return PaymentTypes::ARKOOR;
-        case bark_cxx::PaymentTypes::Onchain:
-            return PaymentTypes::ONCHAIN;
-        default:
-            throw std::runtime_error("Invalid payment type");
-        }
-    }
 
     class NitroArk : public HybridNitroArkSpec
     {
@@ -363,7 +345,6 @@ namespace margelo::nitro::nitroark
                 ArkoorPaymentResult result;
                 result.amount_sat = static_cast<double>(rust_result.amount_sat);
                 result.destination_pubkey = std::string(rust_result.destination_pubkey.data(), rust_result.destination_pubkey.length());
-                result.payment_type = convertPaymentType(rust_result.payment_type);
 
                 std::vector<BarkVtxo> vtxos;
                 for (const auto& rust_vtxo : rust_result.vtxos) {
@@ -399,7 +380,6 @@ namespace margelo::nitro::nitroark
                 Bolt11PaymentResult result;
                 result.bolt11_invoice = std::string(rust_result.bolt11_invoice.data(), rust_result.bolt11_invoice.length());
                 result.preimage = std::string(rust_result.preimage.data(), rust_result.preimage.length());
-                result.payment_type = convertPaymentType(rust_result.payment_type);
 
                 return result;
             } catch (const rust::Error &e) {
@@ -419,7 +399,6 @@ namespace margelo::nitro::nitroark
                 result.lnurl = std::string(rust_result.lnurl.data(), rust_result.lnurl.length());
                 result.bolt11_invoice = std::string(rust_result.bolt11_invoice.data(), rust_result.bolt11_invoice.length());
                 result.preimage = std::string(rust_result.preimage.data(), rust_result.preimage.length());
-                result.payment_type = convertPaymentType(rust_result.payment_type);
 
                 return result;
             } catch (const rust::Error &e) {

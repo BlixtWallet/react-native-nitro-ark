@@ -18,13 +18,10 @@
 #error NitroModules cannot be found! Are you sure you installed NitroModules properly?
 #endif
 
-// Forward declaration of `PaymentTypes` to properly resolve imports.
-namespace margelo::nitro::nitroark { enum class PaymentTypes; }
 // Forward declaration of `BarkVtxo` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct BarkVtxo; }
 
 #include <string>
-#include "PaymentTypes.hpp"
 #include <vector>
 #include "BarkVtxo.hpp"
 
@@ -37,12 +34,11 @@ namespace margelo::nitro::nitroark {
   public:
     double amount_sat     SWIFT_PRIVATE;
     std::string destination_pubkey     SWIFT_PRIVATE;
-    PaymentTypes payment_type     SWIFT_PRIVATE;
     std::vector<BarkVtxo> vtxos     SWIFT_PRIVATE;
 
   public:
     ArkoorPaymentResult() = default;
-    explicit ArkoorPaymentResult(double amount_sat, std::string destination_pubkey, PaymentTypes payment_type, std::vector<BarkVtxo> vtxos): amount_sat(amount_sat), destination_pubkey(destination_pubkey), payment_type(payment_type), vtxos(vtxos) {}
+    explicit ArkoorPaymentResult(double amount_sat, std::string destination_pubkey, std::vector<BarkVtxo> vtxos): amount_sat(amount_sat), destination_pubkey(destination_pubkey), vtxos(vtxos) {}
   };
 
 } // namespace margelo::nitro::nitroark
@@ -59,7 +55,6 @@ namespace margelo::nitro {
       return ArkoorPaymentResult(
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "amount_sat")),
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "destination_pubkey")),
-        JSIConverter<PaymentTypes>::fromJSI(runtime, obj.getProperty(runtime, "payment_type")),
         JSIConverter<std::vector<BarkVtxo>>::fromJSI(runtime, obj.getProperty(runtime, "vtxos"))
       );
     }
@@ -67,7 +62,6 @@ namespace margelo::nitro {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, "amount_sat", JSIConverter<double>::toJSI(runtime, arg.amount_sat));
       obj.setProperty(runtime, "destination_pubkey", JSIConverter<std::string>::toJSI(runtime, arg.destination_pubkey));
-      obj.setProperty(runtime, "payment_type", JSIConverter<PaymentTypes>::toJSI(runtime, arg.payment_type));
       obj.setProperty(runtime, "vtxos", JSIConverter<std::vector<BarkVtxo>>::toJSI(runtime, arg.vtxos));
       return obj;
     }
@@ -78,7 +72,6 @@ namespace margelo::nitro {
       jsi::Object obj = value.getObject(runtime);
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "amount_sat"))) return false;
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "destination_pubkey"))) return false;
-      if (!JSIConverter<PaymentTypes>::canConvert(runtime, obj.getProperty(runtime, "payment_type"))) return false;
       if (!JSIConverter<std::vector<BarkVtxo>>::canConvert(runtime, obj.getProperty(runtime, "vtxos"))) return false;
       return true;
     }

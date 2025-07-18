@@ -40,8 +40,6 @@ export interface BarkSendManyOutput {
   amountSat: number; // uint64_t -> number
 }
 
-export type PaymentTypes = 'Bolt11' | 'Lnurl' | 'Arkoor' | 'Onchain';
-
 export interface BarkVtxo {
   amount: number; // u64
   expiry_height: number; // u32
@@ -52,21 +50,18 @@ export interface BarkVtxo {
 export interface ArkoorPaymentResult {
   amount_sat: number; // u64
   destination_pubkey: string;
-  payment_type: PaymentTypes;
   vtxos: BarkVtxo[];
 }
 
 export interface Bolt11PaymentResult {
   bolt11_invoice: string;
   preimage: string;
-  payment_type: PaymentTypes;
 }
 
 export interface LnurlPaymentResult {
   lnurl: string;
   bolt11_invoice: string;
   preimage: string;
-  payment_type: PaymentTypes;
 }
 
 // --- Nitro Module Interface ---
