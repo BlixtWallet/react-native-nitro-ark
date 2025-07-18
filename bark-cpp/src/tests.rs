@@ -358,10 +358,10 @@ fn test_offboard_ffi() {
     let _fixture = WalletTestFixture::new();
     // This test would require creating VTXOs first.
     // We test that the call with no VTXOs doesn't panic.
-    let offboard_all_res = cxx::offboard_all("", false);
+    let offboard_all_res = cxx::offboard_all("");
     assert!(offboard_all_res.is_ok());
 
-    let offboard_specific_res = cxx::offboard_specific(vec![], "", false);
+    let offboard_specific_res = cxx::offboard_specific(vec![], "");
     assert!(offboard_specific_res.is_ok());
 }
 

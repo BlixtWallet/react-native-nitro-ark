@@ -450,7 +450,7 @@ export default function ArkApp() {
       return;
     }
     runOperation(`offboardSpecific (noSync: ${noSync})`, () =>
-      NitroArk.offboardSpecific(ids, optionalAddress, noSync)
+      NitroArk.offboardSpecific(ids, optionalAddress)
     );
   };
 
@@ -460,7 +460,7 @@ export default function ArkApp() {
       return;
     }
     runOperation(`offboardAll (noSync: ${noSync})`, () =>
-      NitroArk.offboardAll(optionalAddress, noSync)
+      NitroArk.offboardAll(optionalAddress)
     );
   };
 

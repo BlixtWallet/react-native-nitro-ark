@@ -797,6 +797,11 @@ std::size_t align_of() {
 #endif
 
 namespace bark_cxx {
+  struct BarkVtxo;
+  enum class PaymentTypes : ::std::uint8_t;
+  struct Bolt11PaymentResult;
+  struct LnurlPaymentResult;
+  struct ArkoorPaymentResult;
   struct CxxArkInfo;
   struct ConfigOpts;
   struct CreateOpts;
@@ -805,6 +810,63 @@ namespace bark_cxx {
 }
 
 namespace bark_cxx {
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$BarkVtxo
+#define CXXBRIDGE1_STRUCT_bark_cxx$BarkVtxo
+struct BarkVtxo final {
+  ::std::uint64_t amount CXX_DEFAULT_VALUE(0);
+  ::std::uint32_t expiry_height CXX_DEFAULT_VALUE(0);
+  ::std::uint16_t exit_delta CXX_DEFAULT_VALUE(0);
+  ::rust::String anchor_point;
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$BarkVtxo
+
+#ifndef CXXBRIDGE1_ENUM_bark_cxx$PaymentTypes
+#define CXXBRIDGE1_ENUM_bark_cxx$PaymentTypes
+enum class PaymentTypes : ::std::uint8_t {
+  Bolt11 = 0,
+  Lnurl = 1,
+  Arkoor = 2,
+  Onchain = 3,
+};
+#endif // CXXBRIDGE1_ENUM_bark_cxx$PaymentTypes
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$Bolt11PaymentResult
+#define CXXBRIDGE1_STRUCT_bark_cxx$Bolt11PaymentResult
+struct Bolt11PaymentResult final {
+  ::rust::String bolt11_invoice;
+  ::rust::String preimage;
+  ::bark_cxx::PaymentTypes payment_type;
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$Bolt11PaymentResult
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$LnurlPaymentResult
+#define CXXBRIDGE1_STRUCT_bark_cxx$LnurlPaymentResult
+struct LnurlPaymentResult final {
+  ::rust::String lnurl;
+  ::rust::String bolt11_invoice;
+  ::rust::String preimage;
+  ::bark_cxx::PaymentTypes payment_type;
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$LnurlPaymentResult
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$ArkoorPaymentResult
+#define CXXBRIDGE1_STRUCT_bark_cxx$ArkoorPaymentResult
+struct ArkoorPaymentResult final {
+  ::std::uint64_t amount_sat CXX_DEFAULT_VALUE(0);
+  ::rust::String destination_pubkey;
+  ::bark_cxx::PaymentTypes payment_type;
+  ::rust::Vec<::bark_cxx::BarkVtxo> vtxos;
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$ArkoorPaymentResult
+
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$CxxArkInfo
 #define CXXBRIDGE1_STRUCT_bark_cxx$CxxArkInfo
 struct CxxArkInfo final {
@@ -920,17 +982,17 @@ void load_wallet(::rust::Str datadir, ::bark_cxx::CreateOpts opts);
 
 ::rust::String board_all();
 
-::rust::String send_arkoor_payment(::rust::Str destination, ::std::uint64_t amount_sat);
+::bark_cxx::ArkoorPaymentResult send_arkoor_payment(::rust::Str destination, ::std::uint64_t amount_sat);
 
-::rust::String send_bolt11_payment(::rust::Str destination, ::std::uint64_t const *amount_sat);
+::bark_cxx::Bolt11PaymentResult send_bolt11_payment(::rust::Str destination, ::std::uint64_t const *amount_sat);
 
-::rust::String send_lnaddr(::rust::Str addr, ::std::uint64_t amount_sat, ::rust::Str comment);
+::bark_cxx::LnurlPaymentResult send_lnaddr(::rust::Str addr, ::std::uint64_t amount_sat, ::rust::Str comment);
 
 ::rust::String send_round_onchain(::rust::Str destination, ::std::uint64_t amount_sat, bool no_sync);
 
-::rust::String offboard_specific(::rust::Vec<::rust::String> vtxo_ids, ::rust::Str destination_address, bool no_sync);
+::rust::String offboard_specific(::rust::Vec<::rust::String> vtxo_ids, ::rust::Str destination_address);
 
-::rust::String offboard_all(::rust::Str destination_address, bool no_sync);
+::rust::String offboard_all(::rust::Str destination_address);
 
 ::rust::String start_exit_for_vtxos(::rust::Vec<::rust::String> vtxo_ids);
 

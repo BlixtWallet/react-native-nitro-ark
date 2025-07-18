@@ -1,10 +1,50 @@
-use crate::utils;
-use bark::ark::bitcoin::Address;
+use crate::cxx::ffi::{
+    ArkoorPaymentResult, BarkVtxo, Bolt11PaymentResult, LnurlPaymentResult, PaymentTypes,
+};
+use crate::{parse_send_destination, utils, SendDestination};
+use anyhow::{bail, Context, Ok};
+use bark::ark::bitcoin::hex::DisplayHex;
+use bark::ark::bitcoin::{address, Address};
+use logger::log::info;
 use std::path::Path;
 use std::str::FromStr;
 
 #[cxx::bridge(namespace = "bark_cxx")]
 pub(crate) mod ffi {
+    pub struct BarkVtxo {
+        amount: u64,
+        expiry_height: u32,
+        exit_delta: u16,
+        anchor_point: String,
+    }
+
+    pub enum PaymentTypes {
+        Bolt11,
+        Lnurl,
+        Arkoor,
+        Onchain,
+    }
+
+    pub struct Bolt11PaymentResult {
+        bolt11_invoice: String,
+        preimage: String,
+        payment_type: PaymentTypes,
+    }
+
+    pub struct LnurlPaymentResult {
+        lnurl: String,
+        bolt11_invoice: String,
+        preimage: String,
+        payment_type: PaymentTypes,
+    }
+
+    pub struct ArkoorPaymentResult {
+        amount_sat: u64,
+        destination_pubkey: String,
+        payment_type: PaymentTypes,
+        vtxos: Vec<BarkVtxo>,
+    }
+
     pub struct CxxArkInfo {
         network: String,
         asp_pubkey: String,
@@ -74,16 +114,15 @@ pub(crate) mod ffi {
         fn send_many_onchain(outputs: Vec<SendManyOutput>, no_sync: bool) -> Result<String>;
         fn board_amount(amount_sat: u64) -> Result<String>;
         fn board_all() -> Result<String>;
-        fn send_arkoor_payment(destination: &str, amount_sat: u64) -> Result<String>;
-        unsafe fn send_bolt11_payment(destination: &str, amount_sat: *const u64) -> Result<String>;
-        fn send_lnaddr(addr: &str, amount_sat: u64, comment: &str) -> Result<String>;
+        fn send_arkoor_payment(destination: &str, amount_sat: u64) -> Result<ArkoorPaymentResult>;
+        unsafe fn send_bolt11_payment(
+            destination: &str,
+            amount_sat: *const u64,
+        ) -> Result<Bolt11PaymentResult>;
+        fn send_lnaddr(addr: &str, amount_sat: u64, comment: &str) -> Result<LnurlPaymentResult>;
         fn send_round_onchain(destination: &str, amount_sat: u64, no_sync: bool) -> Result<String>;
-        fn offboard_specific(
-            vtxo_ids: Vec<String>,
-            destination_address: &str,
-            no_sync: bool,
-        ) -> Result<String>;
-        fn offboard_all(destination_address: &str, no_sync: bool) -> Result<String>;
+        fn offboard_specific(vtxo_ids: Vec<String>, destination_address: &str) -> Result<String>;
+        fn offboard_all(destination_address: &str) -> Result<String>;
         fn start_exit_for_vtxos(vtxo_ids: Vec<String>) -> Result<String>;
         fn start_exit_for_entire_wallet() -> Result<String>;
         fn exit_progress_once() -> Result<String>;
@@ -267,31 +306,82 @@ pub(crate) fn board_all() -> anyhow::Result<String> {
     crate::TOKIO_RUNTIME.block_on(crate::board_all())
 }
 
-pub(crate) fn send_arkoor_payment(destination: &str, amount_sat: u64) -> anyhow::Result<String> {
+pub(crate) fn send_arkoor_payment(
+    destination: &str,
+    amount_sat: u64,
+) -> anyhow::Result<ArkoorPaymentResult> {
     let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
-    crate::TOKIO_RUNTIME.block_on(crate::send_arkoor_payment(destination, amount))
+    let oor_result =
+        crate::TOKIO_RUNTIME.block_on(crate::send_arkoor_payment(destination, amount))?;
+
+    Ok(ArkoorPaymentResult {
+        vtxos: oor_result
+            .iter()
+            .map(|n| BarkVtxo {
+                amount: n.amount().to_sat(),
+                anchor_point: format!(
+                    "{}:{}",
+                    n.chain_anchor().txid.to_string(),
+                    n.chain_anchor().vout.to_string()
+                ),
+                exit_delta: n.exit_delta(),
+                expiry_height: n.expiry_height(),
+            })
+            .collect(),
+        destination_pubkey: destination.to_string(),
+        payment_type: PaymentTypes::Arkoor,
+        amount_sat,
+    })
 }
 
 pub(crate) fn send_bolt11_payment(
     destination: &str,
     amount_sat: *const u64,
-) -> anyhow::Result<String> {
+) -> anyhow::Result<Bolt11PaymentResult> {
     let amount_opt = match unsafe { amount_sat.as_ref().map(|r| *r) } {
         Some(amount) => Some(bark::ark::bitcoin::Amount::from_sat(amount)),
         None => None,
     };
 
-    crate::TOKIO_RUNTIME.block_on(crate::send_bolt11_payment(destination, amount_opt))
+    let parsed_destination = parse_send_destination(destination)?;
+
+    // --- Logic per destination type ---
+    let invoice = match parsed_destination {
+        SendDestination::Bolt11(invoice) => invoice,
+        _ => bail!("Invalid destination type for send_bolt11_payment"),
+    };
+
+    let preimage = crate::TOKIO_RUNTIME
+        .block_on(crate::send_bolt11_payment(invoice, amount_opt))?
+        .to_lower_hex_string();
+
+    Ok(Bolt11PaymentResult {
+        preimage,
+        bolt11_invoice: destination.to_string(),
+        payment_type: PaymentTypes::Bolt11,
+    })
 }
 
-pub(crate) fn send_lnaddr(addr: &str, amount_sat: u64, comment: &str) -> anyhow::Result<String> {
+pub(crate) fn send_lnaddr(
+    addr: &str,
+    amount_sat: u64,
+    comment: &str,
+) -> anyhow::Result<LnurlPaymentResult> {
     let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
     let comment_opt = if comment.is_empty() {
         None
     } else {
         Some(comment)
     };
-    crate::TOKIO_RUNTIME.block_on(crate::send_lnaddr(addr, amount, comment_opt))
+    let send_lnaddr_result =
+        crate::TOKIO_RUNTIME.block_on(crate::send_lnaddr(addr, amount, comment_opt))?;
+
+    Ok(LnurlPaymentResult {
+        preimage: send_lnaddr_result.1.to_lower_hex_string(),
+        bolt11_invoice: send_lnaddr_result.0.to_string(),
+        payment_type: PaymentTypes::Lnurl,
+        lnurl: addr.to_string(),
+    })
 }
 
 pub(crate) fn send_round_onchain(
@@ -306,7 +396,6 @@ pub(crate) fn send_round_onchain(
 pub(crate) fn offboard_specific(
     vtxo_ids: Vec<String>,
     destination_address: &str,
-    no_sync: bool,
 ) -> anyhow::Result<String> {
     let ids = vtxo_ids
         .into_iter()
@@ -317,16 +406,73 @@ pub(crate) fn offboard_specific(
     } else {
         Some(destination_address.to_string())
     };
-    crate::TOKIO_RUNTIME.block_on(crate::offboard_specific(ids, address_opt, no_sync))
+
+    let ark_info = crate::TOKIO_RUNTIME.block_on(crate::get_ark_info())?;
+
+    // Validate optional address string
+    let destination_address_opt: Option<Address> = match address_opt {
+        Some(addr_str) => {
+            let addr_unchecked = Address::<address::NetworkUnchecked>::from_str(&addr_str)
+                .with_context(|| format!("Invalid destination address format: '{}'", addr_str))?;
+            let addr = addr_unchecked
+                .require_network(ark_info.network)
+                .with_context(|| {
+                    format!(
+                        "Address '{}' is not valid for configured network {:?}",
+                        addr_str, ark_info.network
+                    )
+                })?;
+            Some(addr)
+        }
+        None => None,
+    };
+    if ids.is_empty() {
+        bail!("At least one VTXO ID must be provided for specific offboarding");
+    }
+
+    info!(
+        "Attempting to offboard {} specific VTXOs to {:?}",
+        ids.len(),
+        destination_address_opt
+    );
+
+    let offboard_specific_result =
+        crate::TOKIO_RUNTIME.block_on(crate::offboard_specific(ids, destination_address_opt))?;
+
+    Ok(offboard_specific_result.round.to_string())
 }
 
-pub(crate) fn offboard_all(destination_address: &str, no_sync: bool) -> anyhow::Result<String> {
+pub(crate) fn offboard_all(destination_address: &str) -> anyhow::Result<String> {
     let address_opt = if destination_address.is_empty() {
         None
     } else {
         Some(destination_address.to_string())
     };
-    crate::TOKIO_RUNTIME.block_on(crate::offboard_all(address_opt, no_sync))
+
+    let ark_info = crate::TOKIO_RUNTIME.block_on(crate::get_ark_info())?;
+
+    // Validate optional address string
+    let destination_address_opt: Option<Address> = match address_opt {
+        Some(addr_str) => {
+            let addr_unchecked = Address::<address::NetworkUnchecked>::from_str(&addr_str)
+                .with_context(|| format!("Invalid destination address format: '{}'", addr_str))?;
+            let addr = addr_unchecked
+                .require_network(ark_info.network)
+                .with_context(|| {
+                    format!(
+                        "Address '{}' is not valid for configured network {:?}",
+                        addr_str, ark_info.network
+                    )
+                })?;
+            Some(addr)
+        }
+        None => None,
+    };
+
+    let offboard_all_result =
+        crate::TOKIO_RUNTIME.block_on(crate::offboard_all(destination_address_opt))?;
+
+    Ok(offboard_all_result.round.to_string())
 }
 
 pub(crate) fn start_exit_for_vtxos(vtxo_ids: Vec<String>) -> anyhow::Result<String> {
