@@ -168,10 +168,9 @@ export function getVtxos(no_sync: boolean = false): Promise<string> {
  */
 export function sendOnchain(
   destination: string,
-  amountSat: number,
-  no_sync: boolean = false
+  amountSat: number
 ): Promise<OnchainPaymentResult> {
-  return NitroArkHybridObject.sendOnchain(destination, amountSat, no_sync);
+  return NitroArkHybridObject.sendOnchain(destination, amountSat);
 }
 
 /**

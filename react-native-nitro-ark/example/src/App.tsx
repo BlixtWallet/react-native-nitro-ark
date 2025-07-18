@@ -318,7 +318,7 @@ export default function ArkApp() {
       return;
     }
     runOperation(`sendOnchain (noSync: ${noSync})`, () =>
-      NitroArk.sendOnchain(destinationAddress, amountNum, noSync)
+      NitroArk.sendOnchain(destinationAddress, amountNum)
     );
   };
 
