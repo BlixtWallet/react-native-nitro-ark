@@ -8,6 +8,7 @@ import type {
   ArkoorPaymentResult,
   Bolt11PaymentResult,
   LnurlPaymentResult,
+  OnchainPaymentResult,
 } from './NitroArk.nitro';
 
 // Create the hybrid object instance
@@ -163,13 +164,13 @@ export function getVtxos(no_sync: boolean = false): Promise<string> {
  * @param destination The destination Bitcoin address.
  * @param amountSat The amount to send in satoshis.
  * @param no_sync If true, skips synchronization with the blockchain. Defaults to false.
- * @returns A promise resolving to the transaction ID string.
+ * @returns A promise resolving to the OnchainPaymentResult object
  */
 export function sendOnchain(
   destination: string,
   amountSat: number,
   no_sync: boolean = false
-): Promise<string> {
+): Promise<OnchainPaymentResult> {
   return NitroArkHybridObject.sendOnchain(destination, amountSat, no_sync);
 }
 
@@ -242,7 +243,7 @@ export function boardAll(): Promise<string> {
  * Sends an Arkoor payment.
  * @param destination The destination Arkoor address.
  * @param amountSat The amount in satoshis to send.
- * @returns A promise resolving to a result string.
+ * @returns A promise resolving to the ArkoorPaymentResult object
  */
 export function sendArkoorPayment(
   destination: string,
@@ -255,7 +256,7 @@ export function sendArkoorPayment(
  * Sends a Bolt11 payment.
  * @param destination The Bolt11 invoice.
  * @param amountSat The amount in satoshis to send. Use 0 for invoice amount.
- * @returns A promise resolving to a result string.
+ * @returns A promise resolving to a Bolt11PaymentResult object
  */
 export function sendBolt11Payment(
   destination: string,
@@ -269,7 +270,7 @@ export function sendBolt11Payment(
  * @param addr The Lightning Address.
  * @param amountSat The amount in satoshis to send.
  * @param comment An optional comment.
- * @returns A promise resolving to a result string.
+ * @returns A promise resolving to a LnurlPaymentResult object
  */
 export function sendLnaddr(
   addr: string,
@@ -355,4 +356,5 @@ export type {
   ArkoorPaymentResult,
   Bolt11PaymentResult,
   LnurlPaymentResult,
+  OnchainPaymentResult,
 } from './NitroArk.nitro';

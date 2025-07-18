@@ -1,4 +1,6 @@
-use crate::cxx::ffi::{ArkoorPaymentResult, BarkVtxo, Bolt11PaymentResult, LnurlPaymentResult};
+use crate::cxx::ffi::{
+    ArkoorPaymentResult, BarkVtxo, Bolt11PaymentResult, LnurlPaymentResult, OnchainPaymentResult,
+};
 use crate::{parse_send_destination, utils, SendDestination};
 use anyhow::{bail, Context, Ok};
 use bark::ark::bitcoin::hex::DisplayHex;
@@ -31,6 +33,12 @@ pub(crate) mod ffi {
         amount_sat: u64,
         destination_pubkey: String,
         vtxos: Vec<BarkVtxo>,
+    }
+
+    pub struct OnchainPaymentResult {
+        txid: String,
+        amount_sat: u64,
+        destination_address: String,
     }
 
     pub struct CxxArkInfo {
@@ -97,7 +105,7 @@ pub(crate) mod ffi {
         fn sync_ark() -> Result<()>;
         fn sync_rounds() -> Result<()>;
         fn load_wallet(datadir: &str, opts: CreateOpts) -> Result<()>;
-        fn send_onchain(destination: &str, amount_sat: u64, no_sync: bool) -> Result<String>;
+        fn send_onchain(destination: &str, amount_sat: u64) -> Result<OnchainPaymentResult>;
         fn drain_onchain(destination: &str, no_sync: bool) -> Result<String>;
         fn send_many_onchain(outputs: Vec<SendManyOutput>, no_sync: bool) -> Result<String>;
         fn board_amount(amount_sat: u64) -> Result<String>;
@@ -251,11 +259,38 @@ pub(crate) fn load_wallet(datadir: &str, opts: ffi::CreateOpts) -> anyhow::Resul
 pub(crate) fn send_onchain(
     destination: &str,
     amount_sat: u64,
-    no_sync: bool,
-) -> anyhow::Result<String> {
+) -> anyhow::Result<OnchainPaymentResult> {
     let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
-    let txid = crate::TOKIO_RUNTIME.block_on(crate::send_onchain(destination, amount, no_sync))?;
-    Ok(txid.to_string())
+
+    let ark_info = crate::TOKIO_RUNTIME.block_on(crate::get_ark_info())?;
+
+    // Validate optional address string
+    let address_unchecked = Address::<address::NetworkUnchecked>::from_str(destination)
+        .with_context(|| format!("invalid destination address format: '{}'", destination))?;
+
+    // Now require the network to match the wallet's network
+    let destination_address = address_unchecked
+        .require_network(ark_info.network)
+        .with_context(|| {
+            format!(
+                "address '{}' is not valid for configured network {}",
+                destination, ark_info.network
+            )
+        })?;
+
+    info!(
+        "Sending {} to onchain address {}",
+        amount, destination_address
+    );
+
+    let txid =
+        crate::TOKIO_RUNTIME.block_on(crate::send_onchain(destination_address.clone(), amount))?;
+
+    Ok(OnchainPaymentResult {
+        txid: txid.to_string(),
+        amount_sat,
+        destination_address: destination_address.to_string(),
+    })
 }
 
 pub(crate) fn drain_onchain(destination: &str, no_sync: bool) -> anyhow::Result<String> {

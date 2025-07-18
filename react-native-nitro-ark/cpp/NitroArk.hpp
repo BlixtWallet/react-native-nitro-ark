@@ -258,15 +258,20 @@ namespace margelo::nitro::nitroark
 
         // --- Onchain Operations ---
 
-        std::shared_ptr<Promise<std::string>>
-        sendOnchain(const std::string &destination, double amountSat,
-                    bool no_sync) override
+        std::shared_ptr<Promise<OnchainPaymentResult>>
+        sendOnchain(const std::string &destination, double amountSat) override
         {
-            return Promise<std::string>::async([destination, amountSat, no_sync]()
-                                               {
+            return Promise<OnchainPaymentResult>::async([destination, amountSat]()
+                                                        {
             try {
-                rust::String txid_rs = bark_cxx::send_onchain(destination, static_cast<uint64_t>(amountSat), no_sync);
-                return std::string(txid_rs.data(), txid_rs.length());
+                bark_cxx::OnchainPaymentResult rust_result = bark_cxx::send_onchain(destination, static_cast<uint64_t>(amountSat));
+                
+                OnchainPaymentResult result;
+                result.txid = std::string(rust_result.txid.data(), rust_result.txid.length());
+                result.amount_sat = static_cast<double>(rust_result.amount_sat);
+                result.destination_address = std::string(rust_result.destination_address.data(), rust_result.destination_address.length());
+
+                return result;
             } catch (const rust::Error &e) {
                 throw std::runtime_error(e.what());
             } });

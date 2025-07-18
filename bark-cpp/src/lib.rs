@@ -204,51 +204,14 @@ pub async fn get_onchain_address() -> anyhow::Result<Address> {
 }
 
 /// Send funds using the onchain wallet
-pub async fn send_onchain(
-    destination_str: &str,
-    amount: Amount,
-    no_sync: bool,
-) -> anyhow::Result<Txid> {
+pub async fn send_onchain(address: Address, amount: Amount) -> anyhow::Result<Txid> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
     let w = wallet_guard.as_mut().context("Wallet not loaded")?;
 
-    let net = w.properties()?.network;
-
-    // Parse the address first without network requirement
-    let address_unchecked = Address::<address::NetworkUnchecked>::from_str(destination_str)
-        .with_context(|| format!("invalid destination address format: '{}'", destination_str))?;
-
-    // Now require the network to match the wallet's network
-    let destination_address = address_unchecked.require_network(net).with_context(|| {
-        format!(
-            "address '{}' is not valid for configured network {}",
-            destination_str, net
-        )
-    })?;
-
-    if !no_sync {
-        info!("Syncing onchain wallet before sending...");
-        // Sync only the onchain part as we are doing an onchain send
-        if let Err(e) = w.onchain.sync().await {
-            warn!("Onchain sync error during send: {}", e);
-            // Decide if this should be a hard error or just a warning like the CLI
-            // Let's treat it as a warning for now, but return error might be safer
-            // return Err(e).context("Failed to sync onchain wallet before send");
-        }
-    }
-
-    info!(
-        "Sending {} to onchain address {}",
-        amount, destination_address
-    );
-    let txid = w
-        .onchain
-        .send(destination_address.clone(), amount)
+    w.onchain
+        .send(address.clone(), amount)
         .await
-        .with_context(|| format!("failed to send {} to {}", amount, destination_address))?;
-
-    info!("Onchain send successful, TxID: {}", txid);
-    Ok(txid)
+        .with_context(|| format!("failed to send {} to {}", amount, address))
 }
 
 /// Send all funds using the onchain wallet to a specific address

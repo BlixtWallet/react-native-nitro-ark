@@ -801,6 +801,7 @@ namespace bark_cxx {
   struct Bolt11PaymentResult;
   struct LnurlPaymentResult;
   struct ArkoorPaymentResult;
+  struct OnchainPaymentResult;
   struct CxxArkInfo;
   struct ConfigOpts;
   struct CreateOpts;
@@ -852,6 +853,17 @@ struct ArkoorPaymentResult final {
   using IsRelocatable = ::std::true_type;
 };
 #endif // CXXBRIDGE1_STRUCT_bark_cxx$ArkoorPaymentResult
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$OnchainPaymentResult
+#define CXXBRIDGE1_STRUCT_bark_cxx$OnchainPaymentResult
+struct OnchainPaymentResult final {
+  ::rust::String txid;
+  ::std::uint64_t amount_sat CXX_DEFAULT_VALUE(0);
+  ::rust::String destination_address;
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$OnchainPaymentResult
 
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$CxxArkInfo
 #define CXXBRIDGE1_STRUCT_bark_cxx$CxxArkInfo
@@ -958,7 +970,7 @@ void sync_rounds();
 
 void load_wallet(::rust::Str datadir, ::bark_cxx::CreateOpts opts);
 
-::rust::String send_onchain(::rust::Str destination, ::std::uint64_t amount_sat, bool no_sync);
+::bark_cxx::OnchainPaymentResult send_onchain(::rust::Str destination, ::std::uint64_t amount_sat);
 
 ::rust::String drain_onchain(::rust::Str destination, bool no_sync);
 

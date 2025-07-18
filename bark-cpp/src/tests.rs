@@ -253,14 +253,14 @@ fn test_send_onchain_ffi() {
     let address = cxx::get_onchain_address().unwrap();
 
     // This test requires the address to be funded manually.
-    let send_res = cxx::send_onchain(&address, 5000, false);
+    let send_res = cxx::send_onchain(&address, 5000);
     assert!(
         send_res.is_ok(),
         "send_onchain failed: {:?}",
         send_res.err()
     );
     let txid = send_res.unwrap();
-    assert_eq!(txid.len(), 64);
+    assert_eq!(txid.txid.len(), 64);
 }
 
 #[test]

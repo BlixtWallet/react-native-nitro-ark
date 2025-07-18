@@ -64,6 +64,12 @@ export interface LnurlPaymentResult {
   preimage: string;
 }
 
+export interface OnchainPaymentResult {
+  txid: string; // Transaction ID
+  amount_sat: number; // Amount in satoshis
+  destination_address: string; // Destination address
+}
+
 // --- Nitro Module Interface ---
 
 export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
@@ -90,9 +96,8 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   // --- Onchain Operations ---
   sendOnchain(
     destination: string,
-    amountSat: number,
-    no_sync: boolean
-  ): Promise<string>; // Returns txid
+    amountSat: number
+  ): Promise<OnchainPaymentResult>; // Returns txid
   drainOnchain(destination: string, no_sync: boolean): Promise<string>; // Returns txid
   sendManyOnchain(
     outputs: BarkSendManyOutput[],

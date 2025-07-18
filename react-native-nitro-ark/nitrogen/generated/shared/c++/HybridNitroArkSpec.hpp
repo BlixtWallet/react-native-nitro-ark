@@ -19,6 +19,8 @@ namespace margelo::nitro::nitroark { struct BarkCreateOpts; }
 namespace margelo::nitro::nitroark { struct BarkConfigOpts; }
 // Forward declaration of `BarkArkInfo` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct BarkArkInfo; }
+// Forward declaration of `OnchainPaymentResult` to properly resolve imports.
+namespace margelo::nitro::nitroark { struct OnchainPaymentResult; }
 // Forward declaration of `BarkSendManyOutput` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct BarkSendManyOutput; }
 // Forward declaration of `ArkoorPaymentResult` to properly resolve imports.
@@ -34,6 +36,7 @@ namespace margelo::nitro::nitroark { struct LnurlPaymentResult; }
 #include "BarkConfigOpts.hpp"
 #include "BarkArkInfo.hpp"
 #include <optional>
+#include "OnchainPaymentResult.hpp"
 #include <vector>
 #include "BarkSendManyOutput.hpp"
 #include "ArkoorPaymentResult.hpp"
@@ -87,7 +90,7 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<std::string>> getOnchainUtxos(bool no_sync) = 0;
       virtual std::shared_ptr<Promise<std::string>> getVtxoPubkey(std::optional<double> index) = 0;
       virtual std::shared_ptr<Promise<std::string>> getVtxos(bool no_sync) = 0;
-      virtual std::shared_ptr<Promise<std::string>> sendOnchain(const std::string& destination, double amountSat, bool no_sync) = 0;
+      virtual std::shared_ptr<Promise<OnchainPaymentResult>> sendOnchain(const std::string& destination, double amountSat) = 0;
       virtual std::shared_ptr<Promise<std::string>> drainOnchain(const std::string& destination, bool no_sync) = 0;
       virtual std::shared_ptr<Promise<std::string>> sendManyOnchain(const std::vector<BarkSendManyOutput>& outputs, bool no_sync) = 0;
       virtual std::shared_ptr<Promise<std::string>> boardAmount(double amountSat) = 0;
