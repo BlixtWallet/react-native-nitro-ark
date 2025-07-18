@@ -40,6 +40,30 @@ export interface BarkSendManyOutput {
   amountSat: number; // uint64_t -> number
 }
 
+export interface BarkVtxo {
+  amount: number; // u64
+  expiry_height: number; // u32
+  exit_delta: number; // u16
+  anchor_point: string;
+}
+
+export interface ArkoorPaymentResult {
+  amount_sat: number; // u64
+  destination_pubkey: string;
+  vtxos: BarkVtxo[];
+}
+
+export interface Bolt11PaymentResult {
+  bolt11_invoice: string;
+  preimage: string;
+}
+
+export interface LnurlPaymentResult {
+  lnurl: string;
+  bolt11_invoice: string;
+  preimage: string;
+}
+
 // --- Nitro Module Interface ---
 
 export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
@@ -78,9 +102,19 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   // --- Ark & Lightning Payments ---
   boardAmount(amountSat: number): Promise<string>; // Returns JSON status
   boardAll(): Promise<string>; // Returns JSON status
-  sendArkoorPayment(destination: string, amountSat: number): Promise<string>;
-  sendBolt11Payment(destination: string, amountSat?: number): Promise<string>;
-  sendLnaddr(addr: string, amountSat: number, comment: string): Promise<string>;
+  sendArkoorPayment(
+    destination: string,
+    amountSat: number
+  ): Promise<ArkoorPaymentResult>;
+  sendBolt11Payment(
+    destination: string,
+    amountSat?: number
+  ): Promise<Bolt11PaymentResult>;
+  sendLnaddr(
+    addr: string,
+    amountSat: number,
+    comment: string
+  ): Promise<LnurlPaymentResult>;
   sendRoundOnchain(
     destination: string,
     amountSat: number,
@@ -94,10 +128,9 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   // --- Offboarding / Exiting ---
   offboardSpecific(
     vtxoIds: string[],
-    destinationAddress: string,
-    no_sync: boolean
+    destinationAddress: string
   ): Promise<string>; // Returns JSON result
-  offboardAll(destinationAddress: string, no_sync: boolean): Promise<string>; // Returns JSON result
+  offboardAll(destinationAddress: string): Promise<string>; // Returns JSON result
   exitStartSpecific(vtxoIds: string[]): Promise<string>;
   exitStartAll(): Promise<string>;
   exitProgressOnce(): Promise<string>;

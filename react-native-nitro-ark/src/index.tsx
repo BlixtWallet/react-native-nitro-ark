@@ -5,6 +5,9 @@ import type {
   BarkConfigOpts,
   BarkArkInfo,
   BarkSendManyOutput,
+  ArkoorPaymentResult,
+  Bolt11PaymentResult,
+  LnurlPaymentResult,
 } from './NitroArk.nitro';
 
 // Create the hybrid object instance
@@ -244,7 +247,7 @@ export function boardAll(): Promise<string> {
 export function sendArkoorPayment(
   destination: string,
   amountSat: number
-): Promise<string> {
+): Promise<ArkoorPaymentResult> {
   return NitroArkHybridObject.sendArkoorPayment(destination, amountSat);
 }
 
@@ -257,7 +260,7 @@ export function sendArkoorPayment(
 export function sendBolt11Payment(
   destination: string,
   amountSat?: number
-): Promise<string> {
+): Promise<Bolt11PaymentResult> {
   return NitroArkHybridObject.sendBolt11Payment(destination, amountSat);
 }
 
@@ -272,7 +275,7 @@ export function sendLnaddr(
   addr: string,
   amountSat: number,
   comment: string
-): Promise<string> {
+): Promise<LnurlPaymentResult> {
   return NitroArkHybridObject.sendLnaddr(addr, amountSat, comment);
 }
 
@@ -302,14 +305,9 @@ export function sendRoundOnchain(
  */
 export function offboardSpecific(
   vtxoIds: string[],
-  destinationAddress: string,
-  no_sync: boolean = false
+  destinationAddress: string
 ): Promise<string> {
-  return NitroArkHybridObject.offboardSpecific(
-    vtxoIds,
-    destinationAddress,
-    no_sync
-  );
+  return NitroArkHybridObject.offboardSpecific(vtxoIds, destinationAddress);
 }
 
 /**
@@ -318,11 +316,8 @@ export function offboardSpecific(
  * @param no_sync If true, skips synchronization with the wallet. Defaults to false.
  * @returns A promise resolving to a JSON result string.
  */
-export function offboardAll(
-  destinationAddress: string,
-  no_sync: boolean = false
-): Promise<string> {
-  return NitroArkHybridObject.offboardAll(destinationAddress, no_sync);
+export function offboardAll(destinationAddress: string): Promise<string> {
+  return NitroArkHybridObject.offboardAll(destinationAddress);
 }
 
 /**
@@ -357,4 +352,7 @@ export type {
   BarkConfigOpts,
   BarkArkInfo,
   BarkSendManyOutput,
+  ArkoorPaymentResult,
+  Bolt11PaymentResult,
+  LnurlPaymentResult,
 } from './NitroArk.nitro';

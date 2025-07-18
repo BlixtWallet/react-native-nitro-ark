@@ -334,46 +334,73 @@ namespace margelo::nitro::nitroark
             } });
         }
 
-        std::shared_ptr<Promise<std::string>>
+        std::shared_ptr<Promise<ArkoorPaymentResult>>
         sendArkoorPayment(const std::string &destination, double amountSat) override
         {
-            return Promise<std::string>::async([destination, amountSat]()
-                                               {
+            return Promise<ArkoorPaymentResult>::async([destination, amountSat]()
+                                                       {
             try {
-                rust::String status_rs = bark_cxx::send_arkoor_payment(destination, static_cast<uint64_t>(amountSat));
-                return std::string(status_rs.data(), status_rs.length());
+                bark_cxx::ArkoorPaymentResult rust_result = bark_cxx::send_arkoor_payment(destination, static_cast<uint64_t>(amountSat));
+                
+                ArkoorPaymentResult result;
+                result.amount_sat = static_cast<double>(rust_result.amount_sat);
+                result.destination_pubkey = std::string(rust_result.destination_pubkey.data(), rust_result.destination_pubkey.length());
+
+                std::vector<BarkVtxo> vtxos;
+                for (const auto& rust_vtxo : rust_result.vtxos) {
+                    BarkVtxo vtxo;
+                    vtxo.amount = static_cast<double>(rust_vtxo.amount);
+                    vtxo.expiry_height = static_cast<double>(rust_vtxo.expiry_height);
+                    vtxo.exit_delta = static_cast<double>(rust_vtxo.exit_delta);
+                    vtxo.anchor_point = std::string(rust_vtxo.anchor_point.data(), rust_vtxo.anchor_point.length());
+                    vtxos.push_back(vtxo);
+                }
+                result.vtxos = vtxos;
+
+                return result;
             } catch (const rust::Error &e) {
                 throw std::runtime_error(e.what());
             } });
         }
 
-        std::shared_ptr<Promise<std::string>>
+        std::shared_ptr<Promise<Bolt11PaymentResult>>
         sendBolt11Payment(const std::string &destination, std::optional<double> amountSat) override
         {
-            return Promise<std::string>::async([destination, amountSat]()
-                                               {
+            return Promise<Bolt11PaymentResult>::async([destination, amountSat]()
+                                                       {
             try {
-                rust::String status_rs;
+                bark_cxx::Bolt11PaymentResult rust_result;
                 if (amountSat.has_value()) {
                     uint64_t amountSat_val = static_cast<uint64_t>(amountSat.value());
-                    status_rs = bark_cxx::send_bolt11_payment(destination, &amountSat_val);
+                    rust_result = bark_cxx::send_bolt11_payment(destination, &amountSat_val);
                 } else {
-                    status_rs = bark_cxx::send_bolt11_payment(destination, nullptr);
+                    rust_result = bark_cxx::send_bolt11_payment(destination, nullptr);
                 }
-                return std::string(status_rs.data(), status_rs.length());
+
+                Bolt11PaymentResult result;
+                result.bolt11_invoice = std::string(rust_result.bolt11_invoice.data(), rust_result.bolt11_invoice.length());
+                result.preimage = std::string(rust_result.preimage.data(), rust_result.preimage.length());
+
+                return result;
             } catch (const rust::Error &e) {
                 throw std::runtime_error(e.what());
             } });
         }
 
-        std::shared_ptr<Promise<std::string>>
+        std::shared_ptr<Promise<LnurlPaymentResult>>
         sendLnaddr(const std::string &addr, double amountSat, const std::string &comment) override
         {
-            return Promise<std::string>::async([addr, amountSat, comment]()
-                                               {
+            return Promise<LnurlPaymentResult>::async([addr, amountSat, comment]()
+                                                      {
             try {
-                rust::String status_rs = bark_cxx::send_lnaddr(addr, static_cast<uint64_t>(amountSat), comment);
-                return std::string(status_rs.data(), status_rs.length());
+                bark_cxx::LnurlPaymentResult rust_result = bark_cxx::send_lnaddr(addr, static_cast<uint64_t>(amountSat), comment);
+
+                LnurlPaymentResult result;
+                result.lnurl = std::string(rust_result.lnurl.data(), rust_result.lnurl.length());
+                result.bolt11_invoice = std::string(rust_result.bolt11_invoice.data(), rust_result.bolt11_invoice.length());
+                result.preimage = std::string(rust_result.preimage.data(), rust_result.preimage.length());
+
+                return result;
             } catch (const rust::Error &e) {
                 throw std::runtime_error(e.what());
             } });
@@ -429,11 +456,10 @@ namespace margelo::nitro::nitroark
 
         std::shared_ptr<Promise<std::string>>
         offboardSpecific(const std::vector<std::string> &vtxoIds,
-                         const std::string &destinationAddress,
-                         bool no_sync) override
+                         const std::string &destinationAddress) override
         {
             return Promise<std::string>::async(
-                [vtxoIds, destinationAddress, no_sync]()
+                [vtxoIds, destinationAddress]()
                 {
                     try
                     {
@@ -442,7 +468,7 @@ namespace margelo::nitro::nitroark
                         {
                             rust_vtxo_ids.push_back(rust::String(id));
                         }
-                        rust::String status_rs = bark_cxx::offboard_specific(std::move(rust_vtxo_ids), destinationAddress, no_sync);
+                        rust::String status_rs = bark_cxx::offboard_specific(std::move(rust_vtxo_ids), destinationAddress);
                         return std::string(status_rs.data(), status_rs.length());
                     }
                     catch (const rust::Error &e)
@@ -453,14 +479,12 @@ namespace margelo::nitro::nitroark
         }
 
         std::shared_ptr<Promise<std::string>>
-        offboardAll(const std::string &destinationAddress,
-                    bool no_sync) override
+        offboardAll(const std::string &destinationAddress) override
         {
-            return Promise<std::string>::async([destinationAddress,
-                                                no_sync]()
+            return Promise<std::string>::async([destinationAddress]()
                                                {
             try {
-                rust::String status_rs = bark_cxx::offboard_all(destinationAddress, no_sync);
+                rust::String status_rs = bark_cxx::offboard_all(destinationAddress);
                 return std::string(status_rs.data(), status_rs.length());
             } catch (const rust::Error &e) {
                 throw std::runtime_error(e.what());

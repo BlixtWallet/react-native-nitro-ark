@@ -3,7 +3,6 @@ use anyhow::bail;
 use anyhow::Ok;
 use bark;
 use bark::ark::bitcoin::address;
-use bark::ark::bitcoin::hex::DisplayHex;
 
 use bark::ark::bitcoin::Address;
 use bark::ark::bitcoin::Amount;
@@ -22,6 +21,7 @@ use bark::lightning_invoice::Bolt11Invoice;
 use bark::lnurllib::lightning_address::LightningAddress;
 use bark::vtxo_selection::VtxoFilter;
 use bark::Config;
+use bark::Offboard;
 use bark::SqliteClient;
 use bark::UtxoInfo;
 use bark::Wallet;
@@ -43,7 +43,8 @@ pub use utils::*;
 use std::str::FromStr;
 
 use anyhow::Context;
-
+#[cfg(test)]
+mod tests;
 // Use a static Once to ensure the logger is initialized only once.
 static LOGGER_INIT: Once = Once::new();
 static GLOBAL_WALLET: LazyLock<Mutex<Option<Wallet>>> = LazyLock::new(|| Mutex::new(None));
@@ -451,16 +452,9 @@ pub async fn refresh_vtxos(vtxos: Vec<Vtxo>) -> anyhow::Result<Option<RoundId>> 
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
     let w = wallet_guard.as_mut().context("Wallet not loaded")?;
 
-    let round_id = w
-        .refresh_vtxos(vtxos)
+    w.refresh_vtxos(vtxos)
         .await
-        .context("Failed to refresh vtxos")?;
-
-    if let Some(round_id) = round_id {
-        Ok(Some(round_id))
-    } else {
-        Ok(None)
-    }
+        .context("Failed to refresh vtxos")
 }
 
 /// Board a specific amount from the onchain wallet to Ark. Returns JSON status.
@@ -512,7 +506,10 @@ pub async fn sync_rounds() -> anyhow::Result<()> {
 }
 
 /// Send a payment based on destination type. Returns JSON status.
-pub async fn send_arkoor_payment(destination: &str, amount_sat: Amount) -> anyhow::Result<String> {
+pub async fn send_arkoor_payment(
+    destination: &str,
+    amount_sat: Amount,
+) -> anyhow::Result<Vec<Vtxo>> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
     let w = wallet_guard.as_mut().context("Wallet not loaded")?;
 
@@ -527,40 +524,20 @@ pub async fn send_arkoor_payment(destination: &str, amount_sat: Amount) -> anyho
         "Attempting to send OOR payment of {} to pubkey {:?}",
         amount_sat, pubkey
     );
-    let _oor_result = w.send_arkoor_payment(pubkey, amount_sat).await?; // Use result if it contains info
+    let oor_result = w.send_arkoor_payment(pubkey, amount_sat).await?;
 
-    let result_json = serde_json::json!({
-        "type": "oor",
-        "success": true,
-        "destination_pubkey": pubkey.to_string(),
-        "amount_sat": amount_sat.to_sat()
-    });
-
-    let json_string = serde_json::to_string_pretty(&result_json)
-        .context("Failed to serialize send status to JSON")?;
-
-    Ok(json_string)
+    Ok(oor_result)
 }
 
-/// Send bolt11 payment via Ark. Returns JSON status.
+/// Send bolt11 payment via Ark. Returns preimage.
 pub async fn send_bolt11_payment(
-    destination: &str,
+    destination: Bolt11Invoice,
     amount_sat: Option<Amount>,
-) -> anyhow::Result<String> {
+) -> anyhow::Result<[u8; 32]> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
     let w = wallet_guard.as_mut().context("Wallet not loaded")?;
 
-    let destination = parse_send_destination(destination)?;
-
-    // --- Logic per destination type ---
-    let invoice = match destination {
-        SendDestination::Bolt11(invoice) => invoice,
-        _ => bail!("Invalid destination type for send_bolt11_payment"),
-    };
-
-    let result = w.send_bolt11_payment(&invoice, amount_sat).await?;
-
-    Ok(result.to_lower_hex_string())
+    w.send_bolt11_payment(&destination, amount_sat).await
 }
 
 /// Send an onchain payment via an Ark round. Returns JSON status.
@@ -621,130 +598,40 @@ pub async fn send_round_onchain(
     Ok(json_string)
 }
 
-/// Send a Lightning Address payment. Returns JSON status.
+/// Send a Lightning Address payment. Returns a tuple containing the Bolt11Invoice and a 32-byte preimage.
 pub async fn send_lnaddr(
     addr: &str,
     amount: Amount,
     comment: Option<&str>,
-) -> anyhow::Result<String> {
+) -> anyhow::Result<(Bolt11Invoice, [u8; 32])> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
     let w = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     let lightning_address = LightningAddress::from_str(addr)
         .with_context(|| format!("Invalid Lightning Address format: '{}'", addr))?;
 
-    let (bolt11, preimage) = w.send_lnaddr(&lightning_address, amount, comment).await?;
-
-    let json_result = serde_json::json!({
-        "type": "lnaddr",
-        "success": true,
-        "destination": bolt11.to_string(),
-        "amount_sat": amount.to_sat(),
-        "preimage": preimage.to_lower_hex_string(),
-    });
-
-    Ok(serde_json::to_string_pretty(&json_result)?)
+    w.send_lnaddr(&lightning_address, amount, comment).await
 }
 
 /// Offboard specific VTXOs. Returns JSON result.
 pub async fn offboard_specific(
     vtxo_ids: Vec<VtxoId>,
-    destination_address_str: Option<String>, // Optional destination address string
-    no_sync: bool,
-) -> anyhow::Result<String> {
+    address: Option<Address>, // Optional destination address string
+) -> anyhow::Result<Offboard> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
     let w = wallet_guard.as_mut().context("Wallet not loaded")?;
 
-    let net = w.properties()?.network;
-
-    // Validate optional address string
-    let destination_address_opt: Option<Address> = match destination_address_str {
-        Some(addr_str) => {
-            let addr_unchecked = Address::<address::NetworkUnchecked>::from_str(&addr_str)
-                .with_context(|| format!("Invalid destination address format: '{}'", addr_str))?;
-            let addr = addr_unchecked.require_network(net).with_context(|| {
-                format!(
-                    "Address '{}' is not valid for configured network {}",
-                    addr_str, net
-                )
-            })?;
-            Some(addr)
-        }
-        None => None,
-    };
-
-    if vtxo_ids.is_empty() {
-        bail!("At least one VTXO ID must be provided for specific offboarding");
-    }
-
-    if !no_sync {
-        info!("Syncing wallet before offboarding specific VTXOs...");
-        // Maintenance sync might be needed
-        if let Err(e) = w.maintenance().await {
-            warn!(
-                "Wallet maintenance sync error during offboard_specific: {}",
-                e
-            );
-        }
-    }
-
-    info!(
-        "Attempting to offboard {} specific VTXOs to {:?}",
-        vtxo_ids.len(),
-        destination_address_opt
-    );
-    let offboard_result = w.offboard_vtxos(vtxo_ids, destination_address_opt).await?;
-
-    let json_string = serde_json::to_string_pretty(&offboard_result)
-        .context("Failed to serialize offboard status to JSON")?;
-
-    Ok(json_string)
+    w.offboard_vtxos(vtxo_ids, address).await
 }
 
 /// Offboard all VTXOs. Returns JSON result.
 pub async fn offboard_all(
-    destination_address_str: Option<String>, // Optional destination address string
-    no_sync: bool,
-) -> anyhow::Result<String> {
+    address: Option<Address>, // Optional destination address string
+) -> anyhow::Result<Offboard> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
     let w = wallet_guard.as_mut().context("Wallet not loaded")?;
 
-    let net = w.properties()?.network;
-
-    // Validate optional address string
-    let destination_address_opt: Option<Address> = match destination_address_str {
-        Some(addr_str) => {
-            let addr_unchecked = Address::<address::NetworkUnchecked>::from_str(&addr_str)
-                .with_context(|| format!("Invalid destination address format: '{}'", addr_str))?;
-            let addr = addr_unchecked.require_network(net).with_context(|| {
-                format!(
-                    "Address '{}' is not valid for configured network {}",
-                    addr_str, net
-                )
-            })?;
-            Some(addr)
-        }
-        None => None,
-    };
-
-    if !no_sync {
-        info!("Syncing wallet before offboarding all VTXOs...");
-        // sync_ark might be needed to find all VTXOs correctly
-        if let Err(e) = w.sync_ark().await {
-            warn!("Wallet sync_ark error during offboard_all: {}", e);
-        }
-    }
-
-    info!(
-        "Attempting to offboard all VTXOs to {:?}",
-        destination_address_opt
-    );
-    let offboard_result = w.offboard_all(destination_address_opt).await?;
-
-    let json_string = serde_json::to_string_pretty(&offboard_result)
-        .context("Failed to serialize offboard status to JSON")?;
-
-    Ok(json_string)
+    w.offboard_all(address).await
 }
 
 /// Start the exit process for specific VTXOs. Returns simple success JSON.
@@ -866,6 +753,3 @@ pub async fn exit_progress_once() -> anyhow::Result<String> {
     .context("Failed to serialize exit status to JSON")?;
     Ok(json_string)
 }
-
-#[cfg(test)]
-mod tests;
