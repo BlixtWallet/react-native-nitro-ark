@@ -18,9 +18,11 @@
 #error NitroModules cannot be found! Are you sure you installed NitroModules properly?
 #endif
 
-
+// Forward declaration of `PaymentTypes` to properly resolve imports.
+namespace margelo::nitro::nitroark { enum class PaymentTypes; }
 
 #include <string>
+#include "PaymentTypes.hpp"
 
 namespace margelo::nitro::nitroark {
 
@@ -32,10 +34,11 @@ namespace margelo::nitro::nitroark {
     std::string lnurl     SWIFT_PRIVATE;
     std::string bolt11_invoice     SWIFT_PRIVATE;
     std::string preimage     SWIFT_PRIVATE;
+    PaymentTypes payment_type     SWIFT_PRIVATE;
 
   public:
     LnurlPaymentResult() = default;
-    explicit LnurlPaymentResult(std::string lnurl, std::string bolt11_invoice, std::string preimage): lnurl(lnurl), bolt11_invoice(bolt11_invoice), preimage(preimage) {}
+    explicit LnurlPaymentResult(std::string lnurl, std::string bolt11_invoice, std::string preimage, PaymentTypes payment_type): lnurl(lnurl), bolt11_invoice(bolt11_invoice), preimage(preimage), payment_type(payment_type) {}
   };
 
 } // namespace margelo::nitro::nitroark
@@ -52,7 +55,8 @@ namespace margelo::nitro {
       return LnurlPaymentResult(
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "lnurl")),
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "bolt11_invoice")),
-        JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "preimage"))
+        JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "preimage")),
+        JSIConverter<PaymentTypes>::fromJSI(runtime, obj.getProperty(runtime, "payment_type"))
       );
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const LnurlPaymentResult& arg) {
@@ -60,6 +64,7 @@ namespace margelo::nitro {
       obj.setProperty(runtime, "lnurl", JSIConverter<std::string>::toJSI(runtime, arg.lnurl));
       obj.setProperty(runtime, "bolt11_invoice", JSIConverter<std::string>::toJSI(runtime, arg.bolt11_invoice));
       obj.setProperty(runtime, "preimage", JSIConverter<std::string>::toJSI(runtime, arg.preimage));
+      obj.setProperty(runtime, "payment_type", JSIConverter<PaymentTypes>::toJSI(runtime, arg.payment_type));
       return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -70,6 +75,7 @@ namespace margelo::nitro {
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "lnurl"))) return false;
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "bolt11_invoice"))) return false;
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "preimage"))) return false;
+      if (!JSIConverter<PaymentTypes>::canConvert(runtime, obj.getProperty(runtime, "payment_type"))) return false;
       return true;
     }
   };

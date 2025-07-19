@@ -47,27 +47,33 @@ export interface BarkVtxo {
   anchor_point: string;
 }
 
+export type PaymentTypes = 'Bolt11' | 'Lnurl' | 'Arkoor' | 'Onchain';
+
 export interface ArkoorPaymentResult {
   amount_sat: number; // u64
   destination_pubkey: string;
   vtxos: BarkVtxo[];
+  payment_type: PaymentTypes; // 'Arkoor'
 }
 
 export interface Bolt11PaymentResult {
   bolt11_invoice: string;
   preimage: string;
+  payment_type: PaymentTypes; // 'Bolt11'
 }
 
 export interface LnurlPaymentResult {
   lnurl: string;
   bolt11_invoice: string;
   preimage: string;
+  payment_type: PaymentTypes; // 'Lnurl'
 }
 
 export interface OnchainPaymentResult {
   txid: string; // Transaction ID
   amount_sat: number; // Amount in satoshis
   destination_address: string; // Destination address
+  payment_type: PaymentTypes; // 'Onchain'
 }
 
 // --- Nitro Module Interface ---

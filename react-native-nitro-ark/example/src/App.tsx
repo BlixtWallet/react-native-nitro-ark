@@ -308,7 +308,7 @@ export default function ArkApp() {
   };
 
   const handleSendOnchain = (noSync: boolean) => {
-    if (!mnemonic || !destinationAddress || !amountSat) {
+    if (!destinationAddress || !amountSat) {
       setError('Mnemonic, Destination Address, and Amount are required.');
       return;
     }
@@ -355,7 +355,7 @@ export default function ArkApp() {
   };
 
   const handleBoardAmount = () => {
-    if (!mnemonic || !amountSat) {
+    if (!amountSat) {
       setError('Mnemonic and Amount are required.');
       return;
     }
@@ -376,7 +376,7 @@ export default function ArkApp() {
   };
 
   const handleSendArkoorPayment = () => {
-    if (!mnemonic || !destinationAddress || !amountSat) {
+    if (!destinationAddress || !amountSat) {
       setError('Mnemonic, Destination, and Amount are required.');
       return;
     }
@@ -391,7 +391,7 @@ export default function ArkApp() {
   };
 
   const handleSendBolt11Payment = () => {
-    if (!mnemonic || !destinationAddress) {
+    if (!destinationAddress) {
       setError('Mnemonic and Destination (invoice) are required.');
       return;
     }
@@ -407,7 +407,7 @@ export default function ArkApp() {
   };
 
   const handleSendLnaddr = () => {
-    if (!mnemonic || !destinationAddress || !amountSat) {
+    if (!destinationAddress || !amountSat) {
       setError('Mnemonic, Destination (lnaddr), and Amount are required.');
       return;
     }
@@ -422,7 +422,7 @@ export default function ArkApp() {
   };
 
   const handleSendRoundOnchain = (noSync: boolean) => {
-    if (!mnemonic || !destinationAddress || !amountSat) {
+    if (!destinationAddress || !amountSat) {
       setError('Mnemonic, Destination Address, and Amount are required.');
       return;
     }
@@ -437,7 +437,7 @@ export default function ArkApp() {
   };
 
   const handleOffboardSpecific = (noSync: boolean) => {
-    if (!mnemonic || !vtxoIdsInput || !optionalAddress) {
+    if (!vtxoIdsInput || !optionalAddress) {
       setError('Mnemonic, VTXO IDs, and Destination Address are required.');
       return;
     }
@@ -455,7 +455,7 @@ export default function ArkApp() {
   };
 
   const handleOffboardAll = (noSync: boolean) => {
-    if (!mnemonic || !optionalAddress) {
+    if (!optionalAddress) {
       setError('Mnemonic and Destination Address are required.');
       return;
     }
@@ -465,7 +465,7 @@ export default function ArkApp() {
   };
 
   const handleExitStartSpecific = () => {
-    if (!mnemonic || !vtxoIdsInput) {
+    if (!vtxoIdsInput) {
       setError('Mnemonic and VTXO IDs are required.');
       return;
     }

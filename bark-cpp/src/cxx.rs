@@ -1,5 +1,6 @@
 use crate::cxx::ffi::{
     ArkoorPaymentResult, BarkVtxo, Bolt11PaymentResult, LnurlPaymentResult, OnchainPaymentResult,
+    PaymentTypes,
 };
 use crate::{parse_send_destination, utils, SendDestination};
 use anyhow::{bail, Context, Ok};
@@ -18,20 +19,30 @@ pub(crate) mod ffi {
         anchor_point: String,
     }
 
+    pub enum PaymentTypes {
+        Bolt11,
+        Lnurl,
+        Arkoor,
+        Onchain,
+    }
+
     pub struct Bolt11PaymentResult {
         bolt11_invoice: String,
         preimage: String,
+        payment_type: PaymentTypes,
     }
 
     pub struct LnurlPaymentResult {
         lnurl: String,
         bolt11_invoice: String,
         preimage: String,
+        payment_type: PaymentTypes,
     }
 
     pub struct ArkoorPaymentResult {
         amount_sat: u64,
         destination_pubkey: String,
+        payment_type: PaymentTypes,
         vtxos: Vec<BarkVtxo>,
     }
 
@@ -39,6 +50,7 @@ pub(crate) mod ffi {
         txid: String,
         amount_sat: u64,
         destination_address: String,
+        payment_type: PaymentTypes,
     }
 
     pub struct CxxArkInfo {
@@ -298,6 +310,7 @@ pub(crate) fn send_onchain(
         txid: txid.to_string(),
         amount_sat,
         destination_address: destination_address.to_string(),
+        payment_type: PaymentTypes::Onchain,
     })
 }
 
@@ -361,6 +374,7 @@ pub(crate) fn send_arkoor_payment(
             .collect(),
         destination_pubkey: destination.to_string(),
         amount_sat,
+        payment_type: PaymentTypes::Arkoor,
     })
 }
 
@@ -388,6 +402,7 @@ pub(crate) fn send_bolt11_payment(
     Ok(Bolt11PaymentResult {
         preimage,
         bolt11_invoice: destination.to_string(),
+        payment_type: PaymentTypes::Bolt11,
     })
 }
 
@@ -409,6 +424,7 @@ pub(crate) fn send_lnaddr(
         preimage: send_lnaddr_result.1.to_lower_hex_string(),
         bolt11_invoice: send_lnaddr_result.0.to_string(),
         lnurl: addr.to_string(),
+        payment_type: PaymentTypes::Lnurl,
     })
 }
 
