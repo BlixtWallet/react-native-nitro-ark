@@ -356,4 +356,5 @@ export type {
   Bolt11PaymentResult,
   LnurlPaymentResult,
   OnchainPaymentResult,
+  PaymentTypes,
 } from './NitroArk.nitro';
