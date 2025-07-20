@@ -1,5 +1,6 @@
 use std::{path::Path, str::FromStr};
 
+use crate::LibsqlClient;
 use anyhow::{self, bail, Context};
 use bark::{
     ark::{
@@ -8,7 +9,7 @@ use bark::{
     },
     lightning_invoice::Bolt11Invoice,
     lnurllib::lightning_address::LightningAddress,
-    Config, SqliteClient, Wallet,
+    Config, Wallet,
 };
 
 use bitcoin_ext::FeeRateExt;
@@ -16,7 +17,7 @@ use logger::log::{debug, info};
 use tokio::fs;
 use tonic::transport::Uri;
 
-pub(crate) const DB_FILE: &str = "db.sqlite";
+pub(crate) const DB_FILE: &str = "db.libsql";
 
 impl ConfigOpts {
     pub fn merge_into(self, cfg: &mut Config) -> anyhow::Result<()> {
@@ -140,7 +141,7 @@ pub(crate) async fn try_create_wallet(
     debug!("try_create_wallet config {:?}", config);
 
     // open db
-    let db = SqliteClient::open(datadir.join(DB_FILE))?;
+    let db = LibsqlClient::open(datadir.join(DB_FILE))?;
 
     Wallet::create(&mnemonic, net, config, db, birthday)
         .await
