@@ -38,16 +38,14 @@ impl LibsqlClient {
 
         let db = std::thread::spawn(move || {
             TOKIO_RUNTIME.block_on(async {
-                let url = "libsql://nitro-ark-niteshbalusu11.aws-us-east-2.turso.io".to_string();
-                let token = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJleHAiOjE3NTM1NzkxMTUsImlhdCI6MTc1Mjk3NDMxNSwiaWQiOiIzYmE5NGIyZS00NjIxLTQzMjEtOTI2Yi0wNzM0MWI5MGVlYTkiLCJyaWQiOiI1OWE0MjI4Ny03NTBkLTRkODMtYTQ2Mi01MGEyOTg2OWJjZDUifQ.6Z7sFWUWg-PXyFe0YBIKlMUpMl2QhFWw29tnPMsmTvSa5-6Jk71jV0lmN_kuHTV0Qq-rfIfAumrdRNF6jZT8AA".to_string();
+                let url = "xxxx".to_string();
+                let token = "xxx".to_string();
                 let db: anyhow::Result<Database> = async {
                     let db = Builder::new_synced_database(db_path, url, token)
                         .build()
                         .await?;
                     let migrations = migrations::MigrationContext::new();
-                    migrations
-                        .do_all_migrations(&mut db.connect()?)
-                        .await?;
+                    migrations.do_all_migrations(&mut db.connect()?).await?;
                     Ok(db)
                 }
                 .await;
