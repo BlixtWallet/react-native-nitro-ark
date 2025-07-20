@@ -143,9 +143,14 @@ pub(crate) async fn try_create_wallet(
     // open db
     let db = LibsqlClient::open(datadir.join(DB_FILE))?;
 
+    debug!("successfully opened database, now creating wallet");
+
     Wallet::create(&mnemonic, net, config, db, birthday)
         .await
         .context("error creating wallet")?;
+
+    debug!("successfully created wallet");
+
     Ok(())
 }
 

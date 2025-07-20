@@ -4,13 +4,13 @@ use std::sync::Arc;
 use anyhow::Context;
 use bark::ark::bitcoin::secp256k1::PublicKey;
 use bark::ark::bitcoin::Txid;
-
+mod migrations;
 use bark::ark::{Vtxo, VtxoId};
 use bark::exit::vtxo::ExitEntry;
 use bark::movement::{Movement, MovementArgs};
 use bark::persist::{BarkPersister, OffchainBoard, OffchainPayment};
 use bark::vtxo_state::{VtxoState, VtxoStateKind, WalletVtxo};
-use bdk_wallet::bitcoin::Transaction;
+use bdk_wallet::bitcoin::{Amount, Transaction};
 use bdk_wallet::ChangeSet;
 use bitcoin_ext::{BlockHeight, BlockRef};
 
@@ -34,11 +34,29 @@ pub struct LibsqlClient {
 impl LibsqlClient {
     pub fn open(path: PathBuf) -> anyhow::Result<Self> {
         debug!("Opening database at {}", path.display());
-        let db_path = path.to_str().context("Invalid database path")?;
+        let db_path = path.to_str().context("Invalid database path")?.to_owned();
 
-        let db = TOKIO_RUNTIME
-            .block_on(async { Builder::new_local(db_path).build().await })
-            .context("Failed to build database")?;
+        let db = std::thread::spawn(move || {
+            TOKIO_RUNTIME.block_on(async {
+                let url = "libsql://nitro-ark-niteshbalusu11.aws-us-east-2.turso.io".to_string();
+                let token = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJleHAiOjE3NTM1NzkxMTUsImlhdCI6MTc1Mjk3NDMxNSwiaWQiOiIzYmE5NGIyZS00NjIxLTQzMjEtOTI2Yi0wNzM0MWI5MGVlYTkiLCJyaWQiOiI1OWE0MjI4Ny03NTBkLTRkODMtYTQ2Mi01MGEyOTg2OWJjZDUifQ.6Z7sFWUWg-PXyFe0YBIKlMUpMl2QhFWw29tnPMsmTvSa5-6Jk71jV0lmN_kuHTV0Qq-rfIfAumrdRNF6jZT8AA".to_string();
+                let db: anyhow::Result<Database> = async {
+                    let db = Builder::new_synced_database(db_path, url, token)
+                        .build()
+                        .await?;
+                    let migrations = migrations::MigrationContext::new();
+                    migrations
+                        .do_all_migrations(&mut db.connect()?)
+                        .await?;
+                    Ok(db)
+                }
+                .await;
+                db
+            })
+        })
+        .join()
+        .unwrap()
+        .context("Failed to build database")?;
 
         // TODO: Run migrations
 
@@ -52,14 +70,22 @@ impl LibsqlClient {
 
 impl BarkPersister for LibsqlClient {
     fn init_wallet(&self, config: &Config, properties: &WalletProperties) -> anyhow::Result<()> {
-        TOKIO_RUNTIME.block_on(async {
-            let conn = self.connect().await?;
-            let tx = conn.transaction().await?;
-            query::set_properties(&tx, properties).await?;
-            query::set_config(&tx, config).await?;
-            tx.commit().await?;
-            Ok(())
+        let self_clone = self.clone();
+        let config = config.clone();
+        let properties = properties.clone();
+        std::thread::spawn(move || {
+            TOKIO_RUNTIME.block_on(async move {
+                let conn = self_clone.connect().await?;
+                let tx = conn.transaction().await?;
+                query::set_properties(&tx, &properties).await?;
+                query::set_config(&tx, &config).await?;
+                tx.commit().await?;
+                self_clone.db.sync().await?;
+                Ok(())
+            })
         })
+        .join()
+        .unwrap()
     }
 
     fn initialize_bdk_wallet(&self) -> anyhow::Result<ChangeSet> {
@@ -76,109 +102,176 @@ impl BarkPersister for LibsqlClient {
     }
 
     fn write_config(&self, config: &Config) -> anyhow::Result<()> {
-        TOKIO_RUNTIME.block_on(async {
-            let conn = self.connect().await?;
-            let tx = conn.transaction().await?;
-            query::set_config(&tx, config).await?;
-            tx.commit().await?;
-            Ok(())
+        let self_clone = self.clone();
+        let config = config.clone();
+        std::thread::spawn(move || {
+            TOKIO_RUNTIME.block_on(async move {
+                let conn = self_clone.connect().await?;
+                let tx = conn.transaction().await?;
+                query::set_config(&tx, &config).await?;
+                tx.commit().await?;
+                self_clone.db.sync().await?;
+                Ok(())
+            })
         })
+        .join()
+        .unwrap()
     }
 
     fn read_properties(&self) -> anyhow::Result<Option<WalletProperties>> {
-        TOKIO_RUNTIME.block_on(async {
-            let conn = self.connect().await?;
-            query::fetch_properties(&conn).await
+        let self_clone = self.clone();
+        std::thread::spawn(move || {
+            TOKIO_RUNTIME.block_on(async move {
+                let conn = self_clone.connect().await?;
+                query::fetch_properties(&conn).await
+            })
         })
+        .join()
+        .unwrap()
     }
 
     fn read_config(&self) -> anyhow::Result<Option<Config>> {
-        TOKIO_RUNTIME.block_on(async {
-            let conn = self.connect().await?;
-            query::fetch_config(&conn).await
+        let self_clone = self.clone();
+        std::thread::spawn(move || {
+            TOKIO_RUNTIME.block_on(async move {
+                let conn = self_clone.connect().await?;
+                query::fetch_config(&conn).await
+            })
         })
+        .join()
+        .unwrap()
     }
 
     fn check_recipient_exists(&self, recipient: &str) -> anyhow::Result<bool> {
+        let self_clone = self.clone();
         let recipient = recipient.to_string();
-        TOKIO_RUNTIME.block_on(async {
-            let conn = self.connect().await?;
-            query::check_recipient_exists(&conn, &recipient).await
+        std::thread::spawn(move || {
+            TOKIO_RUNTIME.block_on(async move {
+                let conn = self_clone.connect().await?;
+                query::check_recipient_exists(&conn, &recipient).await
+            })
         })
+        .join()
+        .unwrap()
     }
 
     fn get_paginated_movements(&self, pagination: Pagination) -> anyhow::Result<Vec<Movement>> {
-        TOKIO_RUNTIME.block_on(async {
-            let conn = self.connect().await?;
-            query::get_paginated_movements(&conn, pagination).await
+        let self_clone = self.clone();
+        std::thread::spawn(move || {
+            TOKIO_RUNTIME.block_on(async move {
+                let conn = self_clone.connect().await?;
+                query::get_paginated_movements(&conn, pagination).await
+            })
         })
+        .join()
+        .unwrap()
     }
 
     fn register_movement(&self, movement: MovementArgs) -> anyhow::Result<()> {
-        TOKIO_RUNTIME.block_on(async {
-            let conn = self.connect().await?;
-            let tx = conn.transaction().await?;
+        let self_clone = self.clone();
+        let spends: Vec<Vtxo> = movement.spends.iter().map(|v| (*v).clone()).collect();
+        let receives: Vec<(Vtxo, VtxoState)> = movement
+            .receives
+            .iter()
+            .map(|(v, s)| ((*v).clone(), s.clone()))
+            .collect();
+        let recipients: Vec<(String, Amount)> = movement
+            .recipients
+            .iter()
+            .map(|(r, a)| (r.to_string(), *a))
+            .collect();
+        let fees = movement.fees;
 
-            let movement_id = query::create_movement(&tx, movement.fees).await?;
+        std::thread::spawn(move || {
+            TOKIO_RUNTIME.block_on(async move {
+                let conn = self_clone.connect().await?;
+                let tx = conn.transaction().await?;
 
-            for v in movement.spends {
-                query::update_vtxo_state_checked(
-                    &tx,
-                    v.id(),
-                    VtxoState::Spent,
-                    &[
-                        VtxoStateKind::Spendable,
-                        VtxoStateKind::PendingLightningSend,
-                    ],
-                )
-                .await?;
-                query::link_spent_vtxo_to_movement(&tx, v.id(), movement_id).await?;
-            }
+                let movement_id = query::create_movement(&tx, fees).await?;
 
-            for (v, s) in movement.receives {
-                query::store_vtxo_with_initial_state(&tx, v, movement_id, s).await?;
-            }
+                for v in &spends {
+                    query::update_vtxo_state_checked(
+                        &tx,
+                        v.id(),
+                        VtxoState::Spent,
+                        &[
+                            VtxoStateKind::Spendable,
+                            VtxoStateKind::PendingLightningSend,
+                        ],
+                    )
+                    .await?;
+                    query::link_spent_vtxo_to_movement(&tx, v.id(), movement_id).await?;
+                }
 
-            for (recipient, amount) in movement.recipients {
-                query::create_recipient(&tx, movement_id, recipient, *amount).await?;
-            }
-            tx.commit().await?;
-            Ok(())
+                for (v, s) in &receives {
+                    query::store_vtxo_with_initial_state(&tx, v, movement_id, s).await?;
+                }
+
+                for (recipient, amount) in &recipients {
+                    query::create_recipient(&tx, movement_id, recipient, *amount).await?;
+                }
+                tx.commit().await?;
+                self_clone.db.sync().await?;
+                Ok(())
+            })
         })
+        .join()
+        .unwrap()
     }
 
     fn get_wallet_vtxo(&self, id: VtxoId) -> anyhow::Result<Option<WalletVtxo>> {
-        TOKIO_RUNTIME.block_on(async {
-            let conn = self.connect().await?;
-            query::get_wallet_vtxo_by_id(&conn, id).await
+        let self_clone = self.clone();
+        std::thread::spawn(move || {
+            TOKIO_RUNTIME.block_on(async move {
+                let conn = self_clone.connect().await?;
+                query::get_wallet_vtxo_by_id(&conn, id).await
+            })
         })
+        .join()
+        .unwrap()
     }
 
     fn get_vtxos_by_state(&self, state: &[VtxoStateKind]) -> anyhow::Result<Vec<WalletVtxo>> {
+        let self_clone = self.clone();
         let state = state.to_vec();
-        TOKIO_RUNTIME.block_on(async {
-            let conn = self.connect().await?;
-            query::get_vtxos_by_state(&conn, &state).await
+        std::thread::spawn(move || {
+            TOKIO_RUNTIME.block_on(async move {
+                let conn = self_clone.connect().await?;
+                query::get_vtxos_by_state(&conn, &state).await
+            })
         })
+        .join()
+        .unwrap()
     }
 
     fn remove_vtxo(&self, id: VtxoId) -> anyhow::Result<Option<Vtxo>> {
-        TOKIO_RUNTIME.block_on(async {
-            let conn = self.connect().await?;
-            let tx = conn.transaction().await?;
-            let result = query::delete_vtxo(&tx, id).await;
-            tx.commit().await?;
-            result
+        let self_clone = self.clone();
+        std::thread::spawn(move || {
+            TOKIO_RUNTIME.block_on(async move {
+                let conn = self_clone.connect().await?;
+                let tx = conn.transaction().await?;
+                let result = query::delete_vtxo(&tx, id).await;
+                tx.commit().await?;
+                self_clone.db.sync().await?;
+                result
+            })
         })
+        .join()
+        .unwrap()
     }
 
     fn has_spent_vtxo(&self, id: VtxoId) -> anyhow::Result<bool> {
-        TOKIO_RUNTIME.block_on(async {
-            let conn = self.connect().await?;
-            let state: Option<VtxoState> = query::get_vtxo_state(&conn, id).await?;
-            let result = state.map(|s| s == VtxoState::Spent).unwrap_or(false);
-            Ok(result)
+        let self_clone = self.clone();
+        std::thread::spawn(move || {
+            TOKIO_RUNTIME.block_on(async move {
+                let conn = self_clone.connect().await?;
+                let state: Option<VtxoState> = query::get_vtxo_state(&conn, id).await?;
+                let result = state.map(|s| s == VtxoState::Spent).unwrap_or(false);
+                Ok(result)
+            })
         })
+        .join()
+        .unwrap()
     }
 
     fn store_vtxo_key(
@@ -187,41 +280,63 @@ impl BarkPersister for LibsqlClient {
         index: u32,
         public_key: PublicKey,
     ) -> anyhow::Result<()> {
-        TOKIO_RUNTIME.block_on(async {
-            let conn = self.connect().await?;
-            let tx = conn.transaction().await?;
-            query::store_vtxo_key(&tx, keychain, index, public_key).await?;
-            tx.commit().await?;
-            Ok(())
+        let self_clone = self.clone();
+        std::thread::spawn(move || {
+            TOKIO_RUNTIME.block_on(async move {
+                let conn = self_clone.connect().await?;
+                let tx = conn.transaction().await?;
+                query::store_vtxo_key(&tx, keychain, index, public_key).await?;
+                tx.commit().await?;
+                self_clone.db.sync().await?;
+                Ok(())
+            })
         })
+        .join()
+        .unwrap()
     }
 
     fn get_last_vtxo_key_index(&self, keychain: KeychainKind) -> anyhow::Result<Option<u32>> {
-        TOKIO_RUNTIME.block_on(async {
-            let conn = self.connect().await?;
-            query::get_last_vtxo_key_index(&conn, keychain).await
+        let self_clone = self.clone();
+        std::thread::spawn(move || {
+            TOKIO_RUNTIME.block_on(async move {
+                let conn = self_clone.connect().await?;
+                query::get_last_vtxo_key_index(&conn, keychain).await
+            })
         })
+        .join()
+        .unwrap()
     }
 
     fn get_vtxo_key(&self, vtxo: &Vtxo) -> anyhow::Result<(KeychainKind, u32)> {
+        let self_clone = self.clone();
         let vtxo = vtxo.clone();
-        TOKIO_RUNTIME.block_on(async {
-            let conn = self.connect().await?;
-            query::get_vtxo_key(&conn, &vtxo)
-                .await?
-                .context("vtxo not found in the db")
+        std::thread::spawn(move || {
+            TOKIO_RUNTIME.block_on(async move {
+                let conn = self_clone.connect().await?;
+                query::get_vtxo_key(&conn, &vtxo)
+                    .await?
+                    .context("vtxo not found in the db")
+            })
         })
+        .join()
+        .unwrap()
     }
 
     fn check_vtxo_key_exists(&self, public_key: &PublicKey) -> anyhow::Result<bool> {
+        let self_clone = self.clone();
         let public_key = *public_key;
-        TOKIO_RUNTIME.block_on(async {
-            let conn = self.connect().await?;
-            let tx = conn.transaction().await?;
-            let result = query::check_vtxo_key_exists(&tx, &public_key).await;
-            tx.commit().await?;
-            result
+        std::thread::spawn(move || {
+            TOKIO_RUNTIME.block_on(async move {
+                let conn = self_clone.connect().await?;
+                let tx = conn.transaction().await?;
+                let result = query::check_vtxo_key_exists(&tx, &public_key).await;
+                tx.commit().await?;
+                self_clone.db.sync().await?;
+                result
+            })
         })
+        .join()
+        .unwrap()
     }
 
     fn store_offchain_board(
@@ -230,55 +345,89 @@ impl BarkPersister for LibsqlClient {
         preimage: &[u8; 32],
         payment: OffchainPayment,
     ) -> anyhow::Result<()> {
+        let self_clone = self.clone();
         let payment_hash = *payment_hash;
         let preimage = *preimage;
         let payment = payment.clone();
-        TOKIO_RUNTIME.block_on(async {
-            let conn = self.connect().await?;
-            let tx = conn.transaction().await?;
-            query::store_offchain_board(&tx, &payment_hash, &preimage, payment).await?;
-            tx.commit().await?;
-            Ok(())
+        std::thread::spawn(move || {
+            TOKIO_RUNTIME.block_on(async move {
+                let conn = self_clone.connect().await?;
+                let tx = conn.transaction().await?;
+                query::store_offchain_board(&tx, &payment_hash, &preimage, payment).await?;
+                tx.commit().await?;
+                self_clone.db.sync().await?;
+                Ok(())
+            })
         })
+        .join()
+        .unwrap()
     }
 
     fn fetch_offchain_board_by_payment_hash(
         &self,
         payment_hash: &[u8; 32],
     ) -> anyhow::Result<Option<OffchainBoard>> {
+        let self_clone = self.clone();
         let payment_hash = *payment_hash;
-        TOKIO_RUNTIME.block_on(async {
-            let conn = self.connect().await?;
-            query::fetch_offchain_board_by_payment_hash(&conn, &payment_hash).await
+        std::thread::spawn(move || {
+            TOKIO_RUNTIME.block_on(async move {
+                let conn = self_clone.connect().await?;
+                query::fetch_offchain_board_by_payment_hash(&conn, &payment_hash).await
+            })
         })
+        .join()
+        .unwrap()
     }
 
     fn store_exit_vtxo_entry(&self, exit: &ExitEntry) -> anyhow::Result<()> {
-        TOKIO_RUNTIME.block_on(async {
-            let conn = self.connect().await?;
-            let tx = conn.transaction().await?;
-            query::store_exit_vtxo_entry(&tx, &exit).await?;
-            tx.commit().await?;
-            Ok(())
+        let self_clone = self.clone();
+
+        let exit_data = ExitEntry {
+            history: exit.history.clone(),
+            vtxo_id: exit.vtxo_id.clone(),
+            state: exit.state.clone(),
+        };
+        std::thread::spawn(move || {
+            TOKIO_RUNTIME.block_on(async move {
+                let conn = self_clone.connect().await?;
+                let tx = conn.transaction().await?;
+                query::store_exit_vtxo_entry(&tx, &exit_data).await?;
+                tx.commit().await?;
+                self_clone.db.sync().await?;
+                Ok(())
+            })
         })
+        .join()
+        .unwrap()
     }
 
     fn remove_exit_vtxo_entry(&self, id: &VtxoId) -> anyhow::Result<()> {
+        let self_clone = self.clone();
         let id = *id;
-        TOKIO_RUNTIME.block_on(async {
-            let conn = self.connect().await?;
-            let tx = conn.transaction().await?;
-            query::remove_exit_vtxo_entry(&tx, &id).await?;
-            tx.commit().await?;
-            Ok(())
+        std::thread::spawn(move || {
+            TOKIO_RUNTIME.block_on(async move {
+                let conn = self_clone.connect().await?;
+                let tx = conn.transaction().await?;
+                query::remove_exit_vtxo_entry(&tx, &id).await?;
+                tx.commit().await?;
+                self_clone.db.sync().await?;
+                Ok(())
+            })
         })
+        .join()
+        .unwrap()
     }
 
     fn get_exit_vtxo_entries(&self) -> anyhow::Result<Vec<ExitEntry>> {
-        TOKIO_RUNTIME.block_on(async {
-            let conn = self.connect().await?;
-            query::get_exit_vtxo_entries(&conn).await
+        let self_clone = self.clone();
+        std::thread::spawn(move || {
+            TOKIO_RUNTIME.block_on(async move {
+                let conn = self_clone.connect().await?;
+                query::get_exit_vtxo_entries(&conn).await
+            })
         })
+        .join()
+        .unwrap()
     }
 
     fn store_exit_child_tx(
@@ -287,41 +436,63 @@ impl BarkPersister for LibsqlClient {
         child_tx: &bdk_wallet::bitcoin::Transaction,
         block: std::option::Option<bitcoin_ext::BlockRef>,
     ) -> anyhow::Result<()> {
+        let self_clone = self.clone();
         let child_tx = child_tx.clone();
-        TOKIO_RUNTIME.block_on(async {
-            let conn = self.connect().await?;
-            let tx = conn.transaction().await?;
-            query::store_exit_child_tx(&tx, exit_txid, &child_tx, block).await?;
-            tx.commit().await?;
-            Ok(())
+        std::thread::spawn(move || {
+            TOKIO_RUNTIME.block_on(async move {
+                let conn = self_clone.connect().await?;
+                let tx = conn.transaction().await?;
+                query::store_exit_child_tx(&tx, exit_txid, &child_tx, block).await?;
+                tx.commit().await?;
+                self_clone.db.sync().await?;
+                Ok(())
+            })
         })
+        .join()
+        .unwrap()
     }
 
     fn get_exit_child_tx(
         &self,
         exit_txid: Txid,
     ) -> anyhow::Result<Option<(Transaction, Option<BlockRef>)>> {
-        TOKIO_RUNTIME.block_on(async {
-            let conn = self.connect().await?;
-            query::get_exit_child_tx(&conn, exit_txid).await
+        let self_clone = self.clone();
+        std::thread::spawn(move || {
+            TOKIO_RUNTIME.block_on(async move {
+                let conn = self_clone.connect().await?;
+                query::get_exit_child_tx(&conn, exit_txid).await
+            })
         })
+        .join()
+        .unwrap()
     }
 
     fn get_last_ark_sync_height(&self) -> anyhow::Result<BlockHeight> {
-        TOKIO_RUNTIME.block_on(async {
-            let conn = self.connect().await?;
-            query::get_last_ark_sync_height(&conn).await
+        let self_clone = self.clone();
+        std::thread::spawn(move || {
+            TOKIO_RUNTIME.block_on(async move {
+                let conn = self_clone.connect().await?;
+                query::get_last_ark_sync_height(&conn).await
+            })
         })
+        .join()
+        .unwrap()
     }
 
     fn store_last_ark_sync_height(&self, height: BlockHeight) -> anyhow::Result<()> {
-        TOKIO_RUNTIME.block_on(async {
-            let conn = self.connect().await?;
-            let tx = conn.transaction().await?;
-            query::store_last_ark_sync_height(&tx, height).await?;
-            tx.commit().await?;
-            Ok(())
+        let self_clone = self.clone();
+        std::thread::spawn(move || {
+            TOKIO_RUNTIME.block_on(async move {
+                let conn = self_clone.connect().await?;
+                let tx = conn.transaction().await?;
+                query::store_last_ark_sync_height(&tx, height).await?;
+                tx.commit().await?;
+                self_clone.db.sync().await?;
+                Ok(())
+            })
         })
+        .join()
+        .unwrap()
     }
 
     fn update_vtxo_state_checked(
@@ -330,16 +501,22 @@ impl BarkPersister for LibsqlClient {
         new_state: VtxoState,
         allowed_old_states: &[VtxoStateKind],
     ) -> anyhow::Result<WalletVtxo> {
+        let self_clone = self.clone();
         let allowed_old_states = allowed_old_states.to_vec();
-        TOKIO_RUNTIME.block_on(async {
-            let conn = self.connect().await?;
-            let tx = conn.transaction().await?;
-            let result =
-                query::update_vtxo_state_checked(&tx, vtxo_id, new_state, &allowed_old_states)
-                    .await;
-            tx.commit().await?;
-            result
+        std::thread::spawn(move || {
+            TOKIO_RUNTIME.block_on(async move {
+                let conn = self_clone.connect().await?;
+                let tx = conn.transaction().await?;
+                let result =
+                    query::update_vtxo_state_checked(&tx, vtxo_id, new_state, &allowed_old_states)
+                        .await;
+                tx.commit().await?;
+                self_clone.db.sync().await?;
+                result
+            })
         })
+        .join()
+        .unwrap()
     }
 
     fn get_all_spendable_vtxos(&self) -> anyhow::Result<Vec<Vtxo>> {
