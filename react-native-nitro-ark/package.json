@@ -7,6 +7,7 @@
   "module": "./lib/module/index.js",
   "exports": {
     ".": {
+      "source": "./src/index.tsx",
       "types": "./lib/typescript/src/index.d.ts",
       "default": "./lib/module/index.js"
     },
@@ -94,7 +95,7 @@
   "peerDependencies": {
     "react": "*",
     "react-native": "*",
-    "react-native-nitro-modules": "^0.26.2"
+    "react-native-nitro-modules": "^0.26.4"
   },
   "workspaces": [
     "example"
