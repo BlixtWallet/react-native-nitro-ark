@@ -410,7 +410,7 @@ pub async fn get_vtxos(no_sync: bool) -> anyhow::Result<String> {
     Ok(json_string)
 }
 
-/// Refresh VTXOs based on specified criteria. Returns JSON status.
+/// Refresh VTXOs based on specified criteria. Returns RoundId status.
 pub async fn refresh_vtxos(vtxos: Vec<Vtxo>) -> anyhow::Result<Option<RoundId>> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
     let w = wallet_guard.as_mut().context("Wallet not loaded")?;
@@ -468,7 +468,7 @@ pub async fn sync_rounds() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Send a payment based on destination type. Returns JSON status.
+/// Send a payment based on destination type. Returns Vec<Vtxos> status.
 pub async fn send_arkoor_payment(
     destination: &str,
     amount_sat: Amount,
@@ -587,7 +587,7 @@ pub async fn offboard_specific(
     w.offboard_vtxos(vtxo_ids, address).await
 }
 
-/// Offboard all VTXOs. Returns JSON result.
+/// Offboard all VTXOs. Returns RoundId result.
 pub async fn offboard_all(
     address: Option<Address>, // Optional destination address string
 ) -> anyhow::Result<Offboard> {
@@ -642,9 +642,8 @@ pub async fn start_exit_for_vtxos(vtxo_ids: Vec<VtxoId>) -> anyhow::Result<Strin
     Ok(json_string)
 }
 
-/// Start the exit process for the entire wallet. Returns simple success JSON.
+/// Start the exit process for the entire wallet.
 /// This function starts the exit process for all vtxos in the wallet.
-/// It returns a JSON object indicating success.
 pub async fn start_exit_for_entire_wallet() -> anyhow::Result<()> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
     let w = wallet_guard.as_mut().context("Wallet not loaded")?;
