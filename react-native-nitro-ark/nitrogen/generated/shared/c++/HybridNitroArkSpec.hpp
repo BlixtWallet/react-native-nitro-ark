@@ -104,7 +104,7 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<std::string>> offboardSpecific(const std::vector<std::string>& vtxoIds, const std::string& destinationAddress) = 0;
       virtual std::shared_ptr<Promise<std::string>> offboardAll(const std::string& destinationAddress) = 0;
       virtual std::shared_ptr<Promise<std::string>> exitStartSpecific(const std::vector<std::string>& vtxoIds) = 0;
-      virtual std::shared_ptr<Promise<std::string>> exitStartAll() = 0;
+      virtual std::shared_ptr<Promise<void>> startExitForEntireWallet() = 0;
       virtual std::shared_ptr<Promise<std::string>> exitProgressOnce() = 0;
 
     protected:

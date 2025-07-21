@@ -1009,7 +1009,7 @@ void load_wallet(::rust::Str datadir, ::bark_cxx::CreateOpts opts);
 
 ::rust::String start_exit_for_vtxos(::rust::Vec<::rust::String> vtxo_ids);
 
-::rust::String start_exit_for_entire_wallet();
+void start_exit_for_entire_wallet();
 
 ::rust::String exit_progress_once();
 } // namespace bark_cxx

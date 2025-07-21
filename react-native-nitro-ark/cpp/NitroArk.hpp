@@ -537,14 +537,13 @@ namespace margelo::nitro::nitroark
             } });
         }
 
-        std::shared_ptr<Promise<std::string>>
-        exitStartAll() override
+        std::shared_ptr<Promise<void>>
+        startExitForEntireWallet() override
         {
-            return Promise<std::string>::async([]()
-                                               {
+            return Promise<void>::async([]()
+                                        {
             try {
-                rust::String status_rs = bark_cxx::start_exit_for_entire_wallet();
-                return std::string(status_rs.data(), status_rs.length());
+                bark_cxx::start_exit_for_entire_wallet();
             } catch (const rust::Error &e) {
                 throw std::runtime_error(e.what());
             } });

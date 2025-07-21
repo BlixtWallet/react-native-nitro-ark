@@ -14,8 +14,8 @@
     "@dr.pogodin/react-native-fs": "^2.32.1",
     "@react-native-async-storage/async-storage": "^2.1.2",
     "react": "19.0.0",
-    "react-native": "0.79.3",
-    "react-native-nitro-modules": "^0.26.2"
+    "react-native": "0.79.5",
+    "react-native-nitro-modules": "^0.26.4"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
@@ -24,11 +24,11 @@
     "@react-native-community/cli": "18.0.0",
     "@react-native-community/cli-platform-android": "18.0.0",
     "@react-native-community/cli-platform-ios": "18.0.0",
-    "@react-native/babel-preset": "0.79.3",
-    "@react-native/metro-config": "0.79.3",
-    "@react-native/typescript-config": "0.79.3",
+    "@react-native/babel-preset": "0.79.5",
+    "@react-native/metro-config": "0.79.5",
+    "@react-native/typescript-config": "0.79.5",
     "@types/react": "^19.0.10",
-    "react-native-builder-bob": "^0.40.12"
+    "react-native-builder-bob": "^0.40.13"
   },
   "engines": {
     "node": ">=18"

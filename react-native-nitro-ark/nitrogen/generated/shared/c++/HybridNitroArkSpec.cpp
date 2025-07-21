@@ -44,7 +44,7 @@ namespace margelo::nitro::nitroark {
       prototype.registerHybridMethod("offboardSpecific", &HybridNitroArkSpec::offboardSpecific);
       prototype.registerHybridMethod("offboardAll", &HybridNitroArkSpec::offboardAll);
       prototype.registerHybridMethod("exitStartSpecific", &HybridNitroArkSpec::exitStartSpecific);
-      prototype.registerHybridMethod("exitStartAll", &HybridNitroArkSpec::exitStartAll);
+      prototype.registerHybridMethod("startExitForEntireWallet", &HybridNitroArkSpec::startExitForEntireWallet);
       prototype.registerHybridMethod("exitProgressOnce", &HybridNitroArkSpec::exitProgressOnce);
     });
   }

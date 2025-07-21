@@ -331,10 +331,10 @@ export function startExitForVtxos(vtxoIds: string[]): Promise<string> {
 
 /**
  * Starts the exit process for all VTXOs in the wallet.
- * @returns A promise resolving to a JSON status string.
+ * @returns A promise that resolves or rejects.
  */
-export function startExitForEntireWallet(): Promise<string> {
-  return NitroArkHybridObject.exitStartAll();
+export function startExitForEntireWallet(): Promise<void> {
+  return NitroArkHybridObject.startExitForEntireWallet();
 }
 
 /**

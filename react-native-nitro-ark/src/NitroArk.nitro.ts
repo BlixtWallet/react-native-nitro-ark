@@ -143,6 +143,6 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   ): Promise<string>; // Returns JSON result
   offboardAll(destinationAddress: string): Promise<string>; // Returns JSON result
   exitStartSpecific(vtxoIds: string[]): Promise<string>;
-  exitStartAll(): Promise<string>;
+  startExitForEntireWallet(): Promise<void>;
   exitProgressOnce(): Promise<string>;
 }
