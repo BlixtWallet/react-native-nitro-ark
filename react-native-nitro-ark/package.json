@@ -1,6 +1,6 @@
 {
   "name": "react-native-nitro-ark",
-  "version": "0.0.37",
+  "version": "0.0.38",
   "description": "Pure C++ Nitro Modules for Ark client",
   "source": "./src/index.tsx",
   "main": "./lib/module/index.js",
@@ -46,18 +46,23 @@
   "keywords": [
     "react-native",
     "ios",
-    "android"
+    "android",
+    "nitro-modules",
+    "ark",
+    "bitcoin",
+    "arkoor",
+    "bitcoin-layer2"
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/niteshbalusu11/react-native-nitro-ark.git"
+    "url": "git+https://github.com/BlixtWallet/react-native-nitro-ark.git"
   },
   "author": "Nitesh Balusu <niteshbalusu@icloud.com> (https://github.com/niteshbalusu11)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/niteshbalusu11/react-native-nitro-ark/issues"
+    "url": "https://github.com/BlixtWallet/react-native-nitro-ark/issues"
   },
-  "homepage": "https://github.com/niteshbalusu11/react-native-nitro-ark#readme",
+  "homepage": "https://github.com/BlixtWallet/react-native-nitro-ark#readme",
   "publishConfig": {
     "registry": "https://registry.npmjs.org/"
   },
