@@ -132,7 +132,7 @@ pub(crate) mod ffi {
         fn offboard_specific(vtxo_ids: Vec<String>, destination_address: &str) -> Result<String>;
         fn offboard_all(destination_address: &str) -> Result<String>;
         fn start_exit_for_vtxos(vtxo_ids: Vec<String>) -> Result<String>;
-        fn start_exit_for_entire_wallet() -> Result<String>;
+        fn start_exit_for_entire_wallet() -> Result<()>;
         fn exit_progress_once() -> Result<String>;
     }
 }
@@ -527,7 +527,7 @@ pub(crate) fn start_exit_for_vtxos(vtxo_ids: Vec<String>) -> anyhow::Result<Stri
     crate::TOKIO_RUNTIME.block_on(crate::start_exit_for_vtxos(ids))
 }
 
-pub(crate) fn start_exit_for_entire_wallet() -> anyhow::Result<String> {
+pub(crate) fn start_exit_for_entire_wallet() -> anyhow::Result<()> {
     crate::TOKIO_RUNTIME.block_on(crate::start_exit_for_entire_wallet())
 }
 

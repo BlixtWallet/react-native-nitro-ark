@@ -645,7 +645,7 @@ pub async fn start_exit_for_vtxos(vtxo_ids: Vec<VtxoId>) -> anyhow::Result<Strin
 /// Start the exit process for the entire wallet. Returns simple success JSON.
 /// This function starts the exit process for all vtxos in the wallet.
 /// It returns a JSON object indicating success.
-pub async fn start_exit_for_entire_wallet() -> anyhow::Result<String> {
+pub async fn start_exit_for_entire_wallet() -> anyhow::Result<()> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
     let w = wallet_guard.as_mut().context("Wallet not loaded")?;
 
@@ -662,11 +662,7 @@ pub async fn start_exit_for_entire_wallet() -> anyhow::Result<String> {
     }
 
     info!("Starting exit process for entire wallet...");
-    w.exit.start_exit_for_entire_wallet(&mut w.onchain).await?;
-
-    let success_json = serde_json::json!({ "success": true, "type": "start_all" });
-    let json_string = serde_json::to_string_pretty(&success_json)?;
-    Ok(json_string)
+    w.exit.start_exit_for_entire_wallet(&mut w.onchain).await
 }
 
 /// This function processes the exit queue for the wallet.

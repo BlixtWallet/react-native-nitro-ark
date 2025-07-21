@@ -25,5 +25,6 @@
         "__node_handle": "cpp",
         "optional": "cpp",
         "regex": "cpp",
+        "stdexcept": "cpp"
     }
 }
