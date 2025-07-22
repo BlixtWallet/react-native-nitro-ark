@@ -10,7 +10,7 @@ env:
 
 jobs:
   rust_typescript_checks_tests:
-    runs-on: self-hosted
+    runs-on: ubuntu-self-hosted
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
