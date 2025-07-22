@@ -54,7 +54,7 @@ jobs:
         run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn example build:android"
 
   build_ios_binaries_and_example:
-    runs-on: self-hosted
+    runs-on: macOS
     needs: rust_typescript_checks_tests
     steps:
       - name: Checkout code

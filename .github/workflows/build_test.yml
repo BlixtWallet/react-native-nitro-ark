@@ -83,7 +83,7 @@ jobs:
         run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn example build:android"
 
   ios_build:
-    runs-on: self-hosted
+    runs-on: macOS
     needs:
       - check_if_release_commit
       - rust_typescript_checks_and_tests
