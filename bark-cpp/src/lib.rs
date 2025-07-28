@@ -22,13 +22,15 @@ use bark::lnurllib::lightning_address::LightningAddress;
 use bark::vtxo_selection::VtxoFilter;
 use bark::Config;
 use bark::Offboard;
-use bark::SqliteClient;
 use bark::UtxoInfo;
 use bark::Wallet;
 use tokio::runtime::Runtime;
 use tokio::sync::Mutex;
 mod cxx;
+mod libsql;
 mod utils;
+
+pub use libsql::LibsqlClient;
 
 use bip39::Mnemonic;
 use logger::log::{debug, info, warn};
@@ -171,7 +173,7 @@ pub async fn offchain_balance() -> anyhow::Result<Amount> {
 pub async fn open_wallet(datadir: &Path, mnemonic: Mnemonic) -> anyhow::Result<Wallet> {
     debug!("Opening bark wallet in {}", datadir.display());
 
-    let db = SqliteClient::open(datadir.join(DB_FILE))?;
+    let db = LibsqlClient::open(datadir.join(DB_FILE))?;
 
     Wallet::open(&mnemonic, db).await
 }
