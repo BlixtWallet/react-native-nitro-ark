@@ -1,11 +1,12 @@
 use crate::cxx::ffi::{
-    ArkoorPaymentResult, BarkVtxo, Bolt11PaymentResult, LnurlPaymentResult, OffchainBalance,
-    OnChainBalance, OnchainPaymentResult, PaymentTypes,
+    ArkoorPaymentResult, BarkVtxo, Bolt11PaymentResult, LnurlPaymentResult, OnchainPaymentResult,
+    PaymentTypes,
 };
 use crate::{parse_send_destination, utils, SendDestination, TOKIO_RUNTIME};
 use anyhow::{bail, Context, Ok};
 use bark::ark::bitcoin::hex::DisplayHex;
 use bark::ark::bitcoin::{address, Address};
+use bdk_wallet::bitcoin;
 use logger::log::{self, info};
 use std::path::Path;
 use std::str::FromStr;
@@ -131,31 +132,28 @@ pub(crate) mod ffi {
         unsafe fn get_vtxo_pubkey(index: *const u32) -> Result<String>;
         fn get_vtxos(no_sync: bool) -> Result<String>;
         fn bolt11_invoice(amount_msat: u64) -> Result<String>;
-        fn claim_bolt11_payment(bolt11: &str) -> Result<()>;
         fn maintenance() -> Result<()>;
         fn sync() -> Result<()>;
-        fn sync_ark() -> Result<()>;
         fn sync_rounds() -> Result<()>;
         fn load_wallet(datadir: &str, opts: CreateOpts) -> Result<()>;
         fn send_onchain(destination: &str, amount_sat: u64) -> Result<OnchainPaymentResult>;
-        fn drain_onchain(destination: &str, no_sync: bool) -> Result<String>;
-        fn send_many_onchain(outputs: Vec<SendManyOutput>, no_sync: bool) -> Result<String>;
+        fn drain(destination: &str, no_sync: bool) -> Result<String>;
+        fn send_many(outputs: Vec<SendManyOutput>, no_sync: bool) -> Result<String>;
         fn board_amount(amount_sat: u64) -> Result<String>;
         fn board_all() -> Result<String>;
         fn send_arkoor_payment(destination: &str, amount_sat: u64) -> Result<ArkoorPaymentResult>;
-        unsafe fn send_bolt11_payment(
+        unsafe fn send_lightning_payment(
             destination: &str,
             amount_sat: *const u64,
         ) -> Result<Bolt11PaymentResult>;
         fn send_lnaddr(addr: &str, amount_sat: u64, comment: &str) -> Result<LnurlPaymentResult>;
-        fn send_round_onchain(destination: &str, amount_sat: u64, no_sync: bool) -> Result<String>;
+        fn send_round_onchain_payment(destination: &str, amount_sat: u64) -> Result<String>;
         fn offboard_specific(vtxo_ids: Vec<String>, destination_address: &str) -> Result<String>;
         fn offboard_all(destination_address: &str) -> Result<String>;
         fn derive_store_next_keypair() -> Result<String>;
         fn peak_keypair(index: u32) -> Result<String>;
         fn finish_lightning_receive(bolt11: String) -> Result<()>;
         fn refresh_vtxos(vtxos_json: String) -> Result<String>;
-        fn send_lightning_payment(bolt11: String, amount_sat: u64) -> Result<String>;
         fn sync_exits() -> Result<()>;
         fn list_unspent() -> Result<String>;
     }
@@ -254,20 +252,12 @@ pub(crate) fn bolt11_invoice(amount_msat: u64) -> anyhow::Result<String> {
     crate::TOKIO_RUNTIME.block_on(crate::bolt11_invoice(amount_msat))
 }
 
-pub(crate) fn claim_bolt11_payment(bolt11: &str) -> anyhow::Result<()> {
-    crate::TOKIO_RUNTIME.block_on(crate::claim_bolt11_payment(bolt11.to_string()))
-}
-
 pub(crate) fn maintenance() -> anyhow::Result<()> {
     crate::TOKIO_RUNTIME.block_on(crate::maintenance())
 }
 
 pub(crate) fn sync() -> anyhow::Result<()> {
     crate::TOKIO_RUNTIME.block_on(crate::sync())
-}
-
-pub(crate) fn sync_ark() -> anyhow::Result<()> {
-    crate::TOKIO_RUNTIME.block_on(crate::sync_ark())
 }
 
 pub(crate) fn sync_rounds() -> anyhow::Result<()> {
@@ -337,7 +327,7 @@ pub(crate) fn send_onchain(
     );
 
     let txid =
-        crate::TOKIO_RUNTIME.block_on(crate::send_onchain(destination_address.clone(), amount))?;
+        crate::TOKIO_RUNTIME.block_on(crate::onchain::send(destination_address.clone(), amount))?;
 
     Ok(OnchainPaymentResult {
         txid: txid.to_string(),
@@ -347,19 +337,19 @@ pub(crate) fn send_onchain(
     })
 }
 
-pub(crate) fn drain_onchain(destination: &str, no_sync: bool) -> anyhow::Result<String> {
-    let txid = crate::TOKIO_RUNTIME.block_on(crate::drain_onchain(destination, no_sync))?;
+pub(crate) fn drain(destination: &str, no_sync: bool) -> anyhow::Result<String> {
+    let txid = crate::TOKIO_RUNTIME.block_on(crate::onchain::drain(destination, no_sync))?;
     Ok(txid.to_string())
 }
 
-pub(crate) fn send_many_onchain(
+pub(crate) fn send_many(
     outputs: Vec<ffi::SendManyOutput>,
     no_sync: bool,
 ) -> anyhow::Result<String> {
     let txid = crate::TOKIO_RUNTIME.block_on(async {
         let mut rust_outputs = Vec::new();
         let wallet_guard = crate::GLOBAL_WALLET.lock().await;
-        let w = wallet_guard.as_ref().unwrap();
+        let (w, _) = wallet_guard.as_ref().unwrap();
         let net = w.properties().unwrap().network;
         for output in outputs {
             let address = Address::from_str(&output.destination)
@@ -369,7 +359,7 @@ pub(crate) fn send_many_onchain(
             let amount = bark::ark::bitcoin::Amount::from_sat(output.amount_sat);
             rust_outputs.push((address, amount));
         }
-        crate::send_many_onchain(rust_outputs, no_sync).await
+        crate::onchain::send_many(rust_outputs, no_sync).await
     })?;
     Ok(txid.to_string())
 }
@@ -388,8 +378,9 @@ pub(crate) fn send_arkoor_payment(
     amount_sat: u64,
 ) -> anyhow::Result<ArkoorPaymentResult> {
     let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
-    let oor_result =
-        crate::TOKIO_RUNTIME.block_on(crate::send_arkoor_payment(destination, amount))?;
+    let dest = bark::ark::Address::from_str(destination)
+        .with_context(|| format!("Invalid destination address format: '{}'", destination))?;
+    let oor_result = crate::TOKIO_RUNTIME.block_on(crate::send_arkoor_payment(dest, amount))?;
 
     Ok(ArkoorPaymentResult {
         vtxos: oor_result
@@ -411,7 +402,7 @@ pub(crate) fn send_arkoor_payment(
     })
 }
 
-pub(crate) fn send_bolt11_payment(
+pub(crate) fn send_lightning_payment(
     destination: &str,
     amount_sat: *const u64,
 ) -> anyhow::Result<Bolt11PaymentResult> {
@@ -425,11 +416,11 @@ pub(crate) fn send_bolt11_payment(
     // --- Logic per destination type ---
     let invoice = match parsed_destination {
         SendDestination::Bolt11(invoice) => invoice,
-        _ => bail!("Invalid destination type for send_bolt11_payment"),
+        _ => bail!("Invalid destination type for send_lightning_payment"),
     };
 
     let preimage = crate::TOKIO_RUNTIME
-        .block_on(crate::send_bolt11_payment(invoice, amount_opt))?
+        .block_on(crate::send_lightning_payment(invoice, amount_opt))?
         .to_lower_hex_string();
 
     Ok(Bolt11PaymentResult {
@@ -461,13 +452,32 @@ pub(crate) fn send_lnaddr(
     })
 }
 
-pub(crate) fn send_round_onchain(
+pub(crate) fn send_round_onchain_payment(
     destination: &str,
     amount_sat: u64,
-    no_sync: bool,
 ) -> anyhow::Result<String> {
     let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
-    crate::TOKIO_RUNTIME.block_on(crate::send_round_onchain(destination, amount, no_sync))
+    let address_unchecked = bitcoin::Address::from_str(destination)
+        .with_context(|| format!("Invalid destination address format: '{}'", destination))?;
+
+    let ark_info = crate::TOKIO_RUNTIME.block_on(crate::get_ark_info())?;
+
+    // Now require the network to match the wallet's network
+    let destination_address = address_unchecked
+        .require_network(ark_info.network)
+        .with_context(|| {
+            format!(
+                "address '{}' is not valid for configured network {}",
+                destination, ark_info.network
+            )
+        })?;
+
+    let result = crate::TOKIO_RUNTIME.block_on(crate::send_round_onchain_payment(
+        destination_address,
+        amount,
+    ))?;
+
+    Ok(result.round.to_string())
 }
 
 pub(crate) fn offboard_specific(
@@ -562,17 +572,6 @@ pub(crate) fn refresh_vtxos(vtxos_json: String) -> anyhow::Result<String> {
     let vtxos: Vec<bark::ark::Vtxo> = serde_json::from_str(&vtxos_json)?;
     let result = TOKIO_RUNTIME.block_on(crate::refresh_vtxos(vtxos))?;
     serde_json::to_string(&result).map_err(Into::into)
-}
-
-pub(crate) fn send_lightning_payment(bolt11: String, amount_sat: u64) -> anyhow::Result<String> {
-    let invoice = bolt11.parse()?;
-    let amount = if amount_sat > 0 {
-        Some(bark::ark::bitcoin::Amount::from_sat(amount_sat))
-    } else {
-        None
-    };
-    let preimage = TOKIO_RUNTIME.block_on(crate::send_lightning_payment(invoice, amount))?;
-    Ok(preimage.to_lower_hex_string())
 }
 
 pub(crate) fn sync_exits() -> anyhow::Result<()> {
