@@ -1,4 +1,4 @@
-use std::{path::Path, str::FromStr};
+use std::{path::Path, str::FromStr, sync::Arc};
 
 use anyhow::{self, bail, Context};
 use bark::{
@@ -8,7 +8,8 @@ use bark::{
     },
     lightning_invoice::Bolt11Invoice,
     lnurllib::lightning_address::LightningAddress,
-    Config, SqliteClient, Wallet,
+    onchain::OnchainWallet,
+    Config, SqliteClient, Wallet as BarkWallet,
 };
 
 use bitcoin_ext::FeeRateExt;
@@ -126,8 +127,7 @@ pub(crate) async fn try_create_wallet(
     datadir: &Path,
     net: Network,
     config: Config,
-    mnemonic: bip39::Mnemonic,
-    birthday: Option<u32>,
+    mnemonic: Option<bip39::Mnemonic>,
 ) -> anyhow::Result<()> {
     info!("Creating new bark Wallet at {}", datadir.display());
 
@@ -140,11 +140,18 @@ pub(crate) async fn try_create_wallet(
     debug!("try_create_wallet config {:?}", config);
 
     // open db
-    let db = SqliteClient::open(datadir.join(DB_FILE))?;
+    // generate seed
+    let mnemonic = mnemonic.unwrap_or_else(|| bip39::Mnemonic::generate(12).expect("12 is valid"));
+    let seed = mnemonic.to_seed("");
 
-    Wallet::create(&mnemonic, net, config, db, birthday)
+    // open db
+    let db = Arc::new(SqliteClient::open(datadir.join(DB_FILE))?);
+
+    let bdk_wallet = OnchainWallet::load_or_create(net, seed, db.clone())?;
+    BarkWallet::create_with_onchain(&mnemonic, net, config, db, &bdk_wallet)
         .await
         .context("error creating wallet")?;
+
     Ok(())
 }
 

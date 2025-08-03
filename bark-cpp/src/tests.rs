@@ -138,7 +138,7 @@ fn test_wallet_management_ffi() {
 #[ignore = "requires live regtest backend"]
 fn test_get_onchain_address_ffi() {
     let _fixture = WalletTestFixture::new();
-    let address_result = cxx::get_onchain_address();
+    let address_result = cxx::onchain_address();
     assert!(address_result.is_ok());
     let address = address_result.unwrap();
     assert!(
@@ -154,7 +154,7 @@ fn test_get_onchain_balance_ffi() {
     // Use no_sync = true to avoid network calls in a unit test context.
     let balance_result = cxx::onchain_balance();
     assert!(balance_result.is_ok());
-    let balance = balance_result.unwrap();
+    let balance = balance_result.unwrap().confirmed;
     assert_eq!(balance, 0);
 }
 
@@ -165,13 +165,12 @@ fn test_get_vtxo_pubkey_ffi() {
     // Request the next available pubkey
     let _fixture = WalletTestFixture::new();
     // On a fresh wallet, these should return empty JSON arrays.
-    let onchain_utxos_res = cxx::get_onchain_utxos(true);
+    let onchain_utxos_res = cxx::onchain_utxos();
     assert!(onchain_utxos_res.is_ok());
     assert_eq!(onchain_utxos_res.unwrap(), "[]");
 
-    let vtxos_res = cxx::get_vtxos(true);
+    let vtxos_res = cxx::derive_store_next_keypair();
     assert!(vtxos_res.is_ok());
-    assert!(vtxos_res.unwrap().contains("[]"));
 }
 
 #[test]
@@ -200,7 +199,7 @@ fn test_onchain_and_boarding_flow_ffi() {
     let _fixture = WalletTestFixture::new();
     // This is an integration test and requires a funded regtest node.
     // 1. Get address
-    let _address = cxx::get_onchain_address().unwrap();
+    let _address = cxx::onchain_address().unwrap();
 
     // (Manual step: fund this address from bitcoind-cli)
     // e.g., `bitcoin-cli -regtest sendtoaddress <address> 1`
@@ -208,7 +207,7 @@ fn test_onchain_and_boarding_flow_ffi() {
     // e.g., `bitcoin-cli -regtest -generate 1`
 
     // 2. Check balance (with sync)
-    let balance = cxx::onchain_balance().unwrap();
+    let balance = cxx::onchain_balance().unwrap().confirmed;
     assert!(
         balance > 0,
         "Wallet should have onchain funds after funding and syncing"
@@ -222,7 +221,7 @@ fn test_onchain_and_boarding_flow_ffi() {
     // (Manual step: mine the board transaction)
 
     // 4. Check balance again
-    let final_balance = cxx::onchain_balance().unwrap();
+    let final_balance = cxx::onchain_balance().unwrap().confirmed;
     assert!(
         final_balance >= board_amount_sat,
         "On chain balance should increase after boarding"
@@ -230,30 +229,13 @@ fn test_onchain_and_boarding_flow_ffi() {
 }
 
 #[test]
-#[ignore = "requires live regtest backend"]
-fn test_exit_functions_ffi() {
-    let _fixture = WalletTestFixture::new();
-    // On a fresh wallet, these calls should not find any VTXOs to exit.
-    let exit_all_res = cxx::start_exit_for_entire_wallet();
-    assert!(exit_all_res.is_ok());
-
-    let exit_specific_res = cxx::start_exit_for_vtxos(vec![]);
-    assert!(exit_specific_res.is_ok());
-
-    let progress_res = cxx::exit_progress_once();
-    assert!(progress_res.is_ok());
-    let progress_json: serde_json::Value = serde_json::from_str(&progress_res.unwrap()).unwrap();
-    assert_eq!(progress_json["done"], true);
-}
-
-#[test]
 #[ignore = "requires live regtest backend and a funded wallet"]
 fn test_send_onchain_ffi() {
     let _fixture = WalletTestFixture::new();
-    let address = cxx::get_onchain_address().unwrap();
+    let address = cxx::onchain_address().unwrap();
 
     // This test requires the address to be funded manually.
-    let send_res = cxx::send_onchain(&address, 5000);
+    let send_res = cxx::onchain_send(&address, 5000, std::ptr::null());
     assert!(
         send_res.is_ok(),
         "send_onchain failed: {:?}",
@@ -267,10 +249,10 @@ fn test_send_onchain_ffi() {
 #[ignore = "requires live regtest backend and a funded wallet"]
 fn test_drain_onchain_ffi() {
     let _fixture = WalletTestFixture::new();
-    let address = cxx::get_onchain_address().unwrap();
+    let address = cxx::onchain_address().unwrap();
 
     // This test requires the address to be funded manually.
-    let drain_res = cxx::drain_onchain(&address, false);
+    let drain_res = cxx::onchain_drain(&address, std::ptr::null());
     assert!(
         drain_res.is_ok(),
         "drain_onchain failed: {:?}",
@@ -284,8 +266,8 @@ fn test_drain_onchain_ffi() {
 #[ignore = "requires live regtest backend and a funded wallet"]
 fn test_send_many_onchain_ffi() {
     let _fixture = WalletTestFixture::new();
-    let address1 = cxx::get_onchain_address().unwrap();
-    let address2 = cxx::get_onchain_address().unwrap();
+    let address1 = cxx::onchain_address().unwrap();
+    let address2 = cxx::onchain_address().unwrap();
 
     let outputs = vec![
         ffi::SendManyOutput {
@@ -298,10 +280,10 @@ fn test_send_many_onchain_ffi() {
         },
     ];
 
-    let send_many_res = cxx::send_many_onchain(outputs, false);
+    let send_many_res = cxx::onchain_send_many(outputs, std::ptr::null());
     assert!(
         send_many_res.is_ok(),
-        "send_many_onchain failed: {:?}",
+        "send_many failed: {:?}",
         send_many_res.err()
     );
     let txid = send_many_res.unwrap();
@@ -327,7 +309,7 @@ fn test_send_arkoot_payment_ffi() {
     let _fixture = WalletTestFixture::new();
     // This is a complex test as it can handle different destination types.
     // Here we test sending to a VTXO pubkey (OOR).
-    let pubkey = cxx::get_vtxo_pubkey(std::ptr::null()).unwrap();
+    let pubkey = cxx::derive_store_next_keypair().unwrap();
     let send_res = cxx::send_arkoor_payment(&pubkey, 5000);
     assert!(
         send_res.is_ok(),
@@ -344,7 +326,7 @@ fn test_send_bolt11_payment_ffi() {
     // Here we test sending to a bolt11 invoice.
     let invoice = cxx::bolt11_invoice(10000).unwrap();
     let amount: u64 = 5000;
-    let send_res = cxx::send_bolt11_payment(&invoice, &amount as *const u64);
+    let send_res = cxx::send_lightning_payment(&invoice, &amount as *const u64);
     assert!(
         send_res.is_ok(),
         "send_payment (bolt11) failed: {:?}",
@@ -373,7 +355,7 @@ fn test_claim_bolt11_payment_ffi() {
     let invoice = cxx::bolt11_invoice(10000).unwrap();
     // In a real test, you would now pay this invoice from another node.
     // For this unit test, we just check that trying to claim an unpaid invoice fails gracefully.
-    let claim_res = cxx::claim_bolt11_payment(&invoice);
+    let claim_res = cxx::finish_lightning_receive(invoice);
     // Depending on the LDK setup, this might error differently.
     // The key is that it shouldn't panic.
     assert!(claim_res.is_err(), "Claiming an unpaid invoice should fail");

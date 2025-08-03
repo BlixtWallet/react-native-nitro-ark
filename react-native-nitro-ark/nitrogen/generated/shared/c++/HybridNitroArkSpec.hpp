@@ -19,14 +19,20 @@ namespace margelo::nitro::nitroark { struct BarkCreateOpts; }
 namespace margelo::nitro::nitroark { struct BarkConfigOpts; }
 // Forward declaration of `BarkArkInfo` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct BarkArkInfo; }
+// Forward declaration of `OffchainBalanceResult` to properly resolve imports.
+namespace margelo::nitro::nitroark { struct OffchainBalanceResult; }
+// Forward declaration of `BarkVtxo` to properly resolve imports.
+namespace margelo::nitro::nitroark { struct BarkVtxo; }
+// Forward declaration of `OnchainBalanceResult` to properly resolve imports.
+namespace margelo::nitro::nitroark { struct OnchainBalanceResult; }
 // Forward declaration of `OnchainPaymentResult` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct OnchainPaymentResult; }
 // Forward declaration of `BarkSendManyOutput` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct BarkSendManyOutput; }
 // Forward declaration of `ArkoorPaymentResult` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct ArkoorPaymentResult; }
-// Forward declaration of `Bolt11PaymentResult` to properly resolve imports.
-namespace margelo::nitro::nitroark { struct Bolt11PaymentResult; }
+// Forward declaration of `LightningPaymentResult` to properly resolve imports.
+namespace margelo::nitro::nitroark { struct LightningPaymentResult; }
 // Forward declaration of `LnurlPaymentResult` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct LnurlPaymentResult; }
 
@@ -35,12 +41,15 @@ namespace margelo::nitro::nitroark { struct LnurlPaymentResult; }
 #include "BarkCreateOpts.hpp"
 #include "BarkConfigOpts.hpp"
 #include "BarkArkInfo.hpp"
-#include <optional>
-#include "OnchainPaymentResult.hpp"
+#include "OffchainBalanceResult.hpp"
 #include <vector>
+#include "BarkVtxo.hpp"
+#include "OnchainBalanceResult.hpp"
+#include "OnchainPaymentResult.hpp"
+#include <optional>
 #include "BarkSendManyOutput.hpp"
 #include "ArkoorPaymentResult.hpp"
-#include "Bolt11PaymentResult.hpp"
+#include "LightningPaymentResult.hpp"
 #include "LnurlPaymentResult.hpp"
 
 namespace margelo::nitro::nitroark {
@@ -76,36 +85,36 @@ namespace margelo::nitro::nitroark {
       // Methods
       virtual std::shared_ptr<Promise<std::string>> createMnemonic() = 0;
       virtual std::shared_ptr<Promise<void>> loadWallet(const std::string& datadir, const BarkCreateOpts& opts) = 0;
-      virtual std::shared_ptr<Promise<void>> closeWallet() = 0;
       virtual std::shared_ptr<Promise<bool>> isWalletLoaded() = 0;
+      virtual std::shared_ptr<Promise<void>> closeWallet() = 0;
       virtual std::shared_ptr<Promise<void>> persistConfig(const BarkConfigOpts& opts) = 0;
       virtual std::shared_ptr<Promise<void>> maintenance() = 0;
       virtual std::shared_ptr<Promise<void>> sync() = 0;
-      virtual std::shared_ptr<Promise<void>> syncArk() = 0;
+      virtual std::shared_ptr<Promise<void>> syncExits() = 0;
       virtual std::shared_ptr<Promise<void>> syncRounds() = 0;
       virtual std::shared_ptr<Promise<BarkArkInfo>> getArkInfo() = 0;
-      virtual std::shared_ptr<Promise<double>> onchainBalance() = 0;
-      virtual std::shared_ptr<Promise<double>> offchainBalance() = 0;
-      virtual std::shared_ptr<Promise<std::string>> getOnchainAddress() = 0;
-      virtual std::shared_ptr<Promise<std::string>> getOnchainUtxos(bool no_sync) = 0;
-      virtual std::shared_ptr<Promise<std::string>> getVtxoPubkey(std::optional<double> index) = 0;
-      virtual std::shared_ptr<Promise<std::string>> getVtxos(bool no_sync) = 0;
-      virtual std::shared_ptr<Promise<OnchainPaymentResult>> sendOnchain(const std::string& destination, double amountSat) = 0;
-      virtual std::shared_ptr<Promise<std::string>> drainOnchain(const std::string& destination, bool no_sync) = 0;
-      virtual std::shared_ptr<Promise<std::string>> sendManyOnchain(const std::vector<BarkSendManyOutput>& outputs, bool no_sync) = 0;
+      virtual std::shared_ptr<Promise<OffchainBalanceResult>> offchainBalance() = 0;
+      virtual std::shared_ptr<Promise<std::string>> deriveStoreNextKeypair() = 0;
+      virtual std::shared_ptr<Promise<std::string>> peakKeyPair(double index) = 0;
+      virtual std::shared_ptr<Promise<std::vector<BarkVtxo>>> getVtxos() = 0;
+      virtual std::shared_ptr<Promise<OnchainBalanceResult>> onchainBalance() = 0;
+      virtual std::shared_ptr<Promise<void>> onchainSync() = 0;
+      virtual std::shared_ptr<Promise<std::string>> onchainListUnspent() = 0;
+      virtual std::shared_ptr<Promise<std::string>> onchainUtxos() = 0;
+      virtual std::shared_ptr<Promise<std::string>> onchainAddress() = 0;
+      virtual std::shared_ptr<Promise<OnchainPaymentResult>> onchainSend(const std::string& destination, double amountSat, std::optional<double> feeRate) = 0;
+      virtual std::shared_ptr<Promise<std::string>> onchainDrain(const std::string& destination, std::optional<double> feeRate) = 0;
+      virtual std::shared_ptr<Promise<std::string>> onchainSendMany(const std::vector<BarkSendManyOutput>& outputs, std::optional<double> feeRate) = 0;
       virtual std::shared_ptr<Promise<std::string>> boardAmount(double amountSat) = 0;
       virtual std::shared_ptr<Promise<std::string>> boardAll() = 0;
       virtual std::shared_ptr<Promise<ArkoorPaymentResult>> sendArkoorPayment(const std::string& destination, double amountSat) = 0;
-      virtual std::shared_ptr<Promise<Bolt11PaymentResult>> sendBolt11Payment(const std::string& destination, std::optional<double> amountSat) = 0;
+      virtual std::shared_ptr<Promise<LightningPaymentResult>> sendLightningPayment(const std::string& destination, std::optional<double> amountSat) = 0;
       virtual std::shared_ptr<Promise<LnurlPaymentResult>> sendLnaddr(const std::string& addr, double amountSat, const std::string& comment) = 0;
-      virtual std::shared_ptr<Promise<std::string>> sendRoundOnchain(const std::string& destination, double amountSat, bool no_sync) = 0;
+      virtual std::shared_ptr<Promise<std::string>> sendRoundOnchainPayment(const std::string& destination, double amountSat) = 0;
       virtual std::shared_ptr<Promise<std::string>> bolt11Invoice(double amountMsat) = 0;
-      virtual std::shared_ptr<Promise<void>> claimBolt11Payment(const std::string& bolt11) = 0;
+      virtual std::shared_ptr<Promise<void>> finishLightningReceive(const std::string& bolt11) = 0;
       virtual std::shared_ptr<Promise<std::string>> offboardSpecific(const std::vector<std::string>& vtxoIds, const std::string& destinationAddress) = 0;
       virtual std::shared_ptr<Promise<std::string>> offboardAll(const std::string& destinationAddress) = 0;
-      virtual std::shared_ptr<Promise<std::string>> exitStartSpecific(const std::vector<std::string>& vtxoIds) = 0;
-      virtual std::shared_ptr<Promise<void>> startExitForEntireWallet() = 0;
-      virtual std::shared_ptr<Promise<std::string>> exitProgressOnce() = 0;
 
     protected:
       // Hybrid Setup

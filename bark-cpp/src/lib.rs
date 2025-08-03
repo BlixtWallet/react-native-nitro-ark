@@ -2,37 +2,35 @@ use anyhow;
 use anyhow::bail;
 use anyhow::Ok;
 use bark;
-use bark::ark::bitcoin::address;
 
 use bark::ark::bitcoin::Address;
 use bark::ark::bitcoin::Amount;
 use bark::ark::bitcoin::Network;
-
-use bark::ark::bitcoin::Txid;
-
+use bark::ark::lightning::Preimage;
 use bark::ark::rounds::RoundId;
 use bark::ark::ArkInfo;
 use bark::ark::Vtxo;
 use bark::ark::VtxoId;
-use bark::json::cli::ExitProgressResponse;
-use bark::json::VtxoInfo;
 use bark::lightning_invoice::Bolt11Invoice;
-
 use bark::lnurllib::lightning_address::LightningAddress;
-use bark::vtxo_selection::VtxoFilter;
+use bark::onchain::{ChainSource, ChainSourceClient, OnchainWallet};
 use bark::Config;
 use bark::Offboard;
+use bark::SendOnchain;
 use bark::SqliteClient;
-use bark::UtxoInfo;
 use bark::Wallet;
+use bdk_bitcoind_rpc::bitcoincore_rpc;
+use bdk_wallet::bitcoin::key::Keypair;
 use tokio::runtime::Runtime;
 use tokio::sync::Mutex;
 mod cxx;
+mod onchain;
 mod utils;
 
 use bip39::Mnemonic;
-use logger::log::{debug, info, warn};
+use logger::log::{debug, info};
 use std::path::Path;
+use std::sync::Arc;
 use std::sync::LazyLock;
 use std::sync::Once;
 use utils::try_create_wallet;
@@ -47,7 +45,8 @@ use anyhow::Context;
 mod tests;
 // Use a static Once to ensure the logger is initialized only once.
 static LOGGER_INIT: Once = Once::new();
-static GLOBAL_WALLET: LazyLock<Mutex<Option<Wallet>>> = LazyLock::new(|| Mutex::new(None));
+static GLOBAL_WALLET: LazyLock<Mutex<Option<(Wallet, OnchainWallet, Arc<ChainSourceClient>)>>> =
+    LazyLock::new(|| Mutex::new(None));
 pub static TOKIO_RUNTIME: LazyLock<Runtime> =
     LazyLock::new(|| Runtime::new().expect("Failed to create Tokio runtime"));
 
@@ -93,25 +92,38 @@ pub async fn load_wallet(datadir: &Path, opts: CreateOpts) -> anyhow::Result<()>
         ..Default::default()
     };
     opts.config
+        .clone()
         .merge_into(&mut config)
         .context("invalid configuration")?;
 
     // check if dir doesn't exists, then create it
     if !datadir.exists() {
         info!("Wallet directory does not exist, creating it...");
-        try_create_wallet(
-            datadir,
-            net,
-            config,
-            opts.mnemonic.clone(),
-            opts.birthday_height,
-        )
-        .await?;
+        try_create_wallet(datadir, net, config.clone(), Some(opts.mnemonic.clone())).await?;
     }
 
+    let auth = if let (Some(user), Some(pass)) =
+        (config.bitcoind_user.clone(), config.bitcoind_pass.clone())
+    {
+        bitcoincore_rpc::Auth::UserPass(user, pass)
+    } else {
+        bitcoincore_rpc::Auth::None
+    };
+
+    let chain_source = if let Some(url) = config.esplora_address.clone() {
+        ChainSource::Esplora { url }
+    } else if let Some(url) = config.bitcoind_address.clone() {
+        ChainSource::Bitcoind { url, auth }
+    } else {
+        bail!("Provide either an esplora or bitcoind url as chain source.");
+    };
+
+    let chain_client =
+        Arc::new(ChainSourceClient::new(chain_source, net, config.fallback_fee_rate).await?);
+
     info!("Attempting to open wallet...");
-    let wallet = open_wallet(datadir, opts.mnemonic).await?;
-    *wallet_guard = Some(wallet);
+    let (wallet, onchain_wallet) = open_wallet(datadir, opts.mnemonic).await?;
+    *wallet_guard = Some((wallet, onchain_wallet, chain_client));
 
     Ok(())
 }
@@ -135,7 +147,7 @@ pub async fn is_wallet_loaded() -> bool {
 /// Change the wallet config
 pub async fn persist_config(config: Config) -> anyhow::Result<()> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, _, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     // Persist the config to the wallet
     w.set_config(config);
@@ -153,32 +165,34 @@ pub struct Balance {
     pub pending_exit: u64,
 }
 
-/// Get offchain and onchain balances
-pub async fn onchain_balance() -> anyhow::Result<Amount> {
+pub async fn balance() -> anyhow::Result<bark::Balance> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, _, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
-    Ok(w.onchain.balance())
+    Ok(w.balance()?)
 }
 
-pub async fn offchain_balance() -> anyhow::Result<Amount> {
-    let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
-
-    Ok(w.offchain_balance()?)
-}
-
-pub async fn open_wallet(datadir: &Path, mnemonic: Mnemonic) -> anyhow::Result<Wallet> {
+pub async fn open_wallet(
+    datadir: &Path,
+    mnemonic: Mnemonic,
+) -> anyhow::Result<(Wallet, OnchainWallet)> {
     debug!("Opening bark wallet in {}", datadir.display());
 
-    let db = SqliteClient::open(datadir.join(DB_FILE))?;
+    let db = Arc::new(SqliteClient::open(datadir.join(DB_FILE))?);
 
-    Wallet::open(&mnemonic, db).await
+    let wallet = Wallet::open(&mnemonic, db.clone()).await?;
+    let onchain_wallet = OnchainWallet::load_or_create(
+        wallet.properties().unwrap().network,
+        mnemonic.to_seed(""),
+        db,
+    )?;
+
+    Ok((wallet, onchain_wallet))
 }
 
 pub async fn get_ark_info() -> anyhow::Result<ArkInfo> {
-    let wallet_guard = GLOBAL_WALLET.lock().await;
-    let w = wallet_guard.as_ref().context("Wallet not loaded")?;
+    let mut wallet_guard = GLOBAL_WALLET.lock().await;
+    let (w, _, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     let info = w.ark_info();
 
@@ -189,154 +203,25 @@ pub async fn get_ark_info() -> anyhow::Result<ArkInfo> {
     }
 }
 
-/// Get an onchain address from the wallet
-pub async fn get_onchain_address() -> anyhow::Result<Address> {
+/// Derive the next keypair for the VTXO store
+pub async fn derive_store_next_keypair() -> anyhow::Result<Keypair> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, _, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
-    // Wallet::address() returns Result<Address, Error>
-    let address = w
-        .onchain
-        .address()
-        .context("Wallet failed to generate address")?;
-
-    Ok(address)
+    Ok(w.derive_store_next_keypair()?)
 }
 
-/// Send funds using the onchain wallet
-pub async fn send_onchain(address: Address, amount: Amount) -> anyhow::Result<Txid> {
+/// Peak the keypair at the specified index
+pub async fn peak_keypair(index: u32) -> anyhow::Result<Keypair> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
-
-    w.onchain
-        .send(address.clone(), amount)
-        .await
-        .with_context(|| format!("failed to send {} to {}", amount, address))
-}
-
-/// Send all funds using the onchain wallet to a specific address
-pub async fn drain_onchain(
-    destination_str: &str, // Take string for validation
-    no_sync: bool,
-) -> anyhow::Result<Txid> {
-    let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
-
-    let net = w.properties()?.network;
-
-    // Validate address
-    let address_unchecked = Address::<address::NetworkUnchecked>::from_str(destination_str)
-        .with_context(|| format!("invalid destination address format: '{}'", destination_str))?;
-    let destination_address = address_unchecked.require_network(net).with_context(|| {
-        format!(
-            "address '{}' is not valid for configured network {}",
-            destination_str, net
-        )
-    })?;
-
-    if !no_sync {
-        info!("Syncing onchain wallet before draining...");
-        if let Err(e) = w.onchain.sync().await {
-            warn!("Onchain sync error during drain: {}", e);
-            // Consider if this should be a hard error or warning
-        }
-    }
-
-    info!("Draining onchain wallet to address {}", destination_address);
-    let txid = w
-        .onchain
-        .drain(destination_address.clone())
-        .await
-        .with_context(|| format!("failed to drain wallet to {}", destination_address))?;
-
-    info!("Onchain drain successful, TxID: {}", txid);
-    Ok(txid)
-}
-
-/// Send funds to multiple recipients using the onchain wallet
-pub async fn send_many_onchain(
-    outputs: Vec<(Address, Amount)>, // Pass validated addresses and amounts
-    no_sync: bool,
-) -> anyhow::Result<Txid> {
-    let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
-
-    // Network validation should happen *before* calling this function, during FFI conversion.
-    // The Vec<(Address, Amount)> should already contain addresses valid for the wallet's network.
-
-    if !no_sync {
-        info!("Syncing onchain wallet before send-many...");
-        if let Err(e) = w.onchain.sync().await {
-            warn!("Onchain sync error during send-many: {}", e);
-            // Consider if this should be a hard error or warning
-        }
-    }
-
-    info!("Sending onchain transaction with {} outputs", outputs.len());
-    let txid = w
-        .onchain
-        .send_many(outputs)
-        .await
-        .context("failed to send transaction with multiple outputs")?;
-
-    info!("Onchain send-many successful, TxID: {}", txid);
-    Ok(txid)
-}
-
-/// Get the list of UTXOs from the onchain wallet as a JSON string
-pub async fn get_onchain_utxos(no_sync: bool) -> anyhow::Result<String> {
-    let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
-
-    if !no_sync {
-        info!("Syncing onchain wallet before getting UTXOs...");
-        // Sync only the onchain part and potentially exits that might create UTXOs
-        if let Err(e) = w.onchain.sync().await {
-            warn!("Onchain sync error during get_utxos: {}", e);
-        }
-        if let Err(e) = w.sync_exits().await {
-            // Exits can produce UTXOs
-            warn!("Exit sync error during get_utxos: {}", e)
-        }
-    }
-
-    let utxos = w
-        .onchain
-        .utxos()
-        .into_iter()
-        .map(UtxoInfo::from)
-        .collect::<Vec<UtxoInfo>>();
-    debug!("Retrieved {} UTXOs from bdk wallet.", utxos.len());
-
-    let json_string =
-        serde_json::to_string_pretty(&utxos).context("Failed to serialize UTXOs to JSON")?;
-
-    debug!("Serialized UTXOs to JSON string.");
-    Ok(json_string)
-}
-
-/// Get the VTXO public key (OOR Pubkey) as a hex string
-pub async fn get_vtxo_pubkey(index: Option<u32>) -> anyhow::Result<String> {
-    let wallet_guard = GLOBAL_WALLET.lock().await;
-    let w = wallet_guard.as_ref().context("Wallet not loaded")?;
-
-    if let Some(index) = index {
-        Ok(w.peak_keypair(bark::KeychainKind::External, index)
-            .context("Failed to get VTXO pubkey")?
-            .public_key()
-            .to_string())
-    } else {
-        Ok(w.derive_store_next_keypair(bark::KeychainKind::External)
-            .context("Failed to get VTXO pubkey")?
-            .public_key()
-            .to_string())
-    }
+    let (w, _, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
+    Ok(w.peak_keypair(index).context("Failed to peak keypair")?)
 }
 
 /// Get a Bolt 11 invoice
 pub async fn bolt11_invoice(amount: u64) -> anyhow::Result<String> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, _, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     let invoice = w
         .bolt11_invoice(Amount::from_sat(amount))
@@ -346,12 +231,12 @@ pub async fn bolt11_invoice(amount: u64) -> anyhow::Result<String> {
 }
 
 /// Claim a lightning payment
-pub async fn claim_bolt11_payment(bolt11: String) -> anyhow::Result<()> {
+pub async fn finish_lightning_receive(bolt11: Bolt11Invoice) -> anyhow::Result<()> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, _, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     let _ = w
-        .claim_bolt11_payment(Bolt11Invoice::from_str(&bolt11)?)
+        .finish_lightning_receive(bolt11)
         .await
         .context("Failed to claim bolt11 payment")?;
 
@@ -368,9 +253,9 @@ pub async fn claim_bolt11_payment(bolt11: String) -> anyhow::Result<()> {
 /// refresh VTXOs.
 pub async fn maintenance() -> anyhow::Result<()> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, onchain_w, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
-    w.maintenance()
+    w.maintenance(onchain_w)
         .await
         .context("Failed to perform wallet maintenance")?;
     Ok(())
@@ -379,41 +264,24 @@ pub async fn maintenance() -> anyhow::Result<()> {
 /// Sync both the onchain and offchain wallet.
 pub async fn sync() -> anyhow::Result<()> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, _, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     w.sync().await.context("Failed to sync wallet")?;
     Ok(())
 }
 
 /// Get the list of VTXOs from the wallet as a JSON string
-pub async fn get_vtxos(no_sync: bool) -> anyhow::Result<String> {
+pub async fn get_vtxos() -> anyhow::Result<Vec<Vtxo>> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, _, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
-    if !no_sync {
-        info!("Syncing wallet before getting VTXOs...");
-        // Use maintenance sync as VTXOs depend on both onchain and offchain state
-        if let Err(e) = w.maintenance().await {
-            warn!("Wallet maintenance sync error during get_vtxos: {}", e);
-        }
-    }
-
-    let vtxos: Vec<VtxoInfo> = w
-        .vtxos()
-        .context("Failed to retrieve VTXOs from wallet")?
-        .into_iter()
-        .map(|v| v.into())
-        .collect();
-
-    let json_string = serde_json::to_string(&vtxos)?;
-
-    Ok(json_string)
+    Ok(w.vtxos()?)
 }
 
 /// Refresh VTXOs based on specified criteria. Returns RoundId status.
 pub async fn refresh_vtxos(vtxos: Vec<Vtxo>) -> anyhow::Result<Option<RoundId>> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, _, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     w.refresh_vtxos(vtxos)
         .await
@@ -423,10 +291,10 @@ pub async fn refresh_vtxos(vtxos: Vec<Vtxo>) -> anyhow::Result<Option<RoundId>> 
 /// Board a specific amount from the onchain wallet to Ark. Returns JSON status.
 pub async fn board_amount(amount: Amount) -> anyhow::Result<String> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, onchain_w, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     info!("Attempting to board amount: {}", amount);
-    let board_result = w.board_amount(amount).await?;
+    let board_result = w.board_amount(onchain_w, amount).await?;
 
     let json_string = serde_json::to_string_pretty(&board_result)
         .context("Failed to serialize board status to JSON")?;
@@ -436,10 +304,10 @@ pub async fn board_amount(amount: Amount) -> anyhow::Result<String> {
 
 pub async fn board_all() -> anyhow::Result<String> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, onchain_w, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     info!("Attempting to board all onchain funds...");
-    let board_result = w.board_all().await?;
+    let board_result = w.board_all(onchain_w).await?;
 
     let json_string = serde_json::to_string_pretty(&board_result)
         .context("Failed to serialize board status to JSON")?;
@@ -447,21 +315,11 @@ pub async fn board_all() -> anyhow::Result<String> {
     Ok(json_string)
 }
 
-/// Sync with the Ark and look for received vtxos.
-pub async fn sync_ark() -> anyhow::Result<()> {
-    let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
-
-    w.sync_ark().await.context("Failed to sync ark")?;
-
-    Ok(())
-}
-
 /// Fetch new rounds from the Ark Server and check if one of their VTXOs
 /// is in the provided set of public keys
 pub async fn sync_rounds() -> anyhow::Result<()> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, _, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     w.sync_rounds().await.context("Failed to sync rounds")?;
 
@@ -470,95 +328,41 @@ pub async fn sync_rounds() -> anyhow::Result<()> {
 
 /// Send a payment based on destination type. Returns Vec<Vtxos> status.
 pub async fn send_arkoor_payment(
-    destination: &str,
+    destination: bark::ark::Address,
     amount_sat: Amount,
 ) -> anyhow::Result<Vec<Vtxo>> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
-
-    // Parse the destination as a public key
-    let destination = parse_send_destination(destination).context("Invalid destination")?;
-    let pubkey = match destination {
-        SendDestination::VtxoPubkey(pk) => pk,
-        _ => bail!("Invalid destination type for send_payment"),
-    };
+    let (w, _, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     info!(
         "Attempting to send OOR payment of {} to pubkey {:?}",
-        amount_sat, pubkey
+        amount_sat, destination
     );
-    let oor_result = w.send_arkoor_payment(pubkey, amount_sat).await?;
+    let oor_result = w.send_arkoor_payment(&destination, amount_sat).await?;
 
     Ok(oor_result)
 }
 
 /// Send bolt11 payment via Ark. Returns preimage.
-pub async fn send_bolt11_payment(
+pub async fn send_lightning_payment(
     destination: Bolt11Invoice,
     amount_sat: Option<Amount>,
-) -> anyhow::Result<[u8; 32]> {
+) -> anyhow::Result<Preimage> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, _, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
-    w.send_bolt11_payment(&destination, amount_sat).await
+    w.send_lightning_payment(&destination, amount_sat).await
 }
 
 /// Send an onchain payment via an Ark round. Returns JSON status.
-pub async fn send_round_onchain(
-    destination_str: &str,
+pub async fn send_round_onchain_payment(
+    addr: Address,
     amount: Amount,
-    no_sync: bool,
-) -> anyhow::Result<String> {
+) -> anyhow::Result<SendOnchain> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, _, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
-    let net = w.properties()?.network;
-
-    // Validate address
-    let addr_unchecked = Address::<address::NetworkUnchecked>::from_str(destination_str)
-        .with_context(|| format!("Invalid destination address format: '{}'", destination_str))?;
-    let destination_address = addr_unchecked.require_network(net).with_context(|| {
-        format!(
-            "Address '{}' is not valid for configured network {}",
-            destination_str, net
-        )
-    })?;
-
-    if amount <= Amount::ZERO {
-        bail!("Amount must be positive");
-    }
-
-    if !no_sync {
-        info!("Syncing wallet before sending round onchain payment...");
-        // Maintenance sync likely needed for round participation
-        if let Err(e) = w.maintenance().await {
-            warn!(
-                "Wallet maintenance sync error during send_round_onchain: {}",
-                e
-            );
-        }
-    }
-
-    info!(
-        "Attempting to send round onchain payment of {} to {}",
-        amount, destination_address
-    );
-    // Assuming send_round_onchain_payment returns Result<(), Error>
-    w.send_round_onchain_payment(destination_address.clone(), amount)
-        .await?;
-
-    // Construct success JSON
-    let result_json = serde_json::json!({
-        "type": "round_onchain",
-        "success": true,
-        "destination_address": destination_address.to_string(),
-        "amount_sat": amount.to_sat()
-    });
-
-    let json_string = serde_json::to_string_pretty(&result_json)
-        .context("Failed to serialize send_round_onchain status to JSON")?;
-
-    Ok(json_string)
+    Ok(w.send_round_onchain_payment(addr, amount).await?)
 }
 
 /// Send a Lightning Address payment. Returns a tuple containing the Bolt11Invoice and a 32-byte preimage.
@@ -566,9 +370,9 @@ pub async fn send_lnaddr(
     addr: &str,
     amount: Amount,
     comment: Option<&str>,
-) -> anyhow::Result<(Bolt11Invoice, [u8; 32])> {
+) -> anyhow::Result<(Bolt11Invoice, Preimage)> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, _, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     let lightning_address = LightningAddress::from_str(addr)
         .with_context(|| format!("Invalid Lightning Address format: '{}'", addr))?;
@@ -579,135 +383,31 @@ pub async fn send_lnaddr(
 /// Offboard specific VTXOs. Returns JSON result.
 pub async fn offboard_specific(
     vtxo_ids: Vec<VtxoId>,
-    address: Option<Address>, // Optional destination address string
+    address: Address, // Optional destination address string
 ) -> anyhow::Result<Offboard> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, _, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     w.offboard_vtxos(vtxo_ids, address).await
 }
 
 /// Offboard all VTXOs. Returns RoundId result.
 pub async fn offboard_all(
-    address: Option<Address>, // Optional destination address string
+    address: Address, // Optional destination address string
 ) -> anyhow::Result<Offboard> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, _, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     w.offboard_all(address).await
 }
 
-/// Start the exit process for specific VTXOs. Returns simple success JSON.
-pub async fn start_exit_for_vtxos(vtxo_ids: Vec<VtxoId>) -> anyhow::Result<String> {
+/// Sync status of unilateral exits.
+pub async fn sync_exits() -> anyhow::Result<()> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, onchain_w, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
-    if vtxo_ids.is_empty() {
-        bail!("At least one VTXO ID must be provided for starting specific exit");
-    }
-
-    // Syncing is crucial before starting an exit
-    info!("Syncing wallet before starting specific exit...");
-    if let Err(err) = w.onchain.sync().await {
-        warn!("Failed to perform onchain sync during exit start: {}", err);
-    }
-    if let Err(err) = w.sync_ark().await {
-        warn!("Failed to perform ark sync during exit start: {}", err);
-    }
-
-    info!("Fetching specific VTXOs for exit...");
-    let filter = VtxoFilter::new(&w).include_many(vtxo_ids.clone()); // Clone ids if needed later
-    let vtxos_to_exit = w
-        .vtxos_with(filter)
-        .context("Error finding specified vtxos for exit")?;
-
-    if vtxos_to_exit.len() != vtxo_ids.len() {
-        warn!("Could not find all specified VTXO IDs. Found {} out of {}. Proceeding with found VTXOs.", vtxos_to_exit.len(), vtxo_ids.len());
-        if vtxos_to_exit.is_empty() {
-            bail!("None of the specified VTXOs were found.");
-        }
-    }
-
-    info!(
-        "Starting exit process for {} specific VTXOs...",
-        vtxos_to_exit.len()
-    );
-    w.exit
-        .start_exit_for_vtxos(&vtxos_to_exit, &mut w.onchain)
-        .await?;
-
-    // Return simple success JSON
-    let success_json = serde_json::json!({ "success": true, "type": "start_specific", "vtxo_count": vtxos_to_exit.len() });
-    let json_string = serde_json::to_string_pretty(&success_json)?;
-    Ok(json_string)
-}
-
-/// Start the exit process for the entire wallet.
-/// This function starts the exit process for all vtxos in the wallet.
-pub async fn start_exit_for_entire_wallet() -> anyhow::Result<()> {
-    let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
-
-    // Syncing is crucial
-    info!("Syncing wallet before starting exit for all VTXOs...");
-    if let Err(err) = w.onchain.sync().await {
-        warn!(
-            "Failed to perform onchain sync during exit start all: {}",
-            err
-        );
-    }
-    if let Err(err) = w.sync_ark().await {
-        warn!("Failed to perform ark sync during exit start all: {}", err);
-    }
-
-    info!("Starting exit process for entire wallet...");
-    w.exit.start_exit_for_entire_wallet(&mut w.onchain).await
-}
-
-/// This function processes the exit queue for the wallet.
-/// It returns a JSON object with the exit status, including whether the process is
-/// done, the spendable height for exits, and any new exit transactions.
-pub async fn exit_progress_once() -> anyhow::Result<String> {
-    let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let w = wallet_guard.as_mut().context("Wallet not loaded")?;
-
-    // Sync before progressing - crucial for exit state
-    info!("Syncing wallet before progressing exit...");
-    if let Err(error) = w.onchain.sync().await {
-        warn!(
-            "Failed to perform onchain sync during exit progress: {}",
-            error
-        )
-    }
-    if let Err(error) = w.sync_exits().await {
-        // sync_exits is important here
-        warn!("Failed to sync exits during exit progress: {}", error);
-    }
-    info!("Wallet sync completed for exit progress");
-
-    info!("Attempting to progress exit process...");
-    let result = w
-        .exit
-        .progress_exit(&mut w.onchain)
+    w.sync_exits(onchain_w)
         .await
-        .context("Error making progress on exit process")?;
-
-    // Check status after progressing
-    let has_pending_exits = w.exit.has_pending_exits();
-    let spendable_height = w.exit.all_spendable_at_height().await;
-
-    info!(
-        "Exit progress check: Done={}, Spendable Height={:?}",
-        has_pending_exits, spendable_height
-    );
-
-    let exits = result.unwrap_or_default();
-
-    let json_string = serde_json::to_string_pretty(&ExitProgressResponse {
-        done: !has_pending_exits,
-        spendable_height,
-        exits,
-    })
-    .context("Failed to serialize exit status to JSON")?;
-    Ok(json_string)
+        .context("Failed to sync exits")?;
+    Ok(())
 }
