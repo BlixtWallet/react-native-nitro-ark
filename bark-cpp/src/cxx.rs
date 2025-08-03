@@ -129,8 +129,9 @@ pub(crate) mod ffi {
         fn offchain_balance() -> Result<OffchainBalance>;
         fn onchain_balance() -> Result<OnChainBalance>;
         fn get_onchain_utxos(no_sync: bool) -> Result<String>;
-        unsafe fn get_vtxo_pubkey(index: *const u32) -> Result<String>;
-        fn get_vtxos(no_sync: bool) -> Result<String>;
+        fn derive_store_next_keypair() -> Result<String>;
+        fn peak_keypair(index: u32) -> Result<String>;
+        fn get_vtxos() -> Result<Vec<BarkVtxo>>;
         fn bolt11_invoice(amount_msat: u64) -> Result<String>;
         fn maintenance() -> Result<()>;
         fn sync() -> Result<()>;
@@ -150,8 +151,6 @@ pub(crate) mod ffi {
         fn send_round_onchain_payment(destination: &str, amount_sat: u64) -> Result<String>;
         fn offboard_specific(vtxo_ids: Vec<String>, destination_address: &str) -> Result<String>;
         fn offboard_all(destination_address: &str) -> Result<String>;
-        fn derive_store_next_keypair() -> Result<String>;
-        fn peak_keypair(index: u32) -> Result<String>;
         fn finish_lightning_receive(bolt11: String) -> Result<()>;
         fn refresh_vtxos(vtxos_json: String) -> Result<String>;
         fn sync_exits() -> Result<()>;
@@ -239,13 +238,32 @@ pub(crate) fn get_onchain_utxos(no_sync: bool) -> anyhow::Result<String> {
     crate::TOKIO_RUNTIME.block_on(crate::get_onchain_utxos(no_sync))
 }
 
-pub(crate) fn get_vtxo_pubkey(index: *const u32) -> anyhow::Result<String> {
-    let index_opt = unsafe { index.as_ref().map(|r| *r) };
-    crate::TOKIO_RUNTIME.block_on(crate::get_vtxo_pubkey(index_opt))
+pub(crate) fn derive_store_next_keypair() -> anyhow::Result<String> {
+    let keypair = crate::TOKIO_RUNTIME.block_on(crate::derive_store_next_keypair())?;
+    Ok(keypair.public_key().to_string())
 }
 
-pub(crate) fn get_vtxos(no_sync: bool) -> anyhow::Result<String> {
-    crate::TOKIO_RUNTIME.block_on(crate::get_vtxos())
+pub(crate) fn peak_keypair(index: u32) -> anyhow::Result<String> {
+    let keypair = crate::TOKIO_RUNTIME.block_on(crate::peak_keypair(index))?;
+    Ok(keypair.public_key().to_string())
+}
+
+pub(crate) fn get_vtxos() -> anyhow::Result<Vec<BarkVtxo>> {
+    let vtxos = crate::TOKIO_RUNTIME.block_on(crate::get_vtxos())?;
+
+    Ok(vtxos
+        .into_iter()
+        .map(|vtxo| BarkVtxo {
+            amount: vtxo.amount().to_sat(),
+            expiry_height: vtxo.expiry_height(),
+            exit_delta: vtxo.exit_delta(),
+            anchor_point: format!(
+                "{}:{}",
+                vtxo.chain_anchor().txid.to_string(),
+                vtxo.chain_anchor().vout.to_string()
+            ),
+        })
+        .collect())
 }
 
 pub(crate) fn bolt11_invoice(amount_msat: u64) -> anyhow::Result<String> {
@@ -551,16 +569,6 @@ pub(crate) fn offboard_all(destination_address: &str) -> anyhow::Result<String> 
     let offboard_all_result = crate::TOKIO_RUNTIME.block_on(crate::offboard_all(addr))?;
 
     Ok(offboard_all_result.round.to_string())
-}
-
-pub(crate) fn derive_store_next_keypair() -> anyhow::Result<String> {
-    let keypair = TOKIO_RUNTIME.block_on(crate::derive_store_next_keypair())?;
-    Ok(format!("{}", keypair.display_secret()))
-}
-
-pub(crate) fn peak_keypair(index: u32) -> anyhow::Result<String> {
-    let keypair = TOKIO_RUNTIME.block_on(crate::peak_keypair(index))?;
-    Ok(format!("{}", keypair.display_secret()))
 }
 
 pub(crate) fn finish_lightning_receive(bolt11: String) -> anyhow::Result<()> {
