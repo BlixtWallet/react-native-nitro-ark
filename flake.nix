@@ -140,6 +140,7 @@
             nodejs_22
             iconv
             pkg-config
+            zulu
           ];
 
           darwinPackages = with pkgs; [
@@ -180,6 +181,7 @@
             export LC_ALL=en_US.UTF-8
             export LANG=en_US.UTF-8
             rustup target add aarch64-linux-android x86_64-linux-android i686-linux-android
+            export JAVA_HOME=${pkgs.zulu}/
           '';
 
         in

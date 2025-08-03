@@ -6,9 +6,12 @@ import type {
   BarkArkInfo,
   BarkSendManyOutput,
   ArkoorPaymentResult,
-  Bolt11PaymentResult,
+  LightningPaymentResult,
   LnurlPaymentResult,
   OnchainPaymentResult,
+  BarkVtxo,
+  OffchainBalanceResult,
+  OnchainBalanceResult,
 } from './NitroArk.nitro';
 
 // Create the hybrid object instance
@@ -81,11 +84,11 @@ export function sync(): Promise<void> {
 }
 
 /**
- * Synchronizes the Ark-specific parts of the wallet.
+ * Synchronizes the Ark-specific exits.
  * @returns A promise that resolves on success.
  */
-export function syncArk(): Promise<void> {
-  return NitroArkHybridObject.syncArk();
+export function syncExits(): Promise<void> {
+  return NitroArkHybridObject.syncExits();
 }
 
 /**
@@ -107,96 +110,114 @@ export function getArkInfo(): Promise<BarkArkInfo> {
 }
 
 /**
- * Gets the onchain balance for the loaded wallet.
- * @returns A promise resolving to the onchain balance in satoshis.
+ * Gets the offchain balance for the loaded wallet.
+ * @returns A promise resolving to the OffchainBalanceResult object.
  */
-export function onchainBalance(): Promise<number> {
+export function offchainBalance(): Promise<OffchainBalanceResult> {
+  return NitroArkHybridObject.offchainBalance();
+}
+
+/**
+ * Derives the next keypair for the store.
+ * @returns A promise resolving to the hex-encoded public key string.
+ */
+export function deriveStoreNextKeypair(): Promise<string> {
+  return NitroArkHybridObject.deriveStoreNextKeypair();
+}
+
+/**
+ * Gets the wallet's VTXO public key (hex string).
+ * @param index Index of the VTXO pubkey to retrieve.
+ * @returns A promise resolving to the hex-encoded public key string.
+ */
+export function peakKeyPair(index: number): Promise<string> {
+  return NitroArkHybridObject.peakKeyPair(index);
+}
+
+/**
+ * Gets the list of VTXOs as a JSON string for the loaded wallet.
+ * @param no_sync If true, skips synchronization with the blockchain. Defaults to false.
+ * @returns A promise resolving BarkVtxo[] array.
+ */
+export function getVtxos(): Promise<BarkVtxo[]> {
+  return NitroArkHybridObject.getVtxos();
+}
+
+// --- Onchain Operations ---
+
+/**
+ * Gets the onchain balance for the loaded wallet.
+ * @returns A promise resolving to the OnchainBalanceResult object.
+ */
+export function onchainBalance(): Promise<OnchainBalanceResult> {
   return NitroArkHybridObject.onchainBalance();
 }
 
 /**
- * Gets the offchain balance for the loaded wallet.
- * @returns A promise resolving to the offchain balance in satoshis.
+ * Synchronizes the onchain state of the wallet.
+ * @returns A promise that resolves on success.
  */
-export function offchainBalance(): Promise<number> {
-  return NitroArkHybridObject.offchainBalance();
+export function onchainSync(): Promise<void> {
+  return NitroArkHybridObject.onchainSync();
+}
+
+/**
+ * Gets the list of unspent onchain outputs as a JSON string for the loaded wallet.
+ * @returns A promise resolving to the JSON string of unspent outputs.
+ */
+export function onchainListUnspent(): Promise<string> {
+  return NitroArkHybridObject.onchainListUnspent();
+}
+
+/**
+ * Gets the list of onchain UTXOs as a JSON string for the loaded wallet.
+ * @returns A promise resolving to the JSON string of UTXOs.
+ */
+export function onchainUtxos(): Promise<string> {
+  return NitroArkHybridObject.onchainUtxos();
 }
 
 /**
  * Gets a fresh onchain address for the loaded wallet.
  * @returns A promise resolving to the Bitcoin address string.
  */
-export function getOnchainAddress(): Promise<string> {
-  return NitroArkHybridObject.getOnchainAddress();
+export function onchainAddress(): Promise<string> {
+  return NitroArkHybridObject.onchainAddress();
 }
-
-/**
- * Gets the list of onchain UTXOs as a JSON string for the loaded wallet.
- * @param no_sync If true, skips synchronization with the blockchain. Defaults to false.
- * @returns A promise resolving to the JSON string of UTXOs.
- */
-export function getOnchainUtxos(no_sync: boolean = false): Promise<string> {
-  return NitroArkHybridObject.getOnchainUtxos(no_sync);
-}
-
-/**
- * Gets the wallet's VTXO public key (hex string).
- * @param index Index of the VTXO pubkey to retrieve. Use u32::MAX for a new one.
- * @returns A promise resolving to the hex-encoded public key string.
- */
-export function getVtxoPubkey(index?: number): Promise<string> {
-  return NitroArkHybridObject.getVtxoPubkey(index);
-}
-
-/**
- * Gets the list of VTXOs as a JSON string for the loaded wallet.
- * @param no_sync If true, skips synchronization with the blockchain. Defaults to false.
- * @returns A promise resolving to the JSON string of VTXOs.
- */
-export function getVtxos(no_sync: boolean = false): Promise<string> {
-  return NitroArkHybridObject.getVtxos(no_sync);
-}
-
-// --- Onchain Operations ---
 
 /**
  * Sends funds using the onchain wallet.
  * @param destination The destination Bitcoin address.
  * @param amountSat The amount to send in satoshis.
- * @param no_sync If true, skips synchronization with the blockchain. Defaults to false.
  * @returns A promise resolving to the OnchainPaymentResult object
  */
-export function sendOnchain(
+export function onchainSend(
   destination: string,
   amountSat: number
 ): Promise<OnchainPaymentResult> {
-  return NitroArkHybridObject.sendOnchain(destination, amountSat);
+  return NitroArkHybridObject.onchainSend(destination, amountSat);
 }
 
 /**
  * Sends all funds from the onchain wallet to a destination address.
  * @param destination The destination Bitcoin address.
- * @param no_sync If true, skips synchronization with the blockchain. Defaults to false.
  * @returns A promise resolving to the transaction ID string.
  */
-export function drainOnchain(
-  destination: string,
-  no_sync: boolean = false
+export function onchainDrain(
+  destination: string
 ): Promise<string> {
-  return NitroArkHybridObject.drainOnchain(destination, no_sync);
+  return NitroArkHybridObject.onchainDrain(destination);
 }
 
 /**
  * Sends funds to multiple recipients using the onchain wallet.
  * @param outputs An array of objects containing destination address and amountSat.
- * @param no_sync If true, skips synchronization with the blockchain. Defaults to false.
  * @returns A promise resolving to the transaction ID string.
  */
-export function sendManyOnchain(
+export function onchainSendMany(
   outputs: BarkSendManyOutput[],
-  no_sync: boolean = false
 ): Promise<string> {
-  return NitroArkHybridObject.sendManyOnchain(outputs, no_sync);
+  return NitroArkHybridObject.onchainSendMany(outputs);
 }
 
 // --- Lightning Operations ---
@@ -211,12 +232,40 @@ export function bolt11Invoice(amountMsat: number): Promise<string> {
 }
 
 /**
- * Claims a Bolt 11 payment.
- * @param bolt11 The Bolt 11 invoice string to claim.
+ * Claims a Lightning payment.
+ * @param bolt11 The Lightning invoice string to claim.
  * @returns A promise that resolves on success or rejects on error.
  */
-export function claimBolt11Payment(bolt11: string): Promise<void> {
-  return NitroArkHybridObject.claimBolt11Payment(bolt11);
+export function finishLightningReceive(bolt11: string): Promise<void> {
+  return NitroArkHybridObject.finishLightningReceive(bolt11);
+}
+
+/**
+ * Sends a Lightning payment.
+ * @param destination The Lightning invoice.
+ * @param amountSat The amount in satoshis to send. Use 0 for invoice amount.
+ * @returns A promise resolving to a LightningPaymentResult object
+ */
+export function sendLightningPayment(
+  destination: string,
+  amountSat?: number
+): Promise<LightningPaymentResult> {
+  return NitroArkHybridObject.sendLightningPayment(destination, amountSat);
+}
+
+/**
+ * Sends a payment to a Lightning Address.
+ * @param addr The Lightning Address.
+ * @param amountSat The amount in satoshis to send.
+ * @param comment An optional comment.
+ * @returns A promise resolving to a LnurlPaymentResult object
+ */
+export function sendLnaddr(
+  addr: string,
+  amountSat: number,
+  comment: string
+): Promise<LnurlPaymentResult> {
+  return NitroArkHybridObject.sendLnaddr(addr, amountSat, comment);
 }
 
 // --- Ark Operations ---
@@ -252,46 +301,16 @@ export function sendArkoorPayment(
 }
 
 /**
- * Sends a Bolt11 payment.
- * @param destination The Bolt11 invoice.
- * @param amountSat The amount in satoshis to send. Use 0 for invoice amount.
- * @returns A promise resolving to a Bolt11PaymentResult object
- */
-export function sendBolt11Payment(
-  destination: string,
-  amountSat?: number
-): Promise<Bolt11PaymentResult> {
-  return NitroArkHybridObject.sendBolt11Payment(destination, amountSat);
-}
-
-/**
- * Sends a payment to a Lightning Address.
- * @param addr The Lightning Address.
- * @param amountSat The amount in satoshis to send.
- * @param comment An optional comment.
- * @returns A promise resolving to a LnurlPaymentResult object
- */
-export function sendLnaddr(
-  addr: string,
-  amountSat: number,
-  comment: string
-): Promise<LnurlPaymentResult> {
-  return NitroArkHybridObject.sendLnaddr(addr, amountSat, comment);
-}
-
-/**
  * Sends an onchain payment via an Ark round.
  * @param destination The destination Bitcoin address.
  * @param amountSat The amount in satoshis to send.
- * @param no_sync If true, skips synchronization with the wallet. Defaults to false.
  * @returns A promise resolving to a JSON status string.
  */
-export function sendRoundOnchain(
+export function sendRoundOnchainPayment(
   destination: string,
   amountSat: number,
-  no_sync: boolean = false
 ): Promise<string> {
-  return NitroArkHybridObject.sendRoundOnchain(destination, amountSat, no_sync);
+  return NitroArkHybridObject.sendRoundOnchainPayment(destination, amountSat);
 }
 
 // --- Offboarding / Exiting ---
@@ -320,31 +339,6 @@ export function offboardAll(destinationAddress: string): Promise<string> {
   return NitroArkHybridObject.offboardAll(destinationAddress);
 }
 
-/**
- * Starts the exit process for specific VTXOs.
- * @param vtxoIds Array of VtxoId strings to start exiting.
- * @returns A promise resolving to a JSON status string.
- */
-export function startExitForVtxos(vtxoIds: string[]): Promise<string> {
-  return NitroArkHybridObject.exitStartSpecific(vtxoIds);
-}
-
-/**
- * Starts the exit process for all VTXOs in the wallet.
- * @returns A promise that resolves or rejects.
- */
-export function startExitForEntireWallet(): Promise<void> {
-  return NitroArkHybridObject.startExitForEntireWallet();
-}
-
-/**
- * Progresses the exit process once and returns the current status.
- * @returns A promise resolving to a JSON status string.
- */
-export function exitProgressOnce(): Promise<string> {
-  return NitroArkHybridObject.exitProgressOnce();
-}
-
 // --- Re-export types and enums ---
 export type {
   NitroArk,
@@ -353,8 +347,10 @@ export type {
   BarkArkInfo,
   BarkSendManyOutput,
   ArkoorPaymentResult,
-  Bolt11PaymentResult,
+  LightningPaymentResult,
   LnurlPaymentResult,
   OnchainPaymentResult,
   PaymentTypes,
+  OffchainBalanceResult,
+  OnchainBalanceResult
 } from './NitroArk.nitro';
