@@ -180,9 +180,7 @@
           linuxHook = ''
             export LC_ALL=en_US.UTF-8
             export LANG=en_US.UTF-8
-            export JAVA_HOME="${pkgs.jdk17.home}"
             rustup target add aarch64-linux-android x86_64-linux-android i686-linux-android
-            export JAVA_HOME=${pkgs.zulu}/
           '';
 
         in
