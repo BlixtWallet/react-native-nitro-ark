@@ -6,7 +6,7 @@ use crate::{parse_send_destination, utils, SendDestination, TOKIO_RUNTIME};
 use anyhow::{bail, Context, Ok};
 use bark::ark::bitcoin::hex::DisplayHex;
 use bark::ark::bitcoin::{address, Address};
-use bdk_wallet::bitcoin;
+use bdk_wallet::bitcoin::{self, FeeRate};
 use logger::log::{self, info};
 use std::path::Path;
 use std::str::FromStr;
@@ -139,7 +139,7 @@ pub(crate) mod ffi {
         fn load_wallet(datadir: &str, opts: CreateOpts) -> Result<()>;
         fn send_onchain(destination: &str, amount_sat: u64) -> Result<OnchainPaymentResult>;
         fn drain(destination: &str, no_sync: bool) -> Result<String>;
-        fn send_many(outputs: Vec<SendManyOutput>, no_sync: bool) -> Result<String>;
+        fn send_many(outputs: Vec<SendManyOutput>, fee_rate: u64) -> Result<String>;
         fn board_amount(amount_sat: u64) -> Result<String>;
         fn board_all() -> Result<String>;
         fn send_arkoor_payment(destination: &str, amount_sat: u64) -> Result<ArkoorPaymentResult>;
@@ -152,7 +152,6 @@ pub(crate) mod ffi {
         fn offboard_specific(vtxo_ids: Vec<String>, destination_address: &str) -> Result<String>;
         fn offboard_all(destination_address: &str) -> Result<String>;
         fn finish_lightning_receive(bolt11: String) -> Result<()>;
-        fn refresh_vtxos(vtxos_json: String) -> Result<String>;
         fn sync_exits() -> Result<()>;
         fn list_unspent() -> Result<String>;
     }
@@ -193,7 +192,7 @@ pub(crate) fn persist_config(opts: ffi::ConfigOpts) -> anyhow::Result<()> {
 
     crate::TOKIO_RUNTIME.block_on(async {
         let mut wallet_guard = crate::GLOBAL_WALLET.lock().await;
-        let (w, _) = wallet_guard
+        let (w, _, _) = wallet_guard
             .as_mut()
             .ok_or_else(|| anyhow::anyhow!("Wallet not loaded"))?;
         let mut current_config = w.config().clone();
@@ -235,7 +234,17 @@ pub(crate) fn onchain_balance() -> anyhow::Result<ffi::OnChainBalance> {
 }
 
 pub(crate) fn get_onchain_utxos(no_sync: bool) -> anyhow::Result<String> {
-    crate::TOKIO_RUNTIME.block_on(crate::get_onchain_utxos(no_sync))
+    crate::TOKIO_RUNTIME
+        .block_on(async {
+            if !no_sync {
+                let mut wallet_guard = crate::GLOBAL_WALLET.lock().await;
+                let (_, onchain_w, chain_client) =
+                    wallet_guard.as_mut().context("Wallet not loaded")?;
+                onchain_w.sync(chain_client).await?;
+            }
+            crate::onchain::list_unspent().await
+        })
+        .map(|utxos| serde_json::to_string(&utxos).unwrap())
 }
 
 pub(crate) fn derive_store_next_keypair() -> anyhow::Result<String> {
@@ -344,8 +353,12 @@ pub(crate) fn send_onchain(
         amount, destination_address
     );
 
-    let txid =
-        crate::TOKIO_RUNTIME.block_on(crate::onchain::send(destination_address.clone(), amount))?;
+    let txid = crate::TOKIO_RUNTIME.block_on(async {
+        let wallet_guard = crate::GLOBAL_WALLET.lock().await;
+        let (_, _, chain_client) = wallet_guard.as_ref().context("Wallet not loaded")?;
+        let fee_rate = chain_client.fee_rates().await.regular;
+        crate::onchain::send(chain_client, destination_address.clone(), amount, fee_rate).await
+    })?;
 
     Ok(OnchainPaymentResult {
         txid: txid.to_string(),
@@ -356,18 +369,34 @@ pub(crate) fn send_onchain(
 }
 
 pub(crate) fn drain(destination: &str, no_sync: bool) -> anyhow::Result<String> {
-    let txid = crate::TOKIO_RUNTIME.block_on(crate::onchain::drain(destination, no_sync))?;
+    let txid = crate::TOKIO_RUNTIME.block_on(async {
+        let wallet_guard = crate::GLOBAL_WALLET.lock().await;
+        let (w, _, chain_client) = wallet_guard.as_ref().context("Wallet not loaded")?;
+        let net = w.properties().unwrap().network;
+        let address = Address::from_str(destination)
+            .unwrap()
+            .require_network(net)
+            .unwrap();
+        if !no_sync {
+            let mut wallet_guard = crate::GLOBAL_WALLET.lock().await;
+            let (_, onchain_w, chain_client) =
+                wallet_guard.as_mut().context("Wallet not loaded")?;
+            onchain_w.sync(chain_client).await?;
+        }
+        let fee_rate = chain_client.fee_rates().await.regular;
+        crate::onchain::drain(chain_client, address, fee_rate).await
+    })?;
     Ok(txid.to_string())
 }
 
 pub(crate) fn send_many(
     outputs: Vec<ffi::SendManyOutput>,
-    no_sync: bool,
+    fee_rate: u64,
 ) -> anyhow::Result<String> {
     let txid = crate::TOKIO_RUNTIME.block_on(async {
         let mut rust_outputs = Vec::new();
         let wallet_guard = crate::GLOBAL_WALLET.lock().await;
-        let (w, _) = wallet_guard.as_ref().unwrap();
+        let (w, _, chain_source) = wallet_guard.as_ref().unwrap();
         let net = w.properties().unwrap().network;
         for output in outputs {
             let address = Address::from_str(&output.destination)
@@ -377,7 +406,12 @@ pub(crate) fn send_many(
             let amount = bark::ark::bitcoin::Amount::from_sat(output.amount_sat);
             rust_outputs.push((address, amount));
         }
-        crate::onchain::send_many(rust_outputs, no_sync).await
+        crate::onchain::send_many(
+            chain_source,
+            rust_outputs,
+            FeeRate::from_sat_per_vb(fee_rate).unwrap(),
+        )
+        .await
     })?;
     Ok(txid.to_string())
 }
@@ -574,12 +608,6 @@ pub(crate) fn offboard_all(destination_address: &str) -> anyhow::Result<String> 
 pub(crate) fn finish_lightning_receive(bolt11: String) -> anyhow::Result<()> {
     let invoice = bolt11.parse()?;
     TOKIO_RUNTIME.block_on(crate::finish_lightning_receive(invoice))
-}
-
-pub(crate) fn refresh_vtxos(vtxos_json: String) -> anyhow::Result<String> {
-    let vtxos: Vec<bark::ark::Vtxo> = serde_json::from_str(&vtxos_json)?;
-    let result = TOKIO_RUNTIME.block_on(crate::refresh_vtxos(vtxos))?;
-    serde_json::to_string(&result).map_err(Into::into)
 }
 
 pub(crate) fn sync_exits() -> anyhow::Result<()> {

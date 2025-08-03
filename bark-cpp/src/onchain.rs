@@ -7,7 +7,7 @@ use crate::GLOBAL_WALLET;
 /// Get onchain balance
 pub async fn onchain_balance() -> anyhow::Result<bdk_wallet::Balance> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let (_w, onchain_w) = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (_, onchain_w, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     Ok(onchain_w.balance())
 }
@@ -15,21 +15,21 @@ pub async fn onchain_balance() -> anyhow::Result<bdk_wallet::Balance> {
 /// Get a new address
 pub async fn address() -> anyhow::Result<Address> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let (_w, onchain_w) = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (_, onchain_w, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
     Ok(onchain_w.address()?)
 }
 
 /// Get unspent outputs
 pub async fn list_unspent() -> anyhow::Result<Vec<bdk_wallet::LocalOutput>> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let (_w, onchain_w) = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (_, onchain_w, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
     Ok(onchain_w.list_unspent())
 }
 
 /// Get utxos
 pub async fn utxos() -> anyhow::Result<Vec<Utxo>> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let (_w, onchain_w) = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (_, onchain_w, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
     Ok(onchain_w.utxos())
 }
 
@@ -41,7 +41,7 @@ pub async fn send(
     fee_rate: FeeRate,
 ) -> anyhow::Result<Txid> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let (_w, onchain_w) = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (_, onchain_w, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
     onchain_w.send(chain, dest, amount, fee_rate).await
 }
 
@@ -52,7 +52,7 @@ pub async fn send_many<T: IntoIterator<Item = (Address, Amount)>>(
     fee_rate: FeeRate,
 ) -> anyhow::Result<Txid> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let (_w, onchain_w) = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (_, onchain_w, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
     onchain_w.send_many(chain, destinations, fee_rate).await
 }
 
@@ -63,13 +63,13 @@ pub async fn drain(
     fee_rate: FeeRate,
 ) -> anyhow::Result<Txid> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let (_w, onchain_w) = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (_, onchain_w, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
     onchain_w.drain(chain, destination, fee_rate).await
 }
 
 /// Synchronize the onchain wallet with the blockchain
 pub async fn sync(chain: &ChainSourceClient) -> anyhow::Result<Amount> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let (_w, onchain_w) = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (_, onchain_w, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
     onchain_w.sync(chain).await
 }

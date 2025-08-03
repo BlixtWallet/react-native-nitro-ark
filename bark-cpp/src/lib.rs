@@ -13,12 +13,13 @@ use bark::ark::Vtxo;
 use bark::ark::VtxoId;
 use bark::lightning_invoice::Bolt11Invoice;
 use bark::lnurllib::lightning_address::LightningAddress;
-use bark::onchain::OnchainWallet;
+use bark::onchain::{ChainSource, ChainSourceClient, OnchainWallet};
 use bark::Config;
 use bark::Offboard;
 use bark::SendOnchain;
 use bark::SqliteClient;
 use bark::Wallet;
+use bdk_bitcoind_rpc::bitcoincore_rpc;
 use bdk_wallet::bitcoin::key::Keypair;
 use tokio::runtime::Runtime;
 use tokio::sync::Mutex;
@@ -44,7 +45,7 @@ use anyhow::Context;
 mod tests;
 // Use a static Once to ensure the logger is initialized only once.
 static LOGGER_INIT: Once = Once::new();
-static GLOBAL_WALLET: LazyLock<Mutex<Option<(Wallet, OnchainWallet)>>> =
+static GLOBAL_WALLET: LazyLock<Mutex<Option<(Wallet, OnchainWallet, Arc<ChainSourceClient>)>>> =
     LazyLock::new(|| Mutex::new(None));
 pub static TOKIO_RUNTIME: LazyLock<Runtime> =
     LazyLock::new(|| Runtime::new().expect("Failed to create Tokio runtime"));
@@ -91,18 +92,38 @@ pub async fn load_wallet(datadir: &Path, opts: CreateOpts) -> anyhow::Result<()>
         ..Default::default()
     };
     opts.config
+        .clone()
         .merge_into(&mut config)
         .context("invalid configuration")?;
 
     // check if dir doesn't exists, then create it
     if !datadir.exists() {
         info!("Wallet directory does not exist, creating it...");
-        try_create_wallet(datadir, net, config, Some(opts.mnemonic.clone())).await?;
+        try_create_wallet(datadir, net, config.clone(), Some(opts.mnemonic.clone())).await?;
     }
+
+    let auth = if let (Some(user), Some(pass)) =
+        (config.bitcoind_user.clone(), config.bitcoind_pass.clone())
+    {
+        bitcoincore_rpc::Auth::UserPass(user, pass)
+    } else {
+        bitcoincore_rpc::Auth::None
+    };
+
+    let chain_source = if let Some(url) = config.esplora_address.clone() {
+        ChainSource::Esplora { url }
+    } else if let Some(url) = config.bitcoind_address.clone() {
+        ChainSource::Bitcoind { url, auth }
+    } else {
+        bail!("Provide either an esplora or bitcoind url as chain source.");
+    };
+
+    let chain_client =
+        Arc::new(ChainSourceClient::new(chain_source, net, config.fallback_fee_rate).await?);
 
     info!("Attempting to open wallet...");
     let (wallet, onchain_wallet) = open_wallet(datadir, opts.mnemonic).await?;
-    *wallet_guard = Some((wallet, onchain_wallet));
+    *wallet_guard = Some((wallet, onchain_wallet, chain_client));
 
     Ok(())
 }
@@ -126,7 +147,7 @@ pub async fn is_wallet_loaded() -> bool {
 /// Change the wallet config
 pub async fn persist_config(config: Config) -> anyhow::Result<()> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let (w, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, _, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     // Persist the config to the wallet
     w.set_config(config);
@@ -146,7 +167,7 @@ pub struct Balance {
 
 pub async fn balance() -> anyhow::Result<bark::Balance> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let (w, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, _, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     Ok(w.balance()?)
 }
@@ -171,7 +192,7 @@ pub async fn open_wallet(
 
 pub async fn get_ark_info() -> anyhow::Result<ArkInfo> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let (w, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, _, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     let info = w.ark_info();
 
@@ -185,7 +206,7 @@ pub async fn get_ark_info() -> anyhow::Result<ArkInfo> {
 /// Derive the next keypair for the VTXO store
 pub async fn derive_store_next_keypair() -> anyhow::Result<Keypair> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let (w, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, _, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     Ok(w.derive_store_next_keypair()?)
 }
@@ -193,14 +214,14 @@ pub async fn derive_store_next_keypair() -> anyhow::Result<Keypair> {
 /// Peak the keypair at the specified index
 pub async fn peak_keypair(index: u32) -> anyhow::Result<Keypair> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let (w, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, _, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
     Ok(w.peak_keypair(index).context("Failed to peak keypair")?)
 }
 
 /// Get a Bolt 11 invoice
 pub async fn bolt11_invoice(amount: u64) -> anyhow::Result<String> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let (w, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, _, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     let invoice = w
         .bolt11_invoice(Amount::from_sat(amount))
@@ -212,7 +233,7 @@ pub async fn bolt11_invoice(amount: u64) -> anyhow::Result<String> {
 /// Claim a lightning payment
 pub async fn finish_lightning_receive(bolt11: Bolt11Invoice) -> anyhow::Result<()> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let (w, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, _, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     let _ = w
         .finish_lightning_receive(bolt11)
@@ -232,7 +253,7 @@ pub async fn finish_lightning_receive(bolt11: Bolt11Invoice) -> anyhow::Result<(
 /// refresh VTXOs.
 pub async fn maintenance() -> anyhow::Result<()> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let (w, onchain_w) = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, onchain_w, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     w.maintenance(onchain_w)
         .await
@@ -243,7 +264,7 @@ pub async fn maintenance() -> anyhow::Result<()> {
 /// Sync both the onchain and offchain wallet.
 pub async fn sync() -> anyhow::Result<()> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let (w, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, _, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     w.sync().await.context("Failed to sync wallet")?;
     Ok(())
@@ -252,7 +273,7 @@ pub async fn sync() -> anyhow::Result<()> {
 /// Get the list of VTXOs from the wallet as a JSON string
 pub async fn get_vtxos() -> anyhow::Result<Vec<Vtxo>> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let (w, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, _, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     Ok(w.vtxos()?)
 }
@@ -260,7 +281,7 @@ pub async fn get_vtxos() -> anyhow::Result<Vec<Vtxo>> {
 /// Refresh VTXOs based on specified criteria. Returns RoundId status.
 pub async fn refresh_vtxos(vtxos: Vec<Vtxo>) -> anyhow::Result<Option<RoundId>> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let (w, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, _, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     w.refresh_vtxos(vtxos)
         .await
@@ -270,7 +291,7 @@ pub async fn refresh_vtxos(vtxos: Vec<Vtxo>) -> anyhow::Result<Option<RoundId>> 
 /// Board a specific amount from the onchain wallet to Ark. Returns JSON status.
 pub async fn board_amount(amount: Amount) -> anyhow::Result<String> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let (w, onchain_w) = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, onchain_w, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     info!("Attempting to board amount: {}", amount);
     let board_result = w.board_amount(onchain_w, amount).await?;
@@ -283,7 +304,7 @@ pub async fn board_amount(amount: Amount) -> anyhow::Result<String> {
 
 pub async fn board_all() -> anyhow::Result<String> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let (w, onchain_w) = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, onchain_w, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     info!("Attempting to board all onchain funds...");
     let board_result = w.board_all(onchain_w).await?;
@@ -298,7 +319,7 @@ pub async fn board_all() -> anyhow::Result<String> {
 /// is in the provided set of public keys
 pub async fn sync_rounds() -> anyhow::Result<()> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let (w, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, _, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     w.sync_rounds().await.context("Failed to sync rounds")?;
 
@@ -311,7 +332,7 @@ pub async fn send_arkoor_payment(
     amount_sat: Amount,
 ) -> anyhow::Result<Vec<Vtxo>> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let (w, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, _, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     info!(
         "Attempting to send OOR payment of {} to pubkey {:?}",
@@ -328,7 +349,7 @@ pub async fn send_lightning_payment(
     amount_sat: Option<Amount>,
 ) -> anyhow::Result<Preimage> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let (w, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, _, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     w.send_lightning_payment(&destination, amount_sat).await
 }
@@ -339,7 +360,7 @@ pub async fn send_round_onchain_payment(
     amount: Amount,
 ) -> anyhow::Result<SendOnchain> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let (w, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, _, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     Ok(w.send_round_onchain_payment(addr, amount).await?)
 }
@@ -351,7 +372,7 @@ pub async fn send_lnaddr(
     comment: Option<&str>,
 ) -> anyhow::Result<(Bolt11Invoice, Preimage)> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let (w, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, _, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     let lightning_address = LightningAddress::from_str(addr)
         .with_context(|| format!("Invalid Lightning Address format: '{}'", addr))?;
@@ -365,7 +386,7 @@ pub async fn offboard_specific(
     address: Address, // Optional destination address string
 ) -> anyhow::Result<Offboard> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let (w, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, _, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     w.offboard_vtxos(vtxo_ids, address).await
 }
@@ -375,7 +396,7 @@ pub async fn offboard_all(
     address: Address, // Optional destination address string
 ) -> anyhow::Result<Offboard> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let (w, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, _, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     w.offboard_all(address).await
 }
@@ -383,7 +404,7 @@ pub async fn offboard_all(
 /// Sync status of unilateral exits.
 pub async fn sync_exits() -> anyhow::Result<()> {
     let mut wallet_guard = GLOBAL_WALLET.lock().await;
-    let (w, onchain_w) = wallet_guard.as_mut().context("Wallet not loaded")?;
+    let (w, onchain_w, _) = wallet_guard.as_mut().context("Wallet not loaded")?;
 
     w.sync_exits(onchain_w)
         .await

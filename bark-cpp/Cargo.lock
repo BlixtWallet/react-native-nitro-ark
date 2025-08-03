@@ -270,6 +270,7 @@ dependencies = [
  "anyhow",
  "bark-bitcoin-ext",
  "bark-client",
+ "bdk_bitcoind_rpc",
  "bdk_wallet",
  "bip39",
  "cxx",
