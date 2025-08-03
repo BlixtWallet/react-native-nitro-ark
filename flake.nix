@@ -140,7 +140,6 @@
             nodejs_22
             iconv
             pkg-config
-            zulu
             jdk17
           ];
 
@@ -160,7 +159,6 @@
           darwinHook = ''
             export LC_ALL=en_US.UTF-8
             export LANG=en_US.UTF-8
-            export JAVA_HOME="${pkgs.jdk17.home}"
 
             unset SDKROOT
 
