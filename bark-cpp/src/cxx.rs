@@ -13,6 +13,8 @@ use std::str::FromStr;
 
 #[cxx::bridge(namespace = "bark_cxx")]
 pub(crate) mod ffi {
+
+    #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct BarkVtxo {
         amount: u64,
         expiry_height: u32,
@@ -125,10 +127,7 @@ pub(crate) mod ffi {
         fn close_wallet() -> Result<()>;
         fn persist_config(opts: ConfigOpts) -> Result<()>;
         fn get_ark_info() -> Result<CxxArkInfo>;
-        fn get_onchain_address() -> Result<String>;
         fn offchain_balance() -> Result<OffchainBalance>;
-        fn onchain_balance() -> Result<OnChainBalance>;
-        fn get_onchain_utxos(no_sync: bool) -> Result<String>;
         fn derive_store_next_keypair() -> Result<String>;
         fn peak_keypair(index: u32) -> Result<String>;
         fn get_vtxos() -> Result<Vec<BarkVtxo>>;
@@ -137,9 +136,6 @@ pub(crate) mod ffi {
         fn sync() -> Result<()>;
         fn sync_rounds() -> Result<()>;
         fn load_wallet(datadir: &str, opts: CreateOpts) -> Result<()>;
-        fn send_onchain(destination: &str, amount_sat: u64) -> Result<OnchainPaymentResult>;
-        fn drain(destination: &str, no_sync: bool) -> Result<String>;
-        fn send_many(outputs: Vec<SendManyOutput>, fee_rate: u64) -> Result<String>;
         fn board_amount(amount_sat: u64) -> Result<String>;
         fn board_all() -> Result<String>;
         fn send_arkoor_payment(destination: &str, amount_sat: u64) -> Result<ArkoorPaymentResult>;
@@ -153,7 +149,23 @@ pub(crate) mod ffi {
         fn offboard_all(destination_address: &str) -> Result<String>;
         fn finish_lightning_receive(bolt11: String) -> Result<()>;
         fn sync_exits() -> Result<()>;
-        fn list_unspent() -> Result<String>;
+
+        // Onchain methods
+        fn onchain_balance() -> Result<OnChainBalance>;
+        fn onchain_sync() -> Result<()>;
+        fn onchain_list_unspent() -> Result<String>;
+        fn onchain_utxos() -> Result<String>;
+        fn onchain_address() -> Result<String>;
+        unsafe fn onchain_send(
+            destination: &str,
+            amount_sat: u64,
+            fee_rate: *const u64,
+        ) -> Result<OnchainPaymentResult>;
+        unsafe fn onchain_drain(destination: &str, fee_rate: *const u64) -> Result<String>;
+        unsafe fn onchain_send_many(
+            outputs: Vec<SendManyOutput>,
+            fee_rate: *const u64,
+        ) -> Result<String>;
     }
 }
 
@@ -171,11 +183,6 @@ pub(crate) fn is_wallet_loaded() -> bool {
 
 pub(crate) fn close_wallet() -> anyhow::Result<()> {
     crate::TOKIO_RUNTIME.block_on(crate::close_wallet())
-}
-
-pub(crate) fn get_onchain_address() -> anyhow::Result<String> {
-    let address = crate::TOKIO_RUNTIME.block_on(crate::onchain::address())?;
-    Ok(address.to_string())
 }
 
 pub(crate) fn persist_config(opts: ffi::ConfigOpts) -> anyhow::Result<()> {
@@ -221,30 +228,6 @@ pub(crate) fn offchain_balance() -> anyhow::Result<ffi::OffchainBalance> {
         pending_lightning_send: balance.pending_lightning_send.to_sat(),
         pending_exit: balance.pending_exit.to_sat(),
     })
-}
-
-pub(crate) fn onchain_balance() -> anyhow::Result<ffi::OnChainBalance> {
-    let balance = crate::TOKIO_RUNTIME.block_on(crate::onchain::onchain_balance())?;
-    Ok(ffi::OnChainBalance {
-        immature: balance.immature.to_sat(),
-        trusted_pending: balance.trusted_pending.to_sat(),
-        untrusted_pending: balance.untrusted_pending.to_sat(),
-        confirmed: balance.confirmed.to_sat(),
-    })
-}
-
-pub(crate) fn get_onchain_utxos(no_sync: bool) -> anyhow::Result<String> {
-    crate::TOKIO_RUNTIME
-        .block_on(async {
-            if !no_sync {
-                let mut wallet_guard = crate::GLOBAL_WALLET.lock().await;
-                let (_, onchain_w, chain_client) =
-                    wallet_guard.as_mut().context("Wallet not loaded")?;
-                onchain_w.sync(chain_client).await?;
-            }
-            crate::onchain::list_unspent().await
-        })
-        .map(|utxos| serde_json::to_string(&utxos).unwrap())
 }
 
 pub(crate) fn derive_store_next_keypair() -> anyhow::Result<String> {
@@ -324,96 +307,6 @@ pub(crate) fn load_wallet(datadir: &str, opts: ffi::CreateOpts) -> anyhow::Resul
     log::info!("Creating wallet with options: {:?}", create_opts);
 
     crate::TOKIO_RUNTIME.block_on(crate::load_wallet(Path::new(datadir), create_opts))
-}
-
-pub(crate) fn send_onchain(
-    destination: &str,
-    amount_sat: u64,
-) -> anyhow::Result<OnchainPaymentResult> {
-    let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
-
-    let ark_info = crate::TOKIO_RUNTIME.block_on(crate::get_ark_info())?;
-
-    // Validate optional address string
-    let address_unchecked = Address::<address::NetworkUnchecked>::from_str(destination)
-        .with_context(|| format!("invalid destination address format: '{}'", destination))?;
-
-    // Now require the network to match the wallet's network
-    let destination_address = address_unchecked
-        .require_network(ark_info.network)
-        .with_context(|| {
-            format!(
-                "address '{}' is not valid for configured network {}",
-                destination, ark_info.network
-            )
-        })?;
-
-    info!(
-        "Sending {} to onchain address {}",
-        amount, destination_address
-    );
-
-    let txid = crate::TOKIO_RUNTIME.block_on(async {
-        let wallet_guard = crate::GLOBAL_WALLET.lock().await;
-        let (_, _, chain_client) = wallet_guard.as_ref().context("Wallet not loaded")?;
-        let fee_rate = chain_client.fee_rates().await.regular;
-        crate::onchain::send(chain_client, destination_address.clone(), amount, fee_rate).await
-    })?;
-
-    Ok(OnchainPaymentResult {
-        txid: txid.to_string(),
-        amount_sat,
-        destination_address: destination_address.to_string(),
-        payment_type: PaymentTypes::Onchain,
-    })
-}
-
-pub(crate) fn drain(destination: &str, no_sync: bool) -> anyhow::Result<String> {
-    let txid = crate::TOKIO_RUNTIME.block_on(async {
-        let wallet_guard = crate::GLOBAL_WALLET.lock().await;
-        let (w, _, chain_client) = wallet_guard.as_ref().context("Wallet not loaded")?;
-        let net = w.properties().unwrap().network;
-        let address = Address::from_str(destination)
-            .unwrap()
-            .require_network(net)
-            .unwrap();
-        if !no_sync {
-            let mut wallet_guard = crate::GLOBAL_WALLET.lock().await;
-            let (_, onchain_w, chain_client) =
-                wallet_guard.as_mut().context("Wallet not loaded")?;
-            onchain_w.sync(chain_client).await?;
-        }
-        let fee_rate = chain_client.fee_rates().await.regular;
-        crate::onchain::drain(chain_client, address, fee_rate).await
-    })?;
-    Ok(txid.to_string())
-}
-
-pub(crate) fn send_many(
-    outputs: Vec<ffi::SendManyOutput>,
-    fee_rate: u64,
-) -> anyhow::Result<String> {
-    let txid = crate::TOKIO_RUNTIME.block_on(async {
-        let mut rust_outputs = Vec::new();
-        let wallet_guard = crate::GLOBAL_WALLET.lock().await;
-        let (w, _, chain_source) = wallet_guard.as_ref().unwrap();
-        let net = w.properties().unwrap().network;
-        for output in outputs {
-            let address = Address::from_str(&output.destination)
-                .unwrap()
-                .require_network(net)
-                .unwrap();
-            let amount = bark::ark::bitcoin::Amount::from_sat(output.amount_sat);
-            rust_outputs.push((address, amount));
-        }
-        crate::onchain::send_many(
-            chain_source,
-            rust_outputs,
-            FeeRate::from_sat_per_vb(fee_rate).unwrap(),
-        )
-        .await
-    })?;
-    Ok(txid.to_string())
 }
 
 pub(crate) fn board_amount(amount_sat: u64) -> anyhow::Result<String> {
@@ -614,7 +507,157 @@ pub(crate) fn sync_exits() -> anyhow::Result<()> {
     TOKIO_RUNTIME.block_on(crate::sync_exits())
 }
 
-pub(crate) fn list_unspent() -> anyhow::Result<String> {
+// Onchain methods
+
+pub(crate) fn onchain_list_unspent() -> anyhow::Result<String> {
     let unspent = TOKIO_RUNTIME.block_on(crate::onchain::list_unspent())?;
     serde_json::to_string(&unspent).map_err(Into::into)
+}
+
+pub(crate) fn onchain_sync() -> anyhow::Result<()> {
+    crate::TOKIO_RUNTIME.block_on(async {
+        let wallet_guard = crate::GLOBAL_WALLET.lock().await;
+        let (_, _, chain_client) = wallet_guard.as_ref().context("Wallet not loaded")?;
+        crate::onchain::sync(chain_client).await
+    })?;
+
+    Ok(())
+}
+
+pub(crate) fn onchain_address() -> anyhow::Result<String> {
+    let address = crate::TOKIO_RUNTIME.block_on(crate::onchain::address())?;
+    Ok(address.to_string())
+}
+
+pub(crate) fn onchain_balance() -> anyhow::Result<ffi::OnChainBalance> {
+    let balance = crate::TOKIO_RUNTIME.block_on(crate::onchain::onchain_balance())?;
+    Ok(ffi::OnChainBalance {
+        immature: balance.immature.to_sat(),
+        trusted_pending: balance.trusted_pending.to_sat(),
+        untrusted_pending: balance.untrusted_pending.to_sat(),
+        confirmed: balance.confirmed.to_sat(),
+    })
+}
+
+pub(crate) fn onchain_utxos() -> anyhow::Result<String> {
+    let utxos = crate::TOKIO_RUNTIME.block_on(async { crate::onchain::utxos().await })?;
+
+    let res = utxos
+        .iter()
+        .map(|utxo| match utxo {
+            bark::onchain::Utxo::Local(local) => serde_json::json!({
+                "outpoint": format!("{}:{}", local.outpoint.txid, local.outpoint.vout),
+                "amount": local.amount.to_sat(),
+                "confirmation_height": local.confirmation_height.map_or(0, |_h| 0),
+            }),
+            bark::onchain::Utxo::Exit(exit) => serde_json::json!({
+                "vtxo": BarkVtxo {
+                    amount: exit.vtxo.amount().to_sat(),
+                    anchor_point: format!("{}:{}", exit.vtxo.chain_anchor().txid, exit.vtxo.chain_anchor().vout),
+                    exit_delta: exit.vtxo.exit_delta(),
+                    expiry_height: exit.vtxo.expiry_height(),
+                },
+                "height": exit.height
+            }),
+        })
+        .collect::<Vec<_>>();
+
+    serde_json::to_string(&res).map_err(Into::into)
+}
+
+pub(crate) fn onchain_send(
+    destination: &str,
+    amount_sat: u64,
+    fee_rate: *const u64,
+) -> anyhow::Result<OnchainPaymentResult> {
+    let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
+
+    let ark_info = crate::TOKIO_RUNTIME.block_on(crate::get_ark_info())?;
+
+    // Validate optional address string
+    let address_unchecked = Address::<address::NetworkUnchecked>::from_str(destination)
+        .with_context(|| format!("invalid destination address format: '{}'", destination))?;
+
+    // Now require the network to match the wallet's network
+    let destination_address = address_unchecked
+        .require_network(ark_info.network)
+        .with_context(|| {
+            format!(
+                "address '{}' is not valid for configured network {}",
+                destination, ark_info.network
+            )
+        })?;
+
+    info!(
+        "Sending {} to onchain address {}",
+        amount, destination_address
+    );
+
+    let txid = crate::TOKIO_RUNTIME.block_on(async {
+        let wallet_guard = crate::GLOBAL_WALLET.lock().await;
+        let (_, _, chain_client) = wallet_guard.as_ref().context("Wallet not loaded")?;
+
+        let fee_rate = if fee_rate.is_null() {
+            chain_client.fee_rates().await.regular
+        } else {
+            FeeRate::from_sat_per_vb(unsafe { *fee_rate }).unwrap()
+        };
+        crate::onchain::send(chain_client, destination_address.clone(), amount, fee_rate).await
+    })?;
+
+    Ok(OnchainPaymentResult {
+        txid: txid.to_string(),
+        amount_sat,
+        destination_address: destination_address.to_string(),
+        payment_type: PaymentTypes::Onchain,
+    })
+}
+
+pub(crate) fn onchain_drain(destination: &str, fee_rate: *const u64) -> anyhow::Result<String> {
+    let txid = crate::TOKIO_RUNTIME.block_on(async {
+        let wallet_guard = crate::GLOBAL_WALLET.lock().await;
+        let (w, _, chain_client) = wallet_guard.as_ref().context("Wallet not loaded")?;
+        let net = w.properties().unwrap().network;
+        let address = Address::from_str(destination)
+            .unwrap()
+            .require_network(net)
+            .unwrap();
+
+        let fee_rate = if fee_rate.is_null() {
+            chain_client.fee_rates().await.regular
+        } else {
+            FeeRate::from_sat_per_vb(unsafe { *fee_rate }).unwrap()
+        };
+        crate::onchain::drain(chain_client, address, fee_rate).await
+    })?;
+    Ok(txid.to_string())
+}
+
+pub(crate) fn onchain_send_many(
+    outputs: Vec<ffi::SendManyOutput>,
+    fee_rate: *const u64,
+) -> anyhow::Result<String> {
+    let txid = crate::TOKIO_RUNTIME.block_on(async {
+        let mut rust_outputs = Vec::new();
+        let wallet_guard = crate::GLOBAL_WALLET.lock().await;
+        let (w, _, chain_source) = wallet_guard.as_ref().unwrap();
+        let net = w.properties().unwrap().network;
+        for output in outputs {
+            let address = Address::from_str(&output.destination)
+                .unwrap()
+                .require_network(net)
+                .unwrap();
+            let amount = bark::ark::bitcoin::Amount::from_sat(output.amount_sat);
+            rust_outputs.push((address, amount));
+        }
+
+        let fee_rate = if fee_rate.is_null() {
+            chain_source.fee_rates().await.regular
+        } else {
+            FeeRate::from_sat_per_vb(unsafe { *fee_rate }).unwrap()
+        };
+
+        crate::onchain::send_many(chain_source, rust_outputs, fee_rate).await
+    })?;
+    Ok(txid.to_string())
 }

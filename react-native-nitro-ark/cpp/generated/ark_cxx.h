@@ -991,13 +991,7 @@ void persist_config(::bark_cxx::ConfigOpts opts);
 
 ::bark_cxx::CxxArkInfo get_ark_info();
 
-::rust::String get_onchain_address();
-
 ::bark_cxx::OffchainBalance offchain_balance();
-
-::bark_cxx::OnChainBalance onchain_balance();
-
-::rust::String get_onchain_utxos(bool no_sync);
 
 ::rust::String derive_store_next_keypair();
 
@@ -1014,12 +1008,6 @@ void sync();
 void sync_rounds();
 
 void load_wallet(::rust::Str datadir, ::bark_cxx::CreateOpts opts);
-
-::bark_cxx::OnchainPaymentResult send_onchain(::rust::Str destination, ::std::uint64_t amount_sat);
-
-::rust::String drain(::rust::Str destination, bool no_sync);
-
-::rust::String send_many(::rust::Vec<::bark_cxx::SendManyOutput> outputs, ::std::uint64_t fee_rate);
 
 ::rust::String board_amount(::std::uint64_t amount_sat);
 
@@ -1041,5 +1029,19 @@ void finish_lightning_receive(::rust::String bolt11);
 
 void sync_exits();
 
-::rust::String list_unspent();
+::bark_cxx::OnChainBalance onchain_balance();
+
+void onchain_sync();
+
+::rust::String onchain_list_unspent();
+
+::rust::String onchain_utxos();
+
+::rust::String onchain_address();
+
+::bark_cxx::OnchainPaymentResult onchain_send(::rust::Str destination, ::std::uint64_t amount_sat, ::std::uint64_t const *fee_rate);
+
+::rust::String onchain_drain(::rust::Str destination, ::std::uint64_t const *fee_rate);
+
+::rust::String onchain_send_many(::rust::Vec<::bark_cxx::SendManyOutput> outputs, ::std::uint64_t const *fee_rate);
 } // namespace bark_cxx

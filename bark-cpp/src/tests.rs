@@ -138,7 +138,7 @@ fn test_wallet_management_ffi() {
 #[ignore = "requires live regtest backend"]
 fn test_get_onchain_address_ffi() {
     let _fixture = WalletTestFixture::new();
-    let address_result = cxx::get_onchain_address();
+    let address_result = cxx::onchain_address();
     assert!(address_result.is_ok());
     let address = address_result.unwrap();
     assert!(
@@ -165,7 +165,7 @@ fn test_get_vtxo_pubkey_ffi() {
     // Request the next available pubkey
     let _fixture = WalletTestFixture::new();
     // On a fresh wallet, these should return empty JSON arrays.
-    let onchain_utxos_res = cxx::get_onchain_utxos(true);
+    let onchain_utxos_res = cxx::onchain_utxos();
     assert!(onchain_utxos_res.is_ok());
     assert_eq!(onchain_utxos_res.unwrap(), "[]");
 
@@ -199,7 +199,7 @@ fn test_onchain_and_boarding_flow_ffi() {
     let _fixture = WalletTestFixture::new();
     // This is an integration test and requires a funded regtest node.
     // 1. Get address
-    let _address = cxx::get_onchain_address().unwrap();
+    let _address = cxx::onchain_address().unwrap();
 
     // (Manual step: fund this address from bitcoind-cli)
     // e.g., `bitcoin-cli -regtest sendtoaddress <address> 1`
@@ -232,10 +232,10 @@ fn test_onchain_and_boarding_flow_ffi() {
 #[ignore = "requires live regtest backend and a funded wallet"]
 fn test_send_onchain_ffi() {
     let _fixture = WalletTestFixture::new();
-    let address = cxx::get_onchain_address().unwrap();
+    let address = cxx::onchain_address().unwrap();
 
     // This test requires the address to be funded manually.
-    let send_res = cxx::send_onchain(&address, 5000);
+    let send_res = cxx::onchain_send(&address, 5000, std::ptr::null());
     assert!(
         send_res.is_ok(),
         "send_onchain failed: {:?}",
@@ -249,10 +249,10 @@ fn test_send_onchain_ffi() {
 #[ignore = "requires live regtest backend and a funded wallet"]
 fn test_drain_onchain_ffi() {
     let _fixture = WalletTestFixture::new();
-    let address = cxx::get_onchain_address().unwrap();
+    let address = cxx::onchain_address().unwrap();
 
     // This test requires the address to be funded manually.
-    let drain_res = cxx::drain(&address, false);
+    let drain_res = cxx::onchain_drain(&address, std::ptr::null());
     assert!(
         drain_res.is_ok(),
         "drain_onchain failed: {:?}",
@@ -266,8 +266,8 @@ fn test_drain_onchain_ffi() {
 #[ignore = "requires live regtest backend and a funded wallet"]
 fn test_send_many_onchain_ffi() {
     let _fixture = WalletTestFixture::new();
-    let address1 = cxx::get_onchain_address().unwrap();
-    let address2 = cxx::get_onchain_address().unwrap();
+    let address1 = cxx::onchain_address().unwrap();
+    let address2 = cxx::onchain_address().unwrap();
 
     let outputs = vec![
         ffi::SendManyOutput {
@@ -280,7 +280,7 @@ fn test_send_many_onchain_ffi() {
         },
     ];
 
-    let send_many_res = cxx::send_many(outputs, 10);
+    let send_many_res = cxx::onchain_send_many(outputs, std::ptr::null());
     assert!(
         send_many_res.is_ok(),
         "send_many failed: {:?}",
