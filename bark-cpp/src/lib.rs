@@ -201,7 +201,7 @@ impl WalletManager {
 
         let wallet = Wallet::open(&mnemonic, db.clone()).await?;
         let onchain_wallet = OnchainWallet::load_or_create(
-            wallet.properties().unwrap().network,
+            wallet.properties()?.network,
             mnemonic.to_seed(""),
             db,
         )?;
