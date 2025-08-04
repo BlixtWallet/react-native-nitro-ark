@@ -14,6 +14,7 @@ use bark::ark::VtxoId;
 use bark::lightning_invoice::Bolt11Invoice;
 use bark::lnurllib::lightning_address::LightningAddress;
 use bark::onchain::{ChainSource, ChainSourceClient, OnchainWallet};
+use bark::persist::BarkPersister;
 use bark::Config;
 use bark::Offboard;
 use bark::SendOnchain;
@@ -198,10 +199,13 @@ impl WalletManager {
         debug!("Opening bark wallet in {}", datadir.display());
 
         let db = Arc::new(SqliteClient::open(datadir.join(DB_FILE))?);
+        let properties = db
+            .read_properties()?
+            .context("Failed to read properties from db for opening wallet")?;
 
-        let wallet = Wallet::open(&mnemonic, db.clone()).await?;
         let onchain_wallet =
-            OnchainWallet::load_or_create(wallet.properties()?.network, mnemonic.to_seed(""), db)?;
+            OnchainWallet::load_or_create(properties.network, mnemonic.to_seed(""), db.clone())?;
+        let wallet = Wallet::open_with_onchain(&mnemonic, db.clone(), &onchain_wallet).await?;
 
         Ok((wallet, onchain_wallet))
     }
