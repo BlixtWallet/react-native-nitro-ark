@@ -137,7 +137,6 @@ export function peakKeyPair(index: number): Promise<string> {
 
 /**
  * Gets the wallet's Address.
- * @param index Index of the VTXO pubkey to retrieve.
  * @returns A promise resolving to NewAddressResult object.
  */
 export function newAddress(): Promise<NewAddressResult> {
