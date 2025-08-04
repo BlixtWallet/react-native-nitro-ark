@@ -12,6 +12,7 @@ import type {
   BarkVtxo,
   OffchainBalanceResult,
   OnchainBalanceResult,
+  NewAddressResult,
 } from './NitroArk.nitro';
 
 // Create the hybrid object instance
@@ -135,6 +136,15 @@ export function peakKeyPair(index: number): Promise<string> {
 }
 
 /**
+ * Gets the wallet's Address.
+ * @param index Index of the VTXO pubkey to retrieve.
+ * @returns A promise resolving to NewAddressResult object.
+ */
+export function newAddress(): Promise<NewAddressResult> {
+  return NitroArkHybridObject.newAddress();
+}
+
+/**
  * Gets the list of VTXOs as a JSON string for the loaded wallet.
  * @param no_sync If true, skips synchronization with the blockchain. Defaults to false.
  * @returns A promise resolving BarkVtxo[] array.
@@ -203,9 +213,7 @@ export function onchainSend(
  * @param destination The destination Bitcoin address.
  * @returns A promise resolving to the transaction ID string.
  */
-export function onchainDrain(
-  destination: string
-): Promise<string> {
+export function onchainDrain(destination: string): Promise<string> {
   return NitroArkHybridObject.onchainDrain(destination);
 }
 
@@ -215,7 +223,7 @@ export function onchainDrain(
  * @returns A promise resolving to the transaction ID string.
  */
 export function onchainSendMany(
-  outputs: BarkSendManyOutput[],
+  outputs: BarkSendManyOutput[]
 ): Promise<string> {
   return NitroArkHybridObject.onchainSendMany(outputs);
 }
@@ -308,7 +316,7 @@ export function sendArkoorPayment(
  */
 export function sendRoundOnchainPayment(
   destination: string,
-  amountSat: number,
+  amountSat: number
 ): Promise<string> {
   return NitroArkHybridObject.sendRoundOnchainPayment(destination, amountSat);
 }
@@ -352,5 +360,6 @@ export type {
   OnchainPaymentResult,
   PaymentTypes,
   OffchainBalanceResult,
-  OnchainBalanceResult
+  OnchainBalanceResult,
+  NewAddressResult,
 } from './NitroArk.nitro';

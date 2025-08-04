@@ -260,9 +260,7 @@ export default function ArkApp() {
       () => NitroArk.onchainBalance(),
       (balance) => {
         setOnchainBalance(balance);
-        setResults(
-          `Onchain Balance: ${JSON.stringify(balance, null, 2)}`
-        );
+        setResults(`Onchain Balance: ${JSON.stringify(balance, null, 2)}`);
       }
     );
   };
@@ -273,9 +271,39 @@ export default function ArkApp() {
       () => NitroArk.offchainBalance(),
       (balance) => {
         setOffchainBalance(balance);
-        setResults(
-          `Offchain Balance: ${JSON.stringify(balance, null, 2)}`
-        );
+        setResults(`Offchain Balance: ${JSON.stringify(balance, null, 2)}`);
+      }
+    );
+  };
+
+  const handleDeriveStoreNextKeypair = () => {
+    if (!mnemonic) {
+      setError('Mnemonic required');
+      return;
+    }
+    runOperation('deriveStoreNextKeypair', () =>
+      NitroArk.deriveStoreNextKeypair()
+    );
+  };
+
+  const handlePeakKeyPair = () => {
+    if (!mnemonic) {
+      setError('Mnemonic required');
+      return;
+    }
+    runOperation('peakKeyPair', () => NitroArk.peakKeyPair(0));
+  };
+
+  const handleNewAddress = () => {
+    if (!mnemonic) {
+      setError('Mnemonic required');
+      return;
+    }
+    runOperation(
+      'newAddress',
+      () => NitroArk.newAddress(),
+      (address) => {
+        setResults(JSON.stringify(address, null, 2));
       }
     );
   };
@@ -672,6 +700,30 @@ export default function ArkApp() {
             disabled={walletOpsButtonDisabled}
           />
         </View>
+        <View style={styles.buttonContainer}>
+          <Button
+            title="Derive Store Next Keypair"
+            onPress={handleDeriveStoreNextKeypair}
+            disabled={walletOpsButtonDisabled}
+          />
+        </View>
+
+        <View style={styles.buttonContainer}>
+          <Button
+            title="Peak Key Pair"
+            onPress={handlePeakKeyPair}
+            disabled={walletOpsButtonDisabled}
+          />
+        </View>
+
+        <View style={styles.buttonContainer}>
+          <Button
+            title="Generate new Ark address"
+            onPress={handleNewAddress}
+            disabled={walletOpsButtonDisabled}
+          />
+        </View>
+
         <View style={styles.buttonContainer}>
           <Button
             title="Get Onchain UTXOs"

@@ -21,6 +21,8 @@ namespace margelo::nitro::nitroark { struct BarkConfigOpts; }
 namespace margelo::nitro::nitroark { struct BarkArkInfo; }
 // Forward declaration of `OffchainBalanceResult` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct OffchainBalanceResult; }
+// Forward declaration of `NewAddressResult` to properly resolve imports.
+namespace margelo::nitro::nitroark { struct NewAddressResult; }
 // Forward declaration of `BarkVtxo` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct BarkVtxo; }
 // Forward declaration of `OnchainBalanceResult` to properly resolve imports.
@@ -42,6 +44,7 @@ namespace margelo::nitro::nitroark { struct LnurlPaymentResult; }
 #include "BarkConfigOpts.hpp"
 #include "BarkArkInfo.hpp"
 #include "OffchainBalanceResult.hpp"
+#include "NewAddressResult.hpp"
 #include <vector>
 #include "BarkVtxo.hpp"
 #include "OnchainBalanceResult.hpp"
@@ -96,6 +99,7 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<OffchainBalanceResult>> offchainBalance() = 0;
       virtual std::shared_ptr<Promise<std::string>> deriveStoreNextKeypair() = 0;
       virtual std::shared_ptr<Promise<std::string>> peakKeyPair(double index) = 0;
+      virtual std::shared_ptr<Promise<NewAddressResult>> newAddress() = 0;
       virtual std::shared_ptr<Promise<std::vector<BarkVtxo>>> getVtxos() = 0;
       virtual std::shared_ptr<Promise<OnchainBalanceResult>> onchainBalance() = 0;
       virtual std::shared_ptr<Promise<void>> onchainSync() = 0;
