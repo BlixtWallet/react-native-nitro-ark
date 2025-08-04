@@ -200,11 +200,8 @@ impl WalletManager {
         let db = Arc::new(SqliteClient::open(datadir.join(DB_FILE))?);
 
         let wallet = Wallet::open(&mnemonic, db.clone()).await?;
-        let onchain_wallet = OnchainWallet::load_or_create(
-            wallet.properties()?.network,
-            mnemonic.to_seed(""),
-            db,
-        )?;
+        let onchain_wallet =
+            OnchainWallet::load_or_create(wallet.properties()?.network, mnemonic.to_seed(""), db)?;
 
         Ok((wallet, onchain_wallet))
     }
