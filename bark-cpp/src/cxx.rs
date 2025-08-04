@@ -672,7 +672,7 @@ pub(crate) fn onchain_send_many(
                 let fee_rate = if fee_rate.is_null() {
                     ctx.chain_client.fee_rates().await.regular
                 } else {
-                    FeeRate::from_sat_per_vb(unsafe { *fee_rate }).unwrap()
+                    FeeRate::from_sat_per_vb(unsafe { *fee_rate }).context("Invalid fee rate")?
                 };
 
                 crate::onchain::send_many(rust_outputs, fee_rate).await
