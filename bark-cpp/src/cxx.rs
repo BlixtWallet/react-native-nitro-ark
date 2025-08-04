@@ -640,7 +640,7 @@ pub(crate) fn onchain_drain(destination: &str, fee_rate: *const u64) -> anyhow::
                 let fee_rate = if fee_rate.is_null() {
                     ctx.chain_client.fee_rates().await.regular
                 } else {
-                    FeeRate::from_sat_per_vb(unsafe { *fee_rate }).unwrap()
+                    FeeRate::from_sat_per_vb(unsafe { *fee_rate }).context("Invalid fee rate")?
                 };
 
                 crate::onchain::drain(address, fee_rate).await
