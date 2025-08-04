@@ -799,6 +799,7 @@ std::size_t align_of() {
 namespace bark_cxx {
   struct BarkVtxo;
   enum class PaymentTypes : ::std::uint8_t;
+  struct NewAddressResult;
   struct Bolt11PaymentResult;
   struct LnurlPaymentResult;
   struct ArkoorPaymentResult;
@@ -834,6 +835,17 @@ enum class PaymentTypes : ::std::uint8_t {
   Onchain = 3,
 };
 #endif // CXXBRIDGE1_ENUM_bark_cxx$PaymentTypes
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$NewAddressResult
+#define CXXBRIDGE1_STRUCT_bark_cxx$NewAddressResult
+struct NewAddressResult final {
+  ::rust::String user_pubkey;
+  ::rust::String ark_id;
+  ::rust::String address;
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$NewAddressResult
 
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$Bolt11PaymentResult
 #define CXXBRIDGE1_STRUCT_bark_cxx$Bolt11PaymentResult
@@ -996,6 +1008,8 @@ void persist_config(::bark_cxx::ConfigOpts opts);
 ::rust::String derive_store_next_keypair();
 
 ::rust::String peak_keypair(::std::uint32_t index);
+
+::bark_cxx::NewAddressResult new_address();
 
 ::rust::Vec<::bark_cxx::BarkVtxo> get_vtxos();
 
