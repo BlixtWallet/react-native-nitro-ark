@@ -242,6 +242,10 @@ export default function ArkApp() {
     runOperation('sync', () => NitroArk.sync());
   };
 
+  const handleOnchainSync = () => {
+    runOperation('onchainSync', () => NitroArk.onchainSync());
+  };
+
   const handleSyncExits = () => {
     runOperation('syncExits', () => NitroArk.syncExits());
   };
@@ -603,6 +607,14 @@ export default function ArkApp() {
             disabled={walletOpsButtonDisabled}
           />
         </View>
+        <View style={styles.buttonContainer}>
+          <Button
+            title="Onchain Sync"
+            onPress={handleOnchainSync}
+            disabled={walletOpsButtonDisabled}
+          />
+        </View>
+
         <View style={styles.buttonContainer}>
           <Button
             title="Sync Exits"
