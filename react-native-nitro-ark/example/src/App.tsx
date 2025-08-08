@@ -169,7 +169,7 @@ export default function ArkApp() {
     }
   };
 
-  const handleCreateWallet = async () => {
+  const handleLoadWallet = async () => {
     if (!mnemonic) {
       setError('Mnemonic is required to create a wallet.');
       return;
@@ -181,33 +181,33 @@ export default function ArkApp() {
       console.error('Error clearing existing data directory:', err);
     }
 
-    const opts: NitroArk.BarkCreateOpts = {
-      mnemonic: mnemonic,
-      regtest: true,
-      signet: false,
-      bitcoin: false,
-      config: {
-        bitcoind: 'http://localhost:18443',
-        asp: 'http://localhost:3535',
-        bitcoind_user: 'second',
-        bitcoind_pass: 'ark',
-        vtxo_refresh_expiry_threshold: 288,
-        fallback_fee_rate: 10000,
-      },
-    };
-
     // const opts: NitroArk.BarkCreateOpts = {
     //   mnemonic: mnemonic,
-    //   regtest: false,
-    //   signet: true,
+    //   regtest: true,
+    //   signet: false,
     //   bitcoin: false,
     //   config: {
-    //     esplora: 'esplora.signet.2nd.dev',
-    //     asp: 'ark.signet.2nd.dev',
+    //     bitcoind: 'http://localhost:18443',
+    //     asp: 'http://localhost:3535',
+    //     bitcoind_user: 'second',
+    //     bitcoind_pass: 'ark',
     //     vtxo_refresh_expiry_threshold: 288,
-    //     fallback_fee_rate: 100000,
+    //     fallback_fee_rate: 10000,
     //   },
     // };
+
+    const opts: NitroArk.BarkCreateOpts = {
+      mnemonic: mnemonic,
+      regtest: false,
+      signet: true,
+      bitcoin: false,
+      config: {
+        esplora: 'esplora.signet.2nd.dev',
+        asp: 'ark.signet.2nd.dev',
+        vtxo_refresh_expiry_threshold: 288,
+        fallback_fee_rate: 100000,
+      },
+    };
 
     runOperation(
       'loadWallet',
@@ -239,11 +239,35 @@ export default function ArkApp() {
   };
 
   const handleSync = () => {
-    runOperation('sync', () => NitroArk.sync());
+    runOperation('sync', async () => {
+      const startTime = new Date().getTime();
+      console.log('Starting sync at:', new Date(startTime).toISOString());
+      await NitroArk.sync();
+
+      const endTime = new Date().getTime();
+      console.log('Finished sync at:', new Date(endTime).toISOString());
+
+      const duration = (endTime - startTime) / 1000;
+      console.log(`Sync took ${duration.toFixed(2)} seconds`);
+    });
   };
 
   const handleOnchainSync = () => {
-    runOperation('onchainSync', () => NitroArk.onchainSync());
+    runOperation('onchainSync', async () => {
+      const startTime = new Date().getTime();
+      console.log(
+        'Starting onchain sync at:',
+        new Date(startTime).toISOString()
+      );
+
+      await NitroArk.onchainSync();
+
+      const endTime = new Date().getTime();
+      console.log('Finished onchain sync at:', new Date(endTime).toISOString());
+
+      const duration = (endTime - startTime) / 1000;
+      console.log(`Onchain sync took ${duration.toFixed(2)} seconds`);
+    });
   };
 
   const handleSyncExits = () => {
@@ -566,8 +590,8 @@ export default function ArkApp() {
         </View>
         <View style={styles.buttonContainer}>
           <Button
-            title="Create Wallet"
-            onPress={handleCreateWallet}
+            title="Load Wallet"
+            onPress={handleLoadWallet}
             disabled={isLoading || !mnemonic} // Disable if no mnemonic or already created
           />
         </View>
@@ -702,7 +726,7 @@ export default function ArkApp() {
           <Button
             title="Get Offchain Balance"
             onPress={handleGetOffchainBalance}
-            disabled={walletOpsButtonDisabled}
+            // disabled={walletOpsButtonDisabled}
           />
         </View>
         <View style={styles.buttonContainer}>

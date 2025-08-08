@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bark-client = { git = "https://codeberg.org/ark-bitcoin/bark.git", tag = "bark-0.0.0-alpha.18", features = [
+bark-client = { git = "https://codeberg.org/niteshbalusu/bark.git", branch = "bark-alpha-18", features = [
     "tls-webpki-roots",
 ], default-features = false }
 
