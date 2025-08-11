@@ -261,6 +261,31 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<std::string>>
+  signMessage(const std::string &message, double index) override {
+    return Promise<std::string>::async([message, index]() {
+      try {
+        uint32_t index_val = static_cast<uint32_t>(index);
+        rust::String signature_rs = bark_cxx::sign_message(message, index_val);
+        return std::string(signature_rs.data(), signature_rs.length());
+      } catch (const rust::Error &e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<bool>>
+  verifyMessage(const std::string &message, const std::string &signature,
+                const std::string &publicKey) override {
+    return Promise<bool>::async([message, signature, publicKey]() {
+      try {
+        return bark_cxx::verify_message(message, signature, publicKey);
+      } catch (const rust::Error &e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   std::shared_ptr<Promise<std::vector<BarkVtxo>>> getVtxos() override {
     return Promise<std::vector<BarkVtxo>>::async([]() {
       try {

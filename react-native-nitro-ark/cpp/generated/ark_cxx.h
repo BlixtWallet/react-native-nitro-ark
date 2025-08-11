@@ -1022,6 +1022,10 @@ void persist_config(::bark_cxx::ConfigOpts opts);
 
 ::bark_cxx::NewAddressResult new_address();
 
+::rust::String sign_message(::rust::Str message, ::std::uint32_t index);
+
+bool verify_message(::rust::Str message, ::rust::Str signature, ::rust::Str public_key);
+
 ::rust::Vec<::bark_cxx::BarkVtxo> get_vtxos();
 
 ::rust::String bolt11_invoice(::std::uint64_t amount_msat);

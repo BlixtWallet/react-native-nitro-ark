@@ -142,6 +142,8 @@ pub(crate) mod ffi {
         fn derive_store_next_keypair() -> Result<KeyPairResult>;
         fn peak_keypair(index: u32) -> Result<KeyPairResult>;
         fn new_address() -> Result<NewAddressResult>;
+        fn sign_message(message: &str, index: u32) -> Result<String>;
+        fn verify_message(message: &str, signature: &str, public_key: &str) -> Result<bool>;
         fn get_vtxos() -> Result<Vec<BarkVtxo>>;
         fn bolt11_invoice(amount_msat: u64) -> Result<String>;
         fn maintenance() -> Result<()>;
@@ -267,6 +269,26 @@ pub(crate) fn new_address() -> anyhow::Result<ffi::NewAddressResult> {
         ark_id: address.ark_id().to_string(),
         address: address.to_string(),
     })
+}
+
+pub(crate) fn sign_message(message: &str, index: u32) -> anyhow::Result<String> {
+    let message = crate::TOKIO_RUNTIME
+        .block_on(crate::sign_message(message, index))?
+        .to_string();
+    Ok(message)
+}
+
+pub(crate) fn verify_message(
+    message: &str,
+    signature: &str,
+    public_key: &str,
+) -> anyhow::Result<bool> {
+    let signature = bark::ark::bitcoin::secp256k1::ecdsa::Signature::from_str(signature)
+        .with_context(|| format!("Invalid signature format: '{}'", signature))?;
+    let public_key = bark::ark::bitcoin::secp256k1::PublicKey::from_str(public_key)
+        .with_context(|| format!("Invalid public key format: '{}'", public_key))?;
+
+    crate::TOKIO_RUNTIME.block_on(crate::verify_message(message, signature, &public_key))
 }
 
 pub(crate) fn get_vtxos() -> anyhow::Result<Vec<BarkVtxo>> {

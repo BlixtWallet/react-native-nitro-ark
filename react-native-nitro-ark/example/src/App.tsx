@@ -60,6 +60,9 @@ export default function ArkApp() {
   const [optionalAddress, setOptionalAddress] = useState('');
   const [invoiceAmount, setInvoiceAmount] = useState('1000');
   const [invoiceToClaim, setInvoiceToClaim] = useState('');
+  const [messageToSign, setMessageToSign] = useState('hello world');
+  const [signature, setSignature] = useState('');
+  const [publicKeyForVerification, setPublicKeyForVerification] = useState('');
 
   // Ensure data directory exists on mount
   useEffect(() => {
@@ -551,6 +554,31 @@ export default function ArkApp() {
     );
   };
 
+  const handleSignMessage = () => {
+    if (!messageToSign) {
+      setError('Message is required to sign.');
+      return;
+    }
+    runOperation(
+      'signMessage',
+      () => NitroArk.signMessage(messageToSign, 0),
+      (sig) => {
+        setSignature(sig);
+        setResults(`Signature: ${sig}`);
+      }
+    );
+  };
+
+  const handleVerifyMessage = () => {
+    if (!messageToSign || !signature || !publicKeyForVerification) {
+      setError('Message, signature, and public key are required to verify.');
+      return;
+    }
+    runOperation('verifyMessage', () =>
+      NitroArk.verifyMessage(messageToSign, signature, publicKeyForVerification)
+    );
+  };
+
   // --- Render ---
   const canUseWallet = !!mnemonic;
   const walletOpsButtonDisabled = isLoading || !canUseWallet;
@@ -951,6 +979,53 @@ export default function ArkApp() {
           <Button
             title="Offboard All"
             onPress={() => handleOffboardAll()}
+            disabled={walletOpsButtonDisabled}
+          />
+        </View>
+
+        {/* --- Signing/Verification --- */}
+        <Text style={styles.sectionHeader}>Signing & Verification</Text>
+        <View style={styles.inputContainer}>
+          <Text style={styles.inputLabel}>Message to Sign/Verify:</Text>
+          <TextInput
+            style={styles.input}
+            value={messageToSign}
+            onChangeText={setMessageToSign}
+            placeholder="Enter message"
+          />
+        </View>
+        <View style={styles.inputContainer}>
+          <Text style={styles.inputLabel}>Signature:</Text>
+          <TextInput
+            style={styles.input}
+            value={signature}
+            onChangeText={setSignature}
+            placeholder="Signature will appear here"
+            editable={false}
+            selectTextOnFocus
+          />
+        </View>
+        <View style={styles.inputContainer}>
+          <Text style={styles.inputLabel}>Public Key for Verification:</Text>
+          <TextInput
+            style={styles.input}
+            value={publicKeyForVerification}
+            onChangeText={setPublicKeyForVerification}
+            placeholder="Enter public key"
+            autoCapitalize="none"
+          />
+        </View>
+        <View style={styles.buttonContainer}>
+          <Button
+            title="Sign Message (with key 0)"
+            onPress={handleSignMessage}
+            disabled={walletOpsButtonDisabled}
+          />
+        </View>
+        <View style={styles.buttonContainer}>
+          <Button
+            title="Verify Message"
+            onPress={handleVerifyMessage}
             disabled={walletOpsButtonDisabled}
           />
         </View>

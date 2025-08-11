@@ -302,6 +302,36 @@ pub async fn new_address() -> anyhow::Result<bark::ark::Address> {
     })
 }
 
+pub async fn sign_message(
+    message: &str,
+    index: u32,
+) -> anyhow::Result<bark::ark::bitcoin::secp256k1::ecdsa::Signature> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager.with_context(|ctx| {
+        let wallet = &ctx.wallet;
+        let keypair = wallet
+            .peak_keypair(index)
+            .context("Failed to peak keypair")?;
+        let hash = bark::ark::bitcoin::sign_message::signed_msg_hash(message);
+        let secp = bark::ark::bitcoin::secp256k1::Secp256k1::new();
+        let msg = bark::ark::bitcoin::secp256k1::Message::from_digest_slice(&hash[..]).unwrap();
+        let ecdsa_sig = secp.sign_ecdsa(&msg, &keypair.secret_key());
+
+        Ok(ecdsa_sig)
+    })
+}
+
+pub async fn verify_message(
+    message: &str,
+    signature: bark::ark::bitcoin::secp256k1::ecdsa::Signature,
+    public_key: &bark::ark::bitcoin::secp256k1::PublicKey,
+) -> anyhow::Result<bool> {
+    let hash = bark::ark::bitcoin::sign_message::signed_msg_hash(message);
+    let secp = bark::ark::bitcoin::secp256k1::Secp256k1::new();
+    let msg = bark::ark::bitcoin::secp256k1::Message::from_digest_slice(&hash[..]).unwrap();
+    Ok(secp.verify_ecdsa(&msg, &signature, &public_key).is_ok())
+}
+
 pub async fn bolt11_invoice(amount: u64) -> anyhow::Result<String> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager

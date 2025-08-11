@@ -145,6 +145,31 @@ export function newAddress(): Promise<NewAddressResult> {
 }
 
 /**
+ * Signs a message with the private key at the specified index.
+ * @param message The message to sign.
+ * @param index The index of the keypair to use for signing.
+ * @returns A promise resolving to the signature string.
+ */
+export function signMessage(message: string, index: number): Promise<string> {
+  return NitroArkHybridObject.signMessage(message, index);
+}
+
+/**
+ * Verifies a signed message.
+ * @param message The original message.
+ * @param signature The signature to verify.
+ * @param publicKey The public key corresponding to the private key used for signing.
+ * @returns A promise resolving to true if the signature is valid, false otherwise.
+ */
+export function verifyMessage(
+  message: string,
+  signature: string,
+  publicKey: string
+): Promise<boolean> {
+  return NitroArkHybridObject.verifyMessage(message, signature, publicKey);
+}
+
+/**
  * Gets the list of VTXOs as a JSON string for the loaded wallet.
  * @param no_sync If true, skips synchronization with the blockchain. Defaults to false.
  * @returns A promise resolving BarkVtxo[] array.

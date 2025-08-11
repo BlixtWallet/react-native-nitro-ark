@@ -124,6 +124,12 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   deriveStoreNextKeypair(): Promise<KeyPairResult>;
   peakKeyPair(index: number): Promise<KeyPairResult>;
   newAddress(): Promise<NewAddressResult>;
+  signMessage(message: string, index: number): Promise<string>;
+  verifyMessage(
+    message: string,
+    signature: string,
+    publicKey: string
+  ): Promise<boolean>;
   getVtxos(): Promise<BarkVtxo[]>; // Returns JSON string
 
   // --- Onchain Operations ---
