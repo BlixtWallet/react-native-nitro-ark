@@ -128,7 +128,7 @@ pub(crate) mod ffi {
 
     pub struct KeyPairResult {
         pub public_key: String,
-        pub private_key: String,
+        pub secret_key: String,
     }
 
     extern "Rust" {
@@ -248,7 +248,7 @@ pub(crate) fn derive_store_next_keypair() -> anyhow::Result<ffi::KeyPairResult> 
     let keypair = crate::TOKIO_RUNTIME.block_on(crate::derive_store_next_keypair())?;
     Ok(ffi::KeyPairResult {
         public_key: keypair.public_key().to_string(),
-        private_key: keypair.secret_key().display_secret().to_string(),
+        secret_key: keypair.secret_key().display_secret().to_string(),
     })
 }
 
@@ -256,7 +256,7 @@ pub(crate) fn peak_keypair(index: u32) -> anyhow::Result<ffi::KeyPairResult> {
     let keypair = crate::TOKIO_RUNTIME.block_on(crate::peak_keypair(index))?;
     Ok(ffi::KeyPairResult {
         public_key: keypair.public_key().to_string(),
-        private_key: keypair.secret_key().display_secret().to_string(),
+        secret_key: keypair.secret_key().display_secret().to_string(),
     })
 }
 

@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bark-client = { git = "https://codeberg.org/niteshbalusu/bark.git", branch = "bark-alpha-18", features = [
+bark-client = { git = "https://codeberg.org/niteshbalusu/bark.git", rev = "288f65d8c6fe6a9bc0fbb82dfc98ad8f5c043499", features = [
     "tls-webpki-roots",
 ], default-features = false }
 

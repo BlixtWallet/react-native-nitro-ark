@@ -996,7 +996,7 @@ struct OnChainBalance final {
 #define CXXBRIDGE1_STRUCT_bark_cxx$KeyPairResult
 struct KeyPairResult final {
   ::rust::String public_key;
-  ::rust::String private_key;
+  ::rust::String secret_key;
 
   using IsRelocatable = ::std::true_type;
 };

@@ -30,11 +30,11 @@ namespace margelo::nitro::nitroark {
   struct KeyPairResult {
   public:
     std::string public_key     SWIFT_PRIVATE;
-    std::string private_key     SWIFT_PRIVATE;
+    std::string secret_key     SWIFT_PRIVATE;
 
   public:
     KeyPairResult() = default;
-    explicit KeyPairResult(std::string public_key, std::string private_key): public_key(public_key), private_key(private_key) {}
+    explicit KeyPairResult(std::string public_key, std::string secret_key): public_key(public_key), secret_key(secret_key) {}
   };
 
 } // namespace margelo::nitro::nitroark
@@ -50,13 +50,13 @@ namespace margelo::nitro {
       jsi::Object obj = arg.asObject(runtime);
       return KeyPairResult(
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "public_key")),
-        JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "private_key"))
+        JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "secret_key"))
       );
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const KeyPairResult& arg) {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, "public_key", JSIConverter<std::string>::toJSI(runtime, arg.public_key));
-      obj.setProperty(runtime, "private_key", JSIConverter<std::string>::toJSI(runtime, arg.private_key));
+      obj.setProperty(runtime, "secret_key", JSIConverter<std::string>::toJSI(runtime, arg.secret_key));
       return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -65,7 +65,7 @@ namespace margelo::nitro {
       }
       jsi::Object obj = value.getObject(runtime);
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "public_key"))) return false;
-      if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "private_key"))) return false;
+      if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "secret_key"))) return false;
       return true;
     }
   };

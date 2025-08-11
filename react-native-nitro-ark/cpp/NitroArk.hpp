@@ -215,8 +215,8 @@ public:
         KeyPairResult keypair;
         keypair.public_key = std::string(keypair_rs.public_key.data(),
                                          keypair_rs.public_key.length());
-        keypair.private_key = std::string(keypair_rs.private_key.data(),
-                                          keypair_rs.private_key.length());
+        keypair.secret_key = std::string(keypair_rs.secret_key.data(),
+                                          keypair_rs.secret_key.length());
 
         return keypair;
       } catch (const rust::Error &e) {
@@ -233,8 +233,8 @@ public:
         KeyPairResult keypair;
         keypair.public_key = std::string(keypair_rs.public_key.data(),
                                          keypair_rs.public_key.length());
-        keypair.private_key = std::string(keypair_rs.private_key.data(),
-                                          keypair_rs.private_key.length());
+        keypair.secret_key = std::string(keypair_rs.secret_key.data(),
+                                          keypair_rs.secret_key.length());
         return keypair;
       } catch (const rust::Error &e) {
         throw std::runtime_error(e.what());

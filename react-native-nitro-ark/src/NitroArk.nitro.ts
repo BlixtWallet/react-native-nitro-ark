@@ -101,7 +101,7 @@ export interface NewAddressResult {
 
 export interface KeyPairResult {
   public_key: string;
-  private_key: string;
+  secret_key: string;
 }
 
 // --- Nitro Module Interface ---

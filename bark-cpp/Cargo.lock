@@ -100,9 +100,9 @@ dependencies = [
 [[package]]
 name = "ark-lib"
 version = "0.0.0-alpha.18"
-source = "git+https://codeberg.org/niteshbalusu/bark.git?branch=bark-alpha-18#efd030aee1c8167b30d7edf3b431dfa2559a221f"
+source = "git+https://codeberg.org/niteshbalusu/bark.git?rev=288f65d8c6fe6a9bc0fbb82dfc98ad8f5c043499#288f65d8c6fe6a9bc0fbb82dfc98ad8f5c043499"
 dependencies = [
- "bark-bitcoin-ext 0.0.0 (git+https://codeberg.org/niteshbalusu/bark.git?branch=bark-alpha-18)",
+ "bark-bitcoin-ext 0.0.0 (git+https://codeberg.org/niteshbalusu/bark.git?rev=288f65d8c6fe6a9bc0fbb82dfc98ad8f5c043499)",
  "bitcoin",
  "hex-conservative 0.3.0",
  "lazy_static",
@@ -122,7 +122,7 @@ checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
 [[package]]
 name = "aspd-rpc"
 version = "0.0.0-alpha.18"
-source = "git+https://codeberg.org/niteshbalusu/bark.git?branch=bark-alpha-18#efd030aee1c8167b30d7edf3b431dfa2559a221f"
+source = "git+https://codeberg.org/niteshbalusu/bark.git?rev=288f65d8c6fe6a9bc0fbb82dfc98ad8f5c043499#288f65d8c6fe6a9bc0fbb82dfc98ad8f5c043499"
 dependencies = [
  "ark-lib",
  "bitcoin",
@@ -231,7 +231,7 @@ dependencies = [
 [[package]]
 name = "bark-bitcoin-ext"
 version = "0.0.0"
-source = "git+https://codeberg.org/niteshbalusu/bark.git?branch=bark-alpha-18#efd030aee1c8167b30d7edf3b431dfa2559a221f"
+source = "git+https://codeberg.org/niteshbalusu/bark.git?rev=288f65d8c6fe6a9bc0fbb82dfc98ad8f5c043499#288f65d8c6fe6a9bc0fbb82dfc98ad8f5c043499"
 dependencies = [
  "async-trait",
  "bdk_bitcoind_rpc",
@@ -248,12 +248,12 @@ dependencies = [
 [[package]]
 name = "bark-client"
 version = "0.0.0-alpha.18"
-source = "git+https://codeberg.org/niteshbalusu/bark.git?branch=bark-alpha-18#efd030aee1c8167b30d7edf3b431dfa2559a221f"
+source = "git+https://codeberg.org/niteshbalusu/bark.git?rev=288f65d8c6fe6a9bc0fbb82dfc98ad8f5c043499#288f65d8c6fe6a9bc0fbb82dfc98ad8f5c043499"
 dependencies = [
  "anyhow",
  "ark-lib",
  "aspd-rpc",
- "bark-bitcoin-ext 0.0.0 (git+https://codeberg.org/niteshbalusu/bark.git?branch=bark-alpha-18)",
+ "bark-bitcoin-ext 0.0.0 (git+https://codeberg.org/niteshbalusu/bark.git?rev=288f65d8c6fe6a9bc0fbb82dfc98ad8f5c043499)",
  "bark-json",
  "bdk_bitcoind_rpc",
  "bdk_esplora",
@@ -300,10 +300,10 @@ dependencies = [
 [[package]]
 name = "bark-json"
 version = "0.0.0"
-source = "git+https://codeberg.org/niteshbalusu/bark.git?branch=bark-alpha-18#efd030aee1c8167b30d7edf3b431dfa2559a221f"
+source = "git+https://codeberg.org/niteshbalusu/bark.git?rev=288f65d8c6fe6a9bc0fbb82dfc98ad8f5c043499#288f65d8c6fe6a9bc0fbb82dfc98ad8f5c043499"
 dependencies = [
  "ark-lib",
- "bark-bitcoin-ext 0.0.0 (git+https://codeberg.org/niteshbalusu/bark.git?branch=bark-alpha-18)",
+ "bark-bitcoin-ext 0.0.0 (git+https://codeberg.org/niteshbalusu/bark.git?rev=288f65d8c6fe6a9bc0fbb82dfc98ad8f5c043499)",
  "bitcoin",
  "humantime",
  "serde",
