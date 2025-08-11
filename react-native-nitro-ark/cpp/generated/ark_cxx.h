@@ -811,6 +811,7 @@ namespace bark_cxx {
   enum class RefreshModeType : ::std::uint8_t;
   struct OffchainBalance;
   struct OnChainBalance;
+  struct KeyPairResult;
 }
 
 namespace bark_cxx {
@@ -991,6 +992,16 @@ struct OnChainBalance final {
 };
 #endif // CXXBRIDGE1_STRUCT_bark_cxx$OnChainBalance
 
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$KeyPairResult
+#define CXXBRIDGE1_STRUCT_bark_cxx$KeyPairResult
+struct KeyPairResult final {
+  ::rust::String public_key;
+  ::rust::String private_key;
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$KeyPairResult
+
 void init_logger() noexcept;
 
 ::rust::String create_mnemonic();
@@ -1005,9 +1016,9 @@ void persist_config(::bark_cxx::ConfigOpts opts);
 
 ::bark_cxx::OffchainBalance offchain_balance();
 
-::rust::String derive_store_next_keypair();
+::bark_cxx::KeyPairResult derive_store_next_keypair();
 
-::rust::String peak_keypair(::std::uint32_t index);
+::bark_cxx::KeyPairResult peak_keypair(::std::uint32_t index);
 
 ::bark_cxx::NewAddressResult new_address();
 

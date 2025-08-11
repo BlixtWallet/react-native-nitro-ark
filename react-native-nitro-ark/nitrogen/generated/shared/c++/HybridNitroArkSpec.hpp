@@ -21,6 +21,8 @@ namespace margelo::nitro::nitroark { struct BarkConfigOpts; }
 namespace margelo::nitro::nitroark { struct BarkArkInfo; }
 // Forward declaration of `OffchainBalanceResult` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct OffchainBalanceResult; }
+// Forward declaration of `KeyPairResult` to properly resolve imports.
+namespace margelo::nitro::nitroark { struct KeyPairResult; }
 // Forward declaration of `NewAddressResult` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct NewAddressResult; }
 // Forward declaration of `BarkVtxo` to properly resolve imports.
@@ -44,6 +46,7 @@ namespace margelo::nitro::nitroark { struct LnurlPaymentResult; }
 #include "BarkConfigOpts.hpp"
 #include "BarkArkInfo.hpp"
 #include "OffchainBalanceResult.hpp"
+#include "KeyPairResult.hpp"
 #include "NewAddressResult.hpp"
 #include <vector>
 #include "BarkVtxo.hpp"
@@ -97,8 +100,8 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<void>> syncRounds() = 0;
       virtual std::shared_ptr<Promise<BarkArkInfo>> getArkInfo() = 0;
       virtual std::shared_ptr<Promise<OffchainBalanceResult>> offchainBalance() = 0;
-      virtual std::shared_ptr<Promise<std::string>> deriveStoreNextKeypair() = 0;
-      virtual std::shared_ptr<Promise<std::string>> peakKeyPair(double index) = 0;
+      virtual std::shared_ptr<Promise<KeyPairResult>> deriveStoreNextKeypair() = 0;
+      virtual std::shared_ptr<Promise<KeyPairResult>> peakKeyPair(double index) = 0;
       virtual std::shared_ptr<Promise<NewAddressResult>> newAddress() = 0;
       virtual std::shared_ptr<Promise<std::vector<BarkVtxo>>> getVtxos() = 0;
       virtual std::shared_ptr<Promise<OnchainBalanceResult>> onchainBalance() = 0;

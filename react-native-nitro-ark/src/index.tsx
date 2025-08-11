@@ -13,6 +13,7 @@ import type {
   OffchainBalanceResult,
   OnchainBalanceResult,
   NewAddressResult,
+  KeyPairResult,
 } from './NitroArk.nitro';
 
 // Create the hybrid object instance
@@ -120,18 +121,18 @@ export function offchainBalance(): Promise<OffchainBalanceResult> {
 
 /**
  * Derives the next keypair for the store.
- * @returns A promise resolving to the hex-encoded public key string.
+ * @returns A promise resolving to the KeyPairResult object.
  */
-export function deriveStoreNextKeypair(): Promise<string> {
+export function deriveStoreNextKeypair(): Promise<KeyPairResult> {
   return NitroArkHybridObject.deriveStoreNextKeypair();
 }
 
 /**
  * Gets the wallet's VTXO public key (hex string).
  * @param index Index of the VTXO pubkey to retrieve.
- * @returns A promise resolving to the hex-encoded public key string.
+ * @returns A promise resolving to the KeyPairResult object.
  */
-export function peakKeyPair(index: number): Promise<string> {
+export function peakKeyPair(index: number): Promise<KeyPairResult> {
   return NitroArkHybridObject.peakKeyPair(index);
 }
 
@@ -361,4 +362,5 @@ export type {
   OffchainBalanceResult,
   OnchainBalanceResult,
   NewAddressResult,
+  KeyPairResult,
 } from './NitroArk.nitro';

@@ -126,6 +126,11 @@ pub(crate) mod ffi {
         pub confirmed: u64,
     }
 
+    pub struct KeyPairResult {
+        pub public_key: String,
+        pub private_key: String,
+    }
+
     extern "Rust" {
         fn init_logger();
         fn create_mnemonic() -> Result<String>;
@@ -134,8 +139,8 @@ pub(crate) mod ffi {
         fn persist_config(opts: ConfigOpts) -> Result<()>;
         fn get_ark_info() -> Result<CxxArkInfo>;
         fn offchain_balance() -> Result<OffchainBalance>;
-        fn derive_store_next_keypair() -> Result<String>;
-        fn peak_keypair(index: u32) -> Result<String>;
+        fn derive_store_next_keypair() -> Result<KeyPairResult>;
+        fn peak_keypair(index: u32) -> Result<KeyPairResult>;
         fn new_address() -> Result<NewAddressResult>;
         fn get_vtxos() -> Result<Vec<BarkVtxo>>;
         fn bolt11_invoice(amount_msat: u64) -> Result<String>;
@@ -239,14 +244,20 @@ pub(crate) fn offchain_balance() -> anyhow::Result<ffi::OffchainBalance> {
     })
 }
 
-pub(crate) fn derive_store_next_keypair() -> anyhow::Result<String> {
+pub(crate) fn derive_store_next_keypair() -> anyhow::Result<ffi::KeyPairResult> {
     let keypair = crate::TOKIO_RUNTIME.block_on(crate::derive_store_next_keypair())?;
-    Ok(keypair.public_key().to_string())
+    Ok(ffi::KeyPairResult {
+        public_key: keypair.public_key().to_string(),
+        private_key: keypair.secret_key().display_secret().to_string(),
+    })
 }
 
-pub(crate) fn peak_keypair(index: u32) -> anyhow::Result<String> {
+pub(crate) fn peak_keypair(index: u32) -> anyhow::Result<ffi::KeyPairResult> {
     let keypair = crate::TOKIO_RUNTIME.block_on(crate::peak_keypair(index))?;
-    Ok(keypair.public_key().to_string())
+    Ok(ffi::KeyPairResult {
+        public_key: keypair.public_key().to_string(),
+        private_key: keypair.secret_key().display_secret().to_string(),
+    })
 }
 
 pub(crate) fn new_address() -> anyhow::Result<ffi::NewAddressResult> {

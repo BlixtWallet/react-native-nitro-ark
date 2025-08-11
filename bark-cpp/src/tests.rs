@@ -309,8 +309,8 @@ fn test_send_arkoot_payment_ffi() {
     let _fixture = WalletTestFixture::new();
     // This is a complex test as it can handle different destination types.
     // Here we test sending to a VTXO pubkey (OOR).
-    let pubkey = cxx::derive_store_next_keypair().unwrap();
-    let send_res = cxx::send_arkoor_payment(&pubkey, 5000);
+    let keypair = cxx::derive_store_next_keypair().unwrap();
+    let send_res = cxx::send_arkoor_payment(&keypair.public_key, 5000);
     assert!(
         send_res.is_ok(),
         "send_payment (OOR) failed: {:?}",

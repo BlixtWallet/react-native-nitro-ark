@@ -207,23 +207,35 @@ public:
     });
   }
 
-  std::shared_ptr<Promise<std::string>> deriveStoreNextKeypair() override {
-    return Promise<std::string>::async([]() {
+  std::shared_ptr<Promise<KeyPairResult>> deriveStoreNextKeypair() override {
+    return Promise<KeyPairResult>::async([]() {
       try {
-        rust::String keypair_rs = bark_cxx::derive_store_next_keypair();
-        return std::string(keypair_rs.data(), keypair_rs.length());
+        bark_cxx::KeyPairResult keypair_rs =
+            bark_cxx::derive_store_next_keypair();
+        KeyPairResult keypair;
+        keypair.public_key = std::string(keypair_rs.public_key.data(),
+                                         keypair_rs.public_key.length());
+        keypair.private_key = std::string(keypair_rs.private_key.data(),
+                                          keypair_rs.private_key.length());
+
+        return keypair;
       } catch (const rust::Error &e) {
         throw std::runtime_error(e.what());
       }
     });
   }
 
-  std::shared_ptr<Promise<std::string>> peakKeyPair(double index) override {
-    return Promise<std::string>::async([index]() {
+  std::shared_ptr<Promise<KeyPairResult>> peakKeyPair(double index) override {
+    return Promise<KeyPairResult>::async([index]() {
       try {
         uint32_t index_val = static_cast<uint32_t>(index);
-        rust::String keypair_rs = bark_cxx::peak_keypair(index_val);
-        return std::string(keypair_rs.data(), keypair_rs.length());
+        bark_cxx::KeyPairResult keypair_rs = bark_cxx::peak_keypair(index_val);
+        KeyPairResult keypair;
+        keypair.public_key = std::string(keypair_rs.public_key.data(),
+                                         keypair_rs.public_key.length());
+        keypair.private_key = std::string(keypair_rs.private_key.data(),
+                                          keypair_rs.private_key.length());
+        return keypair;
       } catch (const rust::Error &e) {
         throw std::runtime_error(e.what());
       }

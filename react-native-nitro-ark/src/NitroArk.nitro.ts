@@ -99,6 +99,11 @@ export interface NewAddressResult {
   address: string;
 }
 
+export interface KeyPairResult {
+  public_key: string;
+  private_key: string;
+}
+
 // --- Nitro Module Interface ---
 
 export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
@@ -116,8 +121,8 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   // --- Wallet Info ---
   getArkInfo(): Promise<BarkArkInfo>;
   offchainBalance(): Promise<OffchainBalanceResult>;
-  deriveStoreNextKeypair(): Promise<string>;
-  peakKeyPair(index: number): Promise<string>;
+  deriveStoreNextKeypair(): Promise<KeyPairResult>;
+  peakKeyPair(index: number): Promise<KeyPairResult>;
   newAddress(): Promise<NewAddressResult>;
   getVtxos(): Promise<BarkVtxo[]>; // Returns JSON string
 

@@ -6,6 +6,7 @@ use bark;
 use bark::ark::bitcoin::Address;
 use bark::ark::bitcoin::Amount;
 use bark::ark::bitcoin::Network;
+
 use bark::ark::lightning::Preimage;
 use bark::ark::rounds::RoundId;
 use bark::ark::ArkInfo;
