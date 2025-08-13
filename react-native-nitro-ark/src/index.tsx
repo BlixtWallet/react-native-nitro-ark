@@ -31,17 +31,27 @@ export function createMnemonic(): Promise<string> {
 }
 
 /**
- * Loads an existing wallet or creates a new one at the specified directory.
- * Once loaded, the wallet state is managed internally.
+ * Creates a new wallet at the specified directory.
  * @param datadir Path to the data directory.
- * @param opts Creation and configuration options.
+ * @param opts The options for wallet creation.
  * @returns A promise that resolves on success or rejects on error.
  */
-export function loadWallet(
+export function createWallet(
   datadir: string,
   opts: BarkCreateOpts
 ): Promise<void> {
-  return NitroArkHybridObject.loadWallet(datadir, opts);
+  return NitroArkHybridObject.createWallet(datadir, opts);
+}
+
+/**
+ * Loads an existing wallet or creates a new one at the specified directory.
+ * Once loaded, the wallet state is managed internally.
+ * @param datadir Path to the data directory.
+ * @param mnemonic The BIP39 mnemonic phrase for the wallet.
+ * @returns A promise that resolves on success or rejects on error.
+ */
+export function loadWallet(datadir: string, mnemonic: string): Promise<void> {
+  return NitroArkHybridObject.loadWallet(datadir, mnemonic);
 }
 
 /**

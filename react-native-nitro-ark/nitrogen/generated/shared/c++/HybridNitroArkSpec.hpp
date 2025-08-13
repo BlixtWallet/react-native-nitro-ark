@@ -90,7 +90,8 @@ namespace margelo::nitro::nitroark {
     public:
       // Methods
       virtual std::shared_ptr<Promise<std::string>> createMnemonic() = 0;
-      virtual std::shared_ptr<Promise<void>> loadWallet(const std::string& datadir, const BarkCreateOpts& opts) = 0;
+      virtual std::shared_ptr<Promise<void>> createWallet(const std::string& datadir, const BarkCreateOpts& opts) = 0;
+      virtual std::shared_ptr<Promise<void>> loadWallet(const std::string& datadir, const std::string& mnemonic) = 0;
       virtual std::shared_ptr<Promise<bool>> isWalletLoaded() = 0;
       virtual std::shared_ptr<Promise<void>> closeWallet() = 0;
       virtual std::shared_ptr<Promise<void>> persistConfig(const BarkConfigOpts& opts) = 0;

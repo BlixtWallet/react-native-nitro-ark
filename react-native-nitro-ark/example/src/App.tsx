@@ -163,6 +163,7 @@ export default function ArkApp() {
     setIsLoading(true);
     try {
       await AsyncStorage.removeItem(MNEMONIC_STORAGE_KEY);
+      await unlink(ARK_DATA_PATH); // Clear the data directory
       setMnemonic(undefined);
       setResults('Mnemonic cleared successfully');
     } catch (err: any) {
@@ -172,16 +173,10 @@ export default function ArkApp() {
     }
   };
 
-  const handleLoadWallet = async () => {
+  const handleCreateWallet = async () => {
     if (!mnemonic) {
       setError('Mnemonic is required to create a wallet.');
       return;
-    }
-
-    try {
-      await unlink(ARK_DATA_PATH); // Clear existing data directory if it exists
-    } catch (err: any) {
-      console.error('Error clearing existing data directory:', err);
     }
 
     // const opts: NitroArk.BarkCreateOpts = {
@@ -213,10 +208,25 @@ export default function ArkApp() {
     };
 
     runOperation(
-      'loadWallet',
-      () => NitroArk.loadWallet(ARK_DATA_PATH, opts),
+      'createWallet',
+      () => NitroArk.createWallet(ARK_DATA_PATH, opts),
       () => {
         setResults('Wallet created successfully!');
+      }
+    );
+  };
+
+  const handleLoadWallet = async () => {
+    if (!mnemonic) {
+      setError('Mnemonic is required to load a wallet.');
+      return;
+    }
+
+    runOperation(
+      'loadWallet',
+      () => NitroArk.loadWallet(ARK_DATA_PATH, mnemonic),
+      () => {
+        setResults('Wallet loaded successfully!');
       }
     );
   };
@@ -614,6 +624,13 @@ export default function ArkApp() {
             onPress={handleClearMnemonic}
             disabled={isLoading || !mnemonic} // Disable if no mnemonic
             color="#ff6666" // Red color to indicate destructive action
+          />
+        </View>
+        <View style={styles.buttonContainer}>
+          <Button
+            title="Create Wallet"
+            onPress={handleCreateWallet}
+            disabled={isLoading || !mnemonic} // Disable if no mnemonic or already created
           />
         </View>
         <View style={styles.buttonContainer}>

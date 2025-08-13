@@ -149,7 +149,8 @@ pub(crate) mod ffi {
         fn maintenance() -> Result<()>;
         fn sync() -> Result<()>;
         fn sync_rounds() -> Result<()>;
-        fn load_wallet(datadir: &str, opts: CreateOpts) -> Result<()>;
+        fn create_wallet(datadir: &str, opts: CreateOpts) -> Result<()>;
+        fn load_wallet(datadir: &str, mnemonic: &str) -> Result<()>;
         fn board_amount(amount_sat: u64) -> Result<String>;
         fn board_all() -> Result<String>;
         fn send_arkoor_payment(destination: &str, amount_sat: u64) -> Result<ArkoorPaymentResult>;
@@ -325,7 +326,7 @@ pub(crate) fn sync_rounds() -> anyhow::Result<()> {
     crate::TOKIO_RUNTIME.block_on(crate::sync_rounds())
 }
 
-pub(crate) fn load_wallet(datadir: &str, opts: ffi::CreateOpts) -> anyhow::Result<()> {
+pub(crate) fn create_wallet(datadir: &str, opts: ffi::CreateOpts) -> anyhow::Result<()> {
     let config_opts = utils::ConfigOpts {
         asp: Some(opts.config.asp),
         esplora: Some(opts.config.esplora),
@@ -338,7 +339,7 @@ pub(crate) fn load_wallet(datadir: &str, opts: ffi::CreateOpts) -> anyhow::Resul
     };
 
     log::info!(
-        "Loading wallet with datadir: {}, regtest: {}, signet: {}, bitcoin: {}, birthday_height: {:?}",
+        "Creating wallet with datadir: {}, regtest: {}, signet: {}, bitcoin: {}, birthday_height: {:?}",
         datadir,
         opts.regtest,
         opts.signet,
@@ -357,7 +358,16 @@ pub(crate) fn load_wallet(datadir: &str, opts: ffi::CreateOpts) -> anyhow::Resul
 
     log::info!("Creating wallet with options: {:?}", create_opts);
 
-    crate::TOKIO_RUNTIME.block_on(crate::load_wallet(Path::new(datadir), create_opts))
+    crate::TOKIO_RUNTIME.block_on(crate::create_wallet(Path::new(datadir), create_opts))
+}
+
+pub(crate) fn load_wallet(datadir: &str, mnemonic: &str) -> anyhow::Result<()> {
+    let mnemonic = bip39::Mnemonic::from_str(mnemonic)
+        .with_context(|| format!("Invalid mnemonic format: '{}'", mnemonic))?;
+
+    log::info!("Loading wallet with datadir: {}", datadir);
+
+    crate::TOKIO_RUNTIME.block_on(crate::load_wallet(Path::new(datadir), mnemonic))
 }
 
 pub(crate) fn board_amount(amount_sat: u64) -> anyhow::Result<String> {

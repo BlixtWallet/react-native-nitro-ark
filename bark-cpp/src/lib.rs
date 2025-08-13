@@ -14,14 +14,13 @@ use bark::ark::Vtxo;
 use bark::ark::VtxoId;
 use bark::lightning_invoice::Bolt11Invoice;
 use bark::lnurllib::lightning_address::LightningAddress;
-use bark::onchain::{ChainSource, ChainSourceClient, OnchainWallet};
+use bark::onchain::{ChainSourceClient, OnchainWallet};
 use bark::persist::BarkPersister;
 use bark::Config;
 use bark::Offboard;
 use bark::SendOnchain;
 use bark::SqliteClient;
 use bark::Wallet;
-use bdk_bitcoind_rpc::bitcoincore_rpc;
 use bdk_wallet::bitcoin::key::Keypair;
 use tokio::runtime::Runtime;
 use tokio::sync::Mutex;
@@ -77,12 +76,8 @@ impl WalletManager {
         self.context.is_some()
     }
 
-    pub async fn load_wallet(&mut self, datadir: &Path, opts: CreateOpts) -> anyhow::Result<()> {
-        if self.context.is_some() {
-            bail!("Wallet is already loaded. Please close it first.");
-        }
-
-        debug!("Loading wallet in {}", datadir.display());
+    async fn create_wallet(&mut self, datadir: &Path, opts: CreateOpts) -> anyhow::Result<()> {
+        debug!("Creating wallet in {}", datadir.display());
 
         let net = match (opts.bitcoin, opts.signet, opts.regtest) {
             (true, false, false) => Network::Bitcoin,
@@ -104,38 +99,33 @@ impl WalletManager {
             .merge_into(&mut config)
             .context("invalid configuration")?;
 
-        // check if dir doesn't exists, then create it
-        if !datadir.exists() {
-            info!("Wallet directory does not exist, creating it...");
-            try_create_wallet(datadir, net, config.clone(), Some(opts.mnemonic.clone())).await?;
+        if datadir.exists() {
+            bail!("Datadir already exists. Please choose a new path or load the existing wallet.");
         }
 
-        let auth = if let (Some(user), Some(pass)) =
-            (config.bitcoind_user.clone(), config.bitcoind_pass.clone())
-        {
-            bitcoincore_rpc::Auth::UserPass(user, pass)
-        } else {
-            bitcoincore_rpc::Auth::None
-        };
+        try_create_wallet(datadir, net, config.clone(), Some(opts.mnemonic.clone())).await?;
 
-        let chain_source = if let Some(url) = config.esplora_address.clone() {
-            ChainSource::Esplora { url }
-        } else if let Some(url) = config.bitcoind_address.clone() {
-            ChainSource::Bitcoind { url, auth }
-        } else {
-            bail!("Provide either an esplora or bitcoind url as chain source.");
-        };
+        Ok(())
+    }
 
-        let chain_client =
-            Arc::new(ChainSourceClient::new(chain_source, net, config.fallback_fee_rate).await?);
+    async fn load_wallet(&mut self, datadir: &Path, mnemonic: Mnemonic) -> anyhow::Result<()> {
+        if self.context.is_some() {
+            bail!("Wallet is already loaded. Please close it first.");
+        }
+
+        debug!("Loading wallet in {}", datadir.display());
+
+        if !datadir.exists() {
+            bail!("Datadir does not exist. Please create a new wallet first.");
+        }
 
         info!("Attempting to open wallet...");
-        let (wallet, onchain_wallet) = self.open_wallet(datadir, opts.mnemonic).await?;
+        let (wallet, onchain_wallet) = self.open_wallet(datadir, mnemonic).await?;
 
         self.context = Some(WalletContext {
-            wallet,
+            chain_client: wallet.chain.clone(),
+            wallet: wallet,
             onchain_wallet,
-            chain_client,
         });
 
         Ok(())
@@ -148,6 +138,13 @@ impl WalletManager {
         self.context = None;
         info!("Wallet closed successfully.");
         Ok(())
+    }
+
+    pub async fn get_config(&self) -> anyhow::Result<Config> {
+        match &self.context {
+            Some(ctx) => Ok(ctx.wallet.config().clone()),
+            None => bail!("Wallet not loaded"),
+        }
     }
 
     pub fn with_context<T, F>(&mut self, f: F) -> anyhow::Result<T>
@@ -227,9 +224,14 @@ pub fn create_mnemonic() -> anyhow::Result<String> {
     Ok(mnemonic.to_string())
 }
 
-pub async fn load_wallet(datadir: &Path, opts: CreateOpts) -> anyhow::Result<()> {
+pub async fn create_wallet(datadir: &Path, opts: CreateOpts) -> anyhow::Result<()> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager.load_wallet(datadir, opts).await
+    manager.create_wallet(datadir, opts).await
+}
+
+pub async fn load_wallet(datadir: &Path, mnemonic: Mnemonic) -> anyhow::Result<()> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager.load_wallet(datadir, mnemonic).await
 }
 
 pub async fn close_wallet() -> anyhow::Result<()> {

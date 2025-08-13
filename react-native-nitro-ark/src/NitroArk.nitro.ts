@@ -109,7 +109,8 @@ export interface KeyPairResult {
 export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   // --- Management ---
   createMnemonic(): Promise<string>;
-  loadWallet(datadir: string, opts: BarkCreateOpts): Promise<void>;
+  createWallet(datadir: string, opts: BarkCreateOpts): Promise<void>;
+  loadWallet(datadir: string, mnemonic: string): Promise<void>;
   isWalletLoaded(): Promise<boolean>;
   closeWallet(): Promise<void>;
   persistConfig(opts: BarkConfigOpts): Promise<void>;

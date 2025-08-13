@@ -1036,7 +1036,9 @@ void sync();
 
 void sync_rounds();
 
-void load_wallet(::rust::Str datadir, ::bark_cxx::CreateOpts opts);
+void create_wallet(::rust::Str datadir, ::bark_cxx::CreateOpts opts);
+
+void load_wallet(::rust::Str datadir, ::rust::Str mnemonic);
 
 ::rust::String board_amount(::std::uint64_t amount_sat);
 

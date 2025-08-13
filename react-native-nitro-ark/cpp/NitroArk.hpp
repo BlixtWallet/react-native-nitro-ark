@@ -48,7 +48,7 @@ public:
   }
 
   std::shared_ptr<Promise<void>>
-  loadWallet(const std::string &datadir, const BarkCreateOpts &opts) override {
+  createWallet(const std::string &datadir, const BarkCreateOpts &opts) override {
     return Promise<void>::async([datadir, opts]() {
       try {
         bark_cxx::ConfigOpts config_opts;
@@ -81,7 +81,18 @@ public:
         }
         create_opts.config = config_opts;
 
-        bark_cxx::load_wallet(datadir, create_opts);
+        bark_cxx::create_wallet(datadir, create_opts);
+      } catch (const rust::Error &e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<void>>
+  loadWallet(const std::string &datadir, const std::string &mnemonic) override {
+    return Promise<void>::async([datadir, mnemonic]() {
+      try {
+        bark_cxx::load_wallet(datadir, mnemonic);
       } catch (const rust::Error &e) {
         throw std::runtime_error(e.what());
       }

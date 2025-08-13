@@ -57,7 +57,7 @@ impl WalletTestFixture {
             cxx::close_wallet().unwrap();
         }
 
-        cxx::load_wallet(datadir_str, opts)
+        cxx::create_wallet(datadir_str, opts)
             .with_context(|| format!("Failed to load wallet in test setup"))
             .unwrap();
 
@@ -104,7 +104,7 @@ fn test_wallet_management_ffi() {
     assert!(!cxx::is_wallet_loaded());
 
     // 2. Load wallet
-    let load_result = cxx::load_wallet(datadir_str, opts);
+    let load_result = cxx::create_wallet(datadir_str, opts);
     assert!(
         load_result.is_ok(),
         "Failed to load wallet: {:?}",
@@ -115,7 +115,7 @@ fn test_wallet_management_ffi() {
     // 3. Try loading again (should fail)
     let (_temp_dir2, opts2) = setup_test_wallet_opts();
     let datadir_str2 = _temp_dir2.path().to_str().unwrap();
-    let load_again_result = cxx::load_wallet(datadir_str2, opts2);
+    let load_again_result = cxx::create_wallet(datadir_str2, opts2);
     assert!(
         load_again_result.is_err(),
         "Should not be able to load a second wallet"
