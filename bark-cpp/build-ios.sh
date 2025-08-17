@@ -40,8 +40,7 @@ cargo clean --target-dir "$TARGET_DIR" -p "$CRATE_NAME"
 echo "Ensuring required Rust targets are installed..."
 rustup target add \
     aarch64-apple-ios \
-    aarch64-apple-ios-sim \
-    x86_64-apple-ios
+    aarch64-apple-ios-sim
 
 # --- Build for each target architecture ---
 
@@ -57,40 +56,6 @@ cargo build $CARGO_FLAG \
     --lib \
     --target-dir "$TARGET_DIR"
 
-echo "Building for Intel Simulator (x86_64-apple-ios)..."
-cargo build $CARGO_FLAG \
-    --target x86_64-apple-ios \
-    --lib \
-    --target-dir "$TARGET_DIR"
-
-# --- Create a universal "fat" library for the simulator ---
-echo "Creating universal library for simulators..."
-SIMULATOR_UNIVERSAL_DIR="$TARGET_DIR/simulator-universal"
-mkdir -p "$SIMULATOR_UNIVERSAL_DIR"
-
-lipo -create \
-  "$TARGET_DIR/aarch64-apple-ios-sim/$BUILD_TYPE/$BINARY_NAME" \
-  "$TARGET_DIR/x86_64-apple-ios/$BUILD_TYPE/$BINARY_NAME" \
-  -output "$SIMULATOR_UNIVERSAL_DIR/$BINARY_NAME"
-
-echo "Creating universal library for CXX bridge simulators..."
-SIMULATOR_CXX_UNIVERSAL_DIR="$TARGET_DIR/simulator-cxx-universal"
-mkdir -p "$SIMULATOR_CXX_UNIVERSAL_DIR"
-
-# Find the CXX bridge library for each simulator arch
-SIM_ARM64_CXX_LIB_PATH=$(find "$TARGET_DIR/aarch64-apple-ios-sim/$BUILD_TYPE/build" -name "$CXX_BINARY_NAME" | head -n 1)
-SIM_X86_64_CXX_LIB_PATH=$(find "$TARGET_DIR/x86_64-apple-ios/$BUILD_TYPE/build" -name "$CXX_BINARY_NAME" | head -n 1)
-
-if [ -z "$SIM_ARM64_CXX_LIB_PATH" ] || [ -z "$SIM_X86_64_CXX_LIB_PATH" ]; then
-    echo "Error: Could not find CXX bridge library for one or more simulator architectures."
-    exit 1
-fi
-
-lipo -create \
-  "$SIM_ARM64_CXX_LIB_PATH" \
-  "$SIM_X86_64_CXX_LIB_PATH" \
-  -output "$SIMULATOR_CXX_UNIVERSAL_DIR/$CXX_BINARY_NAME"
-
 # --- Create the XCFramework ---
 echo "Creating $FRAMEWORK_NAME..."
 rm -rf "target/$FRAMEWORK_NAME"
@@ -102,7 +67,7 @@ mkdir -p "$HEADERS_DIR_PLACEHOLDER"
 xcodebuild -create-xcframework \
   -library "$TARGET_DIR/aarch64-apple-ios/$BUILD_TYPE/$BINARY_NAME" \
   -headers "$HEADERS_DIR_PLACEHOLDER" \
-  -library "$SIMULATOR_UNIVERSAL_DIR/$BINARY_NAME" \
+  -library "$TARGET_DIR/aarch64-apple-ios-sim/$BUILD_TYPE/$BINARY_NAME" \
   -headers "$HEADERS_DIR_PLACEHOLDER" \
   -output "target/$FRAMEWORK_NAME"
 
@@ -148,10 +113,17 @@ if [ -z "$DEVICE_CXX_LIB_PATH" ]; then
     exit 1
 fi
 
+# Find the CXX bridge library for the simulator arch
+SIM_ARM64_CXX_LIB_PATH=$(find "$TARGET_DIR/aarch64-apple-ios-sim/$BUILD_TYPE/build" -name "$CXX_BINARY_NAME" | head -n 1)
+if [ -z "$SIM_ARM64_CXX_LIB_PATH" ]; then
+    echo "Error: Could not find CXX bridge library for simulator architecture."
+    exit 1
+fi
+
 xcodebuild -create-xcframework \
     -library "$DEVICE_CXX_LIB_PATH" \
     -headers "$HEADERS_DIR_CXX" \
-    -library "$SIMULATOR_CXX_UNIVERSAL_DIR/$CXX_BINARY_NAME" \
+    -library "$SIM_ARM64_CXX_LIB_PATH" \
     -headers "$HEADERS_DIR_CXX" \
     -output "target/$CXX_FRAMEWORK_NAME"
 
