@@ -14,7 +14,7 @@ use bark::ark::Vtxo;
 use bark::ark::VtxoId;
 use bark::lightning_invoice::Bolt11Invoice;
 use bark::lnurllib::lightning_address::LightningAddress;
-use bark::onchain::{ChainSourceClient, OnchainWallet};
+use bark::onchain::OnchainWallet;
 use bark::persist::BarkPersister;
 use bark::Config;
 use bark::Offboard;
@@ -59,7 +59,6 @@ static GLOBAL_WALLET_MANAGER: LazyLock<Mutex<WalletManager>> =
 pub struct WalletContext {
     pub wallet: Wallet,
     pub onchain_wallet: OnchainWallet,
-    pub chain_client: Arc<ChainSourceClient>,
 }
 
 // Wallet manager that manages the wallet context lifecycle
@@ -123,7 +122,6 @@ impl WalletManager {
         let (wallet, onchain_wallet) = self.open_wallet(datadir, mnemonic).await?;
 
         self.context = Some(WalletContext {
-            chain_client: wallet.chain.clone(),
             wallet: wallet,
             onchain_wallet,
         });

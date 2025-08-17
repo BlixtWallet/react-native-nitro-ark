@@ -644,23 +644,17 @@ pub(crate) fn onchain_send(
             )
         })?;
 
-    info!(
-        "Sending {} to onchain address {}",
-        amount, destination_address
-    );
-
     let txid = crate::TOKIO_RUNTIME.block_on(async {
-        let mut manager = crate::GLOBAL_WALLET_MANAGER.lock().await;
-        manager
-            .with_context_async(|ctx| async {
-                let fee_rate = if fee_rate.is_null() {
-                    ctx.chain_client.fee_rates().await.regular
-                } else {
-                    FeeRate::from_sat_per_vb(unsafe { *fee_rate }).context("Invalid fee rate")?
-                };
-                crate::onchain::send(destination_address.clone(), amount, fee_rate).await
-            })
-            .await
+        let fee_rate = if fee_rate.is_null() {
+            let mut manager = crate::GLOBAL_WALLET_MANAGER.lock().await;
+            manager
+                .with_context_async(|ctx| async { Ok(ctx.wallet.chain.fee_rates().await.regular) })
+                .await?
+        } else {
+            FeeRate::from_sat_per_vb(unsafe { *fee_rate }).context("Invalid fee rate")?
+        };
+
+        crate::onchain::send(destination_address.clone(), amount, fee_rate).await
     })?;
 
     Ok(OnchainPaymentResult {
@@ -674,21 +668,22 @@ pub(crate) fn onchain_send(
 pub(crate) fn onchain_drain(destination: &str, fee_rate: *const u64) -> anyhow::Result<String> {
     let txid = crate::TOKIO_RUNTIME.block_on(async {
         let mut manager = crate::GLOBAL_WALLET_MANAGER.lock().await;
-        manager
+        let (address, fee_rate) = manager
             .with_context_async(|ctx| async {
                 let net = ctx.wallet.properties().unwrap().network;
                 let address = Address::from_str(destination)?
                     .require_network(net)
                     .context("Address on wrong network")?;
                 let fee_rate = if fee_rate.is_null() {
-                    ctx.chain_client.fee_rates().await.regular
+                    ctx.wallet.chain.fee_rates().await.regular
                 } else {
                     FeeRate::from_sat_per_vb(unsafe { *fee_rate }).context("Invalid fee rate")?
                 };
-
-                crate::onchain::drain(address, fee_rate).await
+                Ok((address, fee_rate))
             })
-            .await
+            .await?;
+
+        crate::onchain::drain(address, fee_rate).await
     })?;
     Ok(txid.to_string())
 }
@@ -699,7 +694,7 @@ pub(crate) fn onchain_send_many(
 ) -> anyhow::Result<String> {
     let txid = crate::TOKIO_RUNTIME.block_on(async {
         let mut manager = crate::GLOBAL_WALLET_MANAGER.lock().await;
-        manager
+        let (rust_outputs, fee_rate) = manager
             .with_context_async(|ctx| async {
                 let mut rust_outputs = Vec::new();
                 let net = ctx.wallet.properties().unwrap().network;
@@ -713,14 +708,15 @@ pub(crate) fn onchain_send_many(
                 }
 
                 let fee_rate = if fee_rate.is_null() {
-                    ctx.chain_client.fee_rates().await.regular
+                    ctx.wallet.chain.fee_rates().await.regular
                 } else {
                     FeeRate::from_sat_per_vb(unsafe { *fee_rate }).context("Invalid fee rate")?
                 };
-
-                crate::onchain::send_many(rust_outputs, fee_rate).await
+                Ok((rust_outputs, fee_rate))
             })
-            .await
+            .await?;
+
+        crate::onchain::send_many(rust_outputs, fee_rate).await
     })?;
     Ok(txid.to_string())
 }

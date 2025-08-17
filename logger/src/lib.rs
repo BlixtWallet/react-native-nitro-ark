@@ -25,7 +25,7 @@ impl Logger {
         #[cfg(target_os = "ios")]
         {
             OsLogger::new("com.nitro.ark")
-                .level_filter(LevelFilter::Debug)
+                .level_filter(LevelFilter::Trace)
                 .init()
                 .unwrap();
             log::info!("oslog initialized.");

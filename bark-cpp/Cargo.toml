@@ -18,7 +18,7 @@ tokio = { version = "1", default-features = false, features = [
     "fs",
 ] }
 bip39 = { version = "2.2.0", default-features = false }
-anyhow = "1.0.98"
+anyhow = "1.0.99"
 logger = { path = "../logger" }
 serde = "1.0.219"
 tonic = { version = "0.13.1", default-features = false, features = [
