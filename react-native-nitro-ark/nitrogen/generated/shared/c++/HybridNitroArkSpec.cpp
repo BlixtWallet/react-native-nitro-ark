@@ -21,6 +21,7 @@ namespace margelo::nitro::nitroark {
       prototype.registerHybridMethod("closeWallet", &HybridNitroArkSpec::closeWallet);
       prototype.registerHybridMethod("persistConfig", &HybridNitroArkSpec::persistConfig);
       prototype.registerHybridMethod("maintenance", &HybridNitroArkSpec::maintenance);
+      prototype.registerHybridMethod("maintenanceRefresh", &HybridNitroArkSpec::maintenanceRefresh);
       prototype.registerHybridMethod("sync", &HybridNitroArkSpec::sync);
       prototype.registerHybridMethod("syncExits", &HybridNitroArkSpec::syncExits);
       prototype.registerHybridMethod("syncRounds", &HybridNitroArkSpec::syncRounds);
@@ -32,6 +33,7 @@ namespace margelo::nitro::nitroark {
       prototype.registerHybridMethod("signMessage", &HybridNitroArkSpec::signMessage);
       prototype.registerHybridMethod("verifyMessage", &HybridNitroArkSpec::verifyMessage);
       prototype.registerHybridMethod("getVtxos", &HybridNitroArkSpec::getVtxos);
+      prototype.registerHybridMethod("getExpiringVtxos", &HybridNitroArkSpec::getExpiringVtxos);
       prototype.registerHybridMethod("onchainBalance", &HybridNitroArkSpec::onchainBalance);
       prototype.registerHybridMethod("onchainSync", &HybridNitroArkSpec::onchainSync);
       prototype.registerHybridMethod("onchainListUnspent", &HybridNitroArkSpec::onchainListUnspent);

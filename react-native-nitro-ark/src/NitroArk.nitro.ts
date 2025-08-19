@@ -43,8 +43,10 @@ export interface BarkSendManyOutput {
 export interface BarkVtxo {
   amount: number; // u64
   expiry_height: number; // u32
+  asp_pubkey: string;
   exit_delta: number; // u16
   anchor_point: string;
+  point: string;
 }
 
 export type PaymentTypes = 'Bolt11' | 'Lnurl' | 'Arkoor' | 'Onchain';
@@ -115,6 +117,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   closeWallet(): Promise<void>;
   persistConfig(opts: BarkConfigOpts): Promise<void>;
   maintenance(): Promise<void>;
+  maintenanceRefresh(): Promise<void>;
   sync(): Promise<void>;
   syncExits(): Promise<void>;
   syncRounds(): Promise<void>;
@@ -131,7 +134,8 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
     signature: string,
     publicKey: string
   ): Promise<boolean>;
-  getVtxos(): Promise<BarkVtxo[]>; // Returns JSON string
+  getVtxos(): Promise<BarkVtxo[]>;
+  getExpiringVtxos(threshold: number): Promise<BarkVtxo[]>;
 
   // --- Onchain Operations ---
   onchainBalance(): Promise<OnchainBalanceResult>;

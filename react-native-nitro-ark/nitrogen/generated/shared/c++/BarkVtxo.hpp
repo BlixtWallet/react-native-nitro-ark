@@ -31,12 +31,14 @@ namespace margelo::nitro::nitroark {
   public:
     double amount     SWIFT_PRIVATE;
     double expiry_height     SWIFT_PRIVATE;
+    std::string asp_pubkey     SWIFT_PRIVATE;
     double exit_delta     SWIFT_PRIVATE;
     std::string anchor_point     SWIFT_PRIVATE;
+    std::string point     SWIFT_PRIVATE;
 
   public:
     BarkVtxo() = default;
-    explicit BarkVtxo(double amount, double expiry_height, double exit_delta, std::string anchor_point): amount(amount), expiry_height(expiry_height), exit_delta(exit_delta), anchor_point(anchor_point) {}
+    explicit BarkVtxo(double amount, double expiry_height, std::string asp_pubkey, double exit_delta, std::string anchor_point, std::string point): amount(amount), expiry_height(expiry_height), asp_pubkey(asp_pubkey), exit_delta(exit_delta), anchor_point(anchor_point), point(point) {}
   };
 
 } // namespace margelo::nitro::nitroark
@@ -53,16 +55,20 @@ namespace margelo::nitro {
       return BarkVtxo(
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "amount")),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "expiry_height")),
+        JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "asp_pubkey")),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "exit_delta")),
-        JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "anchor_point"))
+        JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "anchor_point")),
+        JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "point"))
       );
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const BarkVtxo& arg) {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, "amount", JSIConverter<double>::toJSI(runtime, arg.amount));
       obj.setProperty(runtime, "expiry_height", JSIConverter<double>::toJSI(runtime, arg.expiry_height));
+      obj.setProperty(runtime, "asp_pubkey", JSIConverter<std::string>::toJSI(runtime, arg.asp_pubkey));
       obj.setProperty(runtime, "exit_delta", JSIConverter<double>::toJSI(runtime, arg.exit_delta));
       obj.setProperty(runtime, "anchor_point", JSIConverter<std::string>::toJSI(runtime, arg.anchor_point));
+      obj.setProperty(runtime, "point", JSIConverter<std::string>::toJSI(runtime, arg.point));
       return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -72,8 +78,10 @@ namespace margelo::nitro {
       jsi::Object obj = value.getObject(runtime);
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "amount"))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "expiry_height"))) return false;
+      if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "asp_pubkey"))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "exit_delta"))) return false;
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "anchor_point"))) return false;
+      if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "point"))) return false;
       return true;
     }
   };

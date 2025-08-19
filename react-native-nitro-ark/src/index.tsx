@@ -88,6 +88,14 @@ export function maintenance(): Promise<void> {
 }
 
 /**
+ * Refreshes vtxos that need to be refreshed.
+ * @returns A promise that resolves on success.
+ */
+export function maintenanceRefresh(): Promise<void> {
+  return NitroArkHybridObject.maintenanceRefresh();
+}
+
+/**
  * Synchronizes the wallet with the blockchain.
  * @returns A promise that resolves on success.
  */
@@ -188,6 +196,15 @@ export function getVtxos(): Promise<BarkVtxo[]> {
   return NitroArkHybridObject.getVtxos();
 }
 
+/**
+ * Gets the list of expiring VTXOs as a JSON Object of type BarkVtxo.
+ * @param no_sync If true, skips synchronization with the blockchain. Defaults to false.
+ * @returns A promise resolving BarkVtxo[] array.
+ */
+export function getExpiringVtxos(threshold: number): Promise<BarkVtxo[]> {
+  return NitroArkHybridObject.getExpiringVtxos(threshold);
+}
+
 // --- Onchain Operations ---
 
 /**
@@ -207,7 +224,7 @@ export function onchainSync(): Promise<void> {
 }
 
 /**
- * Gets the list of unspent onchain outputs as a JSON string for the loaded wallet.
+ * Gets the list of unspent onchain outputs as a JSON Object of type BarkVtxo.
  * @returns A promise resolving to the JSON string of unspent outputs.
  */
 export function onchainListUnspent(): Promise<string> {

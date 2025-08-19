@@ -48,7 +48,8 @@ public:
   }
 
   std::shared_ptr<Promise<void>>
-  createWallet(const std::string &datadir, const BarkCreateOpts &opts) override {
+  createWallet(const std::string &datadir,
+               const BarkCreateOpts &opts) override {
     return Promise<void>::async([datadir, opts]() {
       try {
         bark_cxx::ConfigOpts config_opts;
@@ -145,6 +146,16 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<void>> maintenanceRefresh() override {
+    return Promise<void>::async([]() {
+      try {
+        bark_cxx::maintenance_refresh();
+      } catch (const rust::Error &e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   std::shared_ptr<Promise<void>> sync() override {
     return Promise<void>::async([]() {
       try {
@@ -227,7 +238,7 @@ public:
         keypair.public_key = std::string(keypair_rs.public_key.data(),
                                          keypair_rs.public_key.length());
         keypair.secret_key = std::string(keypair_rs.secret_key.data(),
-                                          keypair_rs.secret_key.length());
+                                         keypair_rs.secret_key.length());
 
         return keypair;
       } catch (const rust::Error &e) {
@@ -245,7 +256,7 @@ public:
         keypair.public_key = std::string(keypair_rs.public_key.data(),
                                          keypair_rs.public_key.length());
         keypair.secret_key = std::string(keypair_rs.secret_key.data(),
-                                          keypair_rs.secret_key.length());
+                                         keypair_rs.secret_key.length());
         return keypair;
       } catch (const rust::Error &e) {
         throw std::runtime_error(e.what());
@@ -272,8 +283,8 @@ public:
     });
   }
 
-  std::shared_ptr<Promise<std::string>>
-  signMessage(const std::string &message, double index) override {
+  std::shared_ptr<Promise<std::string>> signMessage(const std::string &message,
+                                                    double index) override {
     return Promise<std::string>::async([message, index]() {
       try {
         uint32_t index_val = static_cast<uint32_t>(index);
@@ -306,9 +317,40 @@ public:
           BarkVtxo vtxo;
           vtxo.amount = static_cast<double>(rust_vtxo.amount);
           vtxo.expiry_height = static_cast<double>(rust_vtxo.expiry_height);
+          vtxo.asp_pubkey = std::string(rust_vtxo.asp_pubkey.data(),
+                                        rust_vtxo.asp_pubkey.length());
           vtxo.exit_delta = static_cast<double>(rust_vtxo.exit_delta);
           vtxo.anchor_point = std::string(rust_vtxo.anchor_point.data(),
                                           rust_vtxo.anchor_point.length());
+          vtxo.point =
+              std::string(rust_vtxo.point.data(), rust_vtxo.point.length());
+          vtxos.push_back(vtxo);
+        }
+        return vtxos;
+      } catch (const rust::Error &e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<std::vector<BarkVtxo>>>
+  getExpiringVtxos(double threshold) override {
+    return Promise<std::vector<BarkVtxo>>::async([threshold]() {
+      try {
+        rust::Vec<bark_cxx::BarkVtxo> rust_vtxos =
+            bark_cxx::get_expiring_vtxos(static_cast<uint32_t>(threshold));
+        std::vector<BarkVtxo> vtxos;
+        for (const auto &rust_vtxo : rust_vtxos) {
+          BarkVtxo vtxo;
+          vtxo.amount = static_cast<double>(rust_vtxo.amount);
+          vtxo.expiry_height = static_cast<double>(rust_vtxo.expiry_height);
+          vtxo.asp_pubkey = std::string(rust_vtxo.asp_pubkey.data(),
+                                        rust_vtxo.asp_pubkey.length());
+          vtxo.exit_delta = static_cast<double>(rust_vtxo.exit_delta);
+          vtxo.anchor_point = std::string(rust_vtxo.anchor_point.data(),
+                                          rust_vtxo.anchor_point.length());
+          vtxo.point =
+              std::string(rust_vtxo.point.data(), rust_vtxo.point.length());
           vtxos.push_back(vtxo);
         }
         return vtxos;
@@ -586,9 +628,13 @@ public:
           BarkVtxo vtxo;
           vtxo.amount = static_cast<double>(rust_vtxo.amount);
           vtxo.expiry_height = static_cast<double>(rust_vtxo.expiry_height);
+          vtxo.asp_pubkey = std::string(rust_vtxo.asp_pubkey.data(),
+                                        rust_vtxo.asp_pubkey.length());
           vtxo.exit_delta = static_cast<double>(rust_vtxo.exit_delta);
           vtxo.anchor_point = std::string(rust_vtxo.anchor_point.data(),
                                           rust_vtxo.anchor_point.length());
+          vtxo.point =
+              std::string(rust_vtxo.point.data(), rust_vtxo.point.length());
           vtxos.push_back(vtxo);
         }
         result.vtxos = vtxos;
