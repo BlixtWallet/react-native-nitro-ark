@@ -96,6 +96,7 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<void>> closeWallet() = 0;
       virtual std::shared_ptr<Promise<void>> persistConfig(const BarkConfigOpts& opts) = 0;
       virtual std::shared_ptr<Promise<void>> maintenance() = 0;
+      virtual std::shared_ptr<Promise<void>> maintenanceRefresh() = 0;
       virtual std::shared_ptr<Promise<void>> sync() = 0;
       virtual std::shared_ptr<Promise<void>> syncExits() = 0;
       virtual std::shared_ptr<Promise<void>> syncRounds() = 0;
@@ -107,6 +108,7 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<std::string>> signMessage(const std::string& message, double index) = 0;
       virtual std::shared_ptr<Promise<bool>> verifyMessage(const std::string& message, const std::string& signature, const std::string& publicKey) = 0;
       virtual std::shared_ptr<Promise<std::vector<BarkVtxo>>> getVtxos() = 0;
+      virtual std::shared_ptr<Promise<std::vector<BarkVtxo>>> getExpiringVtxos(double threshold) = 0;
       virtual std::shared_ptr<Promise<OnchainBalanceResult>> onchainBalance() = 0;
       virtual std::shared_ptr<Promise<void>> onchainSync() = 0;
       virtual std::shared_ptr<Promise<std::string>> onchainListUnspent() = 0;

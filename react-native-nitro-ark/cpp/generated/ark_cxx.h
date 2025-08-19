@@ -820,8 +820,10 @@ namespace bark_cxx {
 struct BarkVtxo final {
   ::std::uint64_t amount CXX_DEFAULT_VALUE(0);
   ::std::uint32_t expiry_height CXX_DEFAULT_VALUE(0);
+  ::rust::String asp_pubkey;
   ::std::uint16_t exit_delta CXX_DEFAULT_VALUE(0);
   ::rust::String anchor_point;
+  ::rust::String point;
 
   using IsRelocatable = ::std::true_type;
 };
@@ -1028,9 +1030,13 @@ bool verify_message(::rust::Str message, ::rust::Str signature, ::rust::Str publ
 
 ::rust::Vec<::bark_cxx::BarkVtxo> get_vtxos();
 
+::rust::Vec<::bark_cxx::BarkVtxo> get_expiring_vtxos(::std::uint32_t threshold);
+
 ::rust::String bolt11_invoice(::std::uint64_t amount_msat);
 
 void maintenance();
+
+void maintenance_refresh();
 
 void sync();
 

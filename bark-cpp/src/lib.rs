@@ -22,6 +22,7 @@ use bark::SendOnchain;
 use bark::SqliteClient;
 use bark::Wallet;
 use bdk_wallet::bitcoin::key::Keypair;
+use bitcoin_ext::BlockHeight;
 use tokio::runtime::Runtime;
 use tokio::sync::Mutex;
 mod cxx;
@@ -373,6 +374,19 @@ pub async fn maintenance() -> anyhow::Result<()> {
         .await
 }
 
+pub async fn maintenance_refresh() -> anyhow::Result<()> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async {
+            ctx.wallet
+                .maintenance_refresh()
+                .await
+                .context("Failed to perform vtxo maintenance refresh")?;
+            Ok(())
+        })
+        .await
+}
+
 pub async fn sync() -> anyhow::Result<()> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
@@ -386,6 +400,19 @@ pub async fn sync() -> anyhow::Result<()> {
 pub async fn get_vtxos() -> anyhow::Result<Vec<Vtxo>> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager.with_context(|ctx| Ok(ctx.wallet.vtxos()?))
+}
+
+pub async fn get_expiring_vtxos(threshold: BlockHeight) -> anyhow::Result<Vec<Vtxo>> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+
+    manager
+        .with_context_async(|ctx| async {
+            ctx.wallet
+                .get_expiring_vtxos(threshold)
+                .await
+                .context("Failed to get expiring vtxos")
+        })
+        .await
 }
 
 pub async fn refresh_vtxos(vtxos: Vec<Vtxo>) -> anyhow::Result<Option<RoundId>> {

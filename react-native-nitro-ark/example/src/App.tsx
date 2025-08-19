@@ -295,6 +295,14 @@ export default function ArkApp() {
     runOperation('maintenance', () => NitroArk.maintenance(), 'management');
   };
 
+  const handleMaintenanceRefresh = () => {
+    runOperation(
+      'maintenanceRefresh',
+      () => NitroArk.maintenanceRefresh(),
+      'management'
+    );
+  };
+
   const handleSync = () => {
     runOperation(
       'sync',
@@ -449,6 +457,18 @@ export default function ArkApp() {
       return;
     }
     runOperation('getVtxos', () => NitroArk.getVtxos(), 'walletInfo');
+  };
+
+  const handleGetExpiringVtxos = () => {
+    if (!mnemonic) {
+      setError((prev) => ({ ...prev, walletInfo: 'Mnemonic required' }));
+      return;
+    }
+    runOperation(
+      'getExpiringVtxos',
+      () => NitroArk.getExpiringVtxos(5000),
+      'walletInfo'
+    );
   };
 
   const handleSendOnchain = () => {
@@ -831,6 +851,10 @@ export default function ArkApp() {
             </View>
             {renderOperationButton('Persist Config', handlePersistConfig)}
             {renderOperationButton('Maintenance', handleMaintenance)}
+            {renderOperationButton(
+              'Maintenance Refresh',
+              handleMaintenanceRefresh
+            )}
             {renderOperationButton('Sync', handleSync)}
             {renderOperationButton('Onchain Sync', handleOnchainSync)}
             {renderOperationButton('Sync Exits', handleSyncExits)}
@@ -906,6 +930,10 @@ export default function ArkApp() {
             )}
             {renderOperationButton('Get Onchain UTXOs', handleGetOnchainUtxos)}
             {renderOperationButton('Get VTXOs', handleGetVtxos)}
+            {renderOperationButton(
+              'Get Expiring VTXOs',
+              handleGetExpiringVtxos
+            )}
           </View>
         </View>
 

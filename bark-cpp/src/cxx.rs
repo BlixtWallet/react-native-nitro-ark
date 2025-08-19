@@ -18,8 +18,10 @@ pub(crate) mod ffi {
     pub struct BarkVtxo {
         amount: u64,
         expiry_height: u32,
+        asp_pubkey: String,
         exit_delta: u16,
         anchor_point: String,
+        point: String,
     }
 
     pub enum PaymentTypes {
@@ -145,8 +147,10 @@ pub(crate) mod ffi {
         fn sign_message(message: &str, index: u32) -> Result<String>;
         fn verify_message(message: &str, signature: &str, public_key: &str) -> Result<bool>;
         fn get_vtxos() -> Result<Vec<BarkVtxo>>;
+        fn get_expiring_vtxos(threshold: u32) -> Result<Vec<BarkVtxo>>;
         fn bolt11_invoice(amount_msat: u64) -> Result<String>;
         fn maintenance() -> Result<()>;
+        fn maintenance_refresh() -> Result<()>;
         fn sync() -> Result<()>;
         fn sync_rounds() -> Result<()>;
         fn create_wallet(datadir: &str, opts: CreateOpts) -> Result<()>;
@@ -300,11 +304,41 @@ pub(crate) fn get_vtxos() -> anyhow::Result<Vec<BarkVtxo>> {
         .map(|vtxo| BarkVtxo {
             amount: vtxo.amount().to_sat(),
             expiry_height: vtxo.expiry_height(),
+            asp_pubkey: vtxo.asp_pubkey().to_string(),
             exit_delta: vtxo.exit_delta(),
             anchor_point: format!(
                 "{}:{}",
                 vtxo.chain_anchor().txid.to_string(),
                 vtxo.chain_anchor().vout.to_string()
+            ),
+            point: format!(
+                "{}:{}",
+                vtxo.point().txid.to_string(),
+                vtxo.point().vout.to_string()
+            ),
+        })
+        .collect())
+}
+
+pub(crate) fn get_expiring_vtxos(threshold: u32) -> anyhow::Result<Vec<BarkVtxo>> {
+    let expiring_vtxos = crate::TOKIO_RUNTIME.block_on(crate::get_expiring_vtxos(threshold))?;
+
+    Ok(expiring_vtxos
+        .into_iter()
+        .map(|vtxo| BarkVtxo {
+            amount: vtxo.amount().to_sat(),
+            expiry_height: vtxo.expiry_height(),
+            asp_pubkey: vtxo.asp_pubkey().to_string(),
+            exit_delta: vtxo.exit_delta(),
+            anchor_point: format!(
+                "{}:{}",
+                vtxo.chain_anchor().txid.to_string(),
+                vtxo.chain_anchor().vout.to_string()
+            ),
+            point: format!(
+                "{}:{}",
+                vtxo.point().txid.to_string(),
+                vtxo.point().vout.to_string()
             ),
         })
         .collect())
@@ -316,6 +350,10 @@ pub(crate) fn bolt11_invoice(amount_msat: u64) -> anyhow::Result<String> {
 
 pub(crate) fn maintenance() -> anyhow::Result<()> {
     crate::TOKIO_RUNTIME.block_on(crate::maintenance())
+}
+
+pub(crate) fn maintenance_refresh() -> anyhow::Result<()> {
+    crate::TOKIO_RUNTIME.block_on(crate::maintenance_refresh())
 }
 
 pub(crate) fn sync() -> anyhow::Result<()> {
@@ -391,15 +429,21 @@ pub(crate) fn send_arkoor_payment(
     Ok(ArkoorPaymentResult {
         vtxos: oor_result
             .iter()
-            .map(|n| BarkVtxo {
-                amount: n.amount().to_sat(),
+            .map(|vtxo| BarkVtxo {
+                amount: vtxo.amount().to_sat(),
+                expiry_height: vtxo.expiry_height(),
+                asp_pubkey: vtxo.asp_pubkey().to_string(),
+                exit_delta: vtxo.exit_delta(),
                 anchor_point: format!(
                     "{}:{}",
-                    n.chain_anchor().txid.to_string(),
-                    n.chain_anchor().vout.to_string()
+                    vtxo.chain_anchor().txid.to_string(),
+                    vtxo.chain_anchor().vout.to_string()
                 ),
-                exit_delta: n.exit_delta(),
-                expiry_height: n.expiry_height(),
+                point: format!(
+                    "{}:{}",
+                    vtxo.point().txid.to_string(),
+                    vtxo.point().vout.to_string()
+                ),
             })
             .collect(),
         destination_pubkey: destination.to_string(),
@@ -611,7 +655,9 @@ pub(crate) fn onchain_utxos() -> anyhow::Result<String> {
                     amount: exit.vtxo.amount().to_sat(),
                     anchor_point: format!("{}:{}", exit.vtxo.chain_anchor().txid, exit.vtxo.chain_anchor().vout),
                     exit_delta: exit.vtxo.exit_delta(),
+                    asp_pubkey: exit.vtxo.asp_pubkey().to_string(),
                     expiry_height: exit.vtxo.expiry_height(),
+                    point: format!("{}:{}", exit.vtxo.point().txid.to_string(), exit.vtxo.point().vout.to_string()),
                 },
                 "height": exit.height
             }),
