@@ -198,9 +198,9 @@ export function getVtxos(): Promise<BarkVtxo[]> {
 
 /**
  * Gets the list of expiring VTXOs as a JSON Object of type BarkVtxo.
- * @param no_sync If true, skips synchronization with the blockchain. Defaults to false.
+ * @param threshold The block height threshold to check for expiring VTXOs.
  * @returns A promise resolving BarkVtxo[] array.
- */
+
 export function getExpiringVtxos(threshold: number): Promise<BarkVtxo[]> {
   return NitroArkHybridObject.getExpiringVtxos(threshold);
 }
