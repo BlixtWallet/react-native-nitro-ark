@@ -61,7 +61,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build bark-cpp for iOS
-        run: nix develop .# --command bash -c "unset SDKROOT && cd bark-cpp && ./build-ios-ci.sh"
+        run: nix develop .# --command bash -c "unset SDKROOT && cd bark-cpp && ./build-ios.sh"
 
       - name: Zip iOS Framework
         run: cd bark-cpp && zip -r target/Ark.xcframework.zip target/Ark.xcframework
