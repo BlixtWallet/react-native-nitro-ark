@@ -42,20 +42,18 @@ namespace margelo::nitro::nitroark {
 
 namespace margelo::nitro {
 
-  using namespace margelo::nitro::nitroark;
-
   // C++ OffchainBalanceResult <> JS OffchainBalanceResult (object)
   template <>
-  struct JSIConverter<OffchainBalanceResult> final {
-    static inline OffchainBalanceResult fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
+  struct JSIConverter<margelo::nitro::nitroark::OffchainBalanceResult> final {
+    static inline margelo::nitro::nitroark::OffchainBalanceResult fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
       jsi::Object obj = arg.asObject(runtime);
-      return OffchainBalanceResult(
+      return margelo::nitro::nitroark::OffchainBalanceResult(
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "spendable")),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "pending_lightning_send")),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "pending_exit"))
       );
     }
-    static inline jsi::Value toJSI(jsi::Runtime& runtime, const OffchainBalanceResult& arg) {
+    static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroark::OffchainBalanceResult& arg) {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, "spendable", JSIConverter<double>::toJSI(runtime, arg.spendable));
       obj.setProperty(runtime, "pending_lightning_send", JSIConverter<double>::toJSI(runtime, arg.pending_lightning_send));

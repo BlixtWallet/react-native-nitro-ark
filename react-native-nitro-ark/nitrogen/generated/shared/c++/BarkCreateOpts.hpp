@@ -48,30 +48,28 @@ namespace margelo::nitro::nitroark {
 
 namespace margelo::nitro {
 
-  using namespace margelo::nitro::nitroark;
-
   // C++ BarkCreateOpts <> JS BarkCreateOpts (object)
   template <>
-  struct JSIConverter<BarkCreateOpts> final {
-    static inline BarkCreateOpts fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
+  struct JSIConverter<margelo::nitro::nitroark::BarkCreateOpts> final {
+    static inline margelo::nitro::nitroark::BarkCreateOpts fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
       jsi::Object obj = arg.asObject(runtime);
-      return BarkCreateOpts(
+      return margelo::nitro::nitroark::BarkCreateOpts(
         JSIConverter<std::optional<bool>>::fromJSI(runtime, obj.getProperty(runtime, "regtest")),
         JSIConverter<std::optional<bool>>::fromJSI(runtime, obj.getProperty(runtime, "signet")),
         JSIConverter<std::optional<bool>>::fromJSI(runtime, obj.getProperty(runtime, "bitcoin")),
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "mnemonic")),
         JSIConverter<std::optional<double>>::fromJSI(runtime, obj.getProperty(runtime, "birthday_height")),
-        JSIConverter<std::optional<BarkConfigOpts>>::fromJSI(runtime, obj.getProperty(runtime, "config"))
+        JSIConverter<std::optional<margelo::nitro::nitroark::BarkConfigOpts>>::fromJSI(runtime, obj.getProperty(runtime, "config"))
       );
     }
-    static inline jsi::Value toJSI(jsi::Runtime& runtime, const BarkCreateOpts& arg) {
+    static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroark::BarkCreateOpts& arg) {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, "regtest", JSIConverter<std::optional<bool>>::toJSI(runtime, arg.regtest));
       obj.setProperty(runtime, "signet", JSIConverter<std::optional<bool>>::toJSI(runtime, arg.signet));
       obj.setProperty(runtime, "bitcoin", JSIConverter<std::optional<bool>>::toJSI(runtime, arg.bitcoin));
       obj.setProperty(runtime, "mnemonic", JSIConverter<std::string>::toJSI(runtime, arg.mnemonic));
       obj.setProperty(runtime, "birthday_height", JSIConverter<std::optional<double>>::toJSI(runtime, arg.birthday_height));
-      obj.setProperty(runtime, "config", JSIConverter<std::optional<BarkConfigOpts>>::toJSI(runtime, arg.config));
+      obj.setProperty(runtime, "config", JSIConverter<std::optional<margelo::nitro::nitroark::BarkConfigOpts>>::toJSI(runtime, arg.config));
       return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -84,7 +82,7 @@ namespace margelo::nitro {
       if (!JSIConverter<std::optional<bool>>::canConvert(runtime, obj.getProperty(runtime, "bitcoin"))) return false;
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "mnemonic"))) return false;
       if (!JSIConverter<std::optional<double>>::canConvert(runtime, obj.getProperty(runtime, "birthday_height"))) return false;
-      if (!JSIConverter<std::optional<BarkConfigOpts>>::canConvert(runtime, obj.getProperty(runtime, "config"))) return false;
+      if (!JSIConverter<std::optional<margelo::nitro::nitroark::BarkConfigOpts>>::canConvert(runtime, obj.getProperty(runtime, "config"))) return false;
       return true;
     }
   };

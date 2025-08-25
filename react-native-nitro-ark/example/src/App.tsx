@@ -746,6 +746,31 @@ export default function ArkApp() {
     );
   };
 
+  const handleSignMesssageWithMnemonic = () => {
+    if (!messageToSign || !mnemonic) {
+      setError((prev) => ({
+        ...prev,
+        signing: 'Message and mnemonic are required to sign.',
+      }));
+      return;
+    }
+    runOperation(
+      'signMesssageWithMnemonic',
+      () =>
+        NitroArk.signMesssageWithMnemonic(
+          messageToSign,
+          mnemonic,
+          'regtest',
+          0
+        ),
+      'signing',
+      (sig) => {
+        setSignature(sig);
+        setResults((prev) => ({ ...prev, signing: `Signature: ${sig}` }));
+      }
+    );
+  };
+
   const handleVerifyMessage = () => {
     if (!messageToSign || !signature || !publicKeyForVerification) {
       setError((prev) => ({
@@ -1109,6 +1134,12 @@ export default function ArkApp() {
           <View style={styles.buttonGrid}>
             {renderOperationButton('Sign Message (key 0)', handleSignMessage)}
             {renderOperationButton('Verify Message', handleVerifyMessage)}
+          </View>
+          <View style={styles.buttonGrid}>
+            {renderOperationButton(
+              'Sign Message (with mnemonic)',
+              handleSignMesssageWithMnemonic
+            )}
           </View>
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Signature:</Text>

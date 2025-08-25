@@ -45,26 +45,24 @@ namespace margelo::nitro::nitroark {
 
 namespace margelo::nitro {
 
-  using namespace margelo::nitro::nitroark;
-
   // C++ OnchainPaymentResult <> JS OnchainPaymentResult (object)
   template <>
-  struct JSIConverter<OnchainPaymentResult> final {
-    static inline OnchainPaymentResult fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
+  struct JSIConverter<margelo::nitro::nitroark::OnchainPaymentResult> final {
+    static inline margelo::nitro::nitroark::OnchainPaymentResult fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
       jsi::Object obj = arg.asObject(runtime);
-      return OnchainPaymentResult(
+      return margelo::nitro::nitroark::OnchainPaymentResult(
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "txid")),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "amount_sat")),
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "destination_address")),
-        JSIConverter<PaymentTypes>::fromJSI(runtime, obj.getProperty(runtime, "payment_type"))
+        JSIConverter<margelo::nitro::nitroark::PaymentTypes>::fromJSI(runtime, obj.getProperty(runtime, "payment_type"))
       );
     }
-    static inline jsi::Value toJSI(jsi::Runtime& runtime, const OnchainPaymentResult& arg) {
+    static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroark::OnchainPaymentResult& arg) {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, "txid", JSIConverter<std::string>::toJSI(runtime, arg.txid));
       obj.setProperty(runtime, "amount_sat", JSIConverter<double>::toJSI(runtime, arg.amount_sat));
       obj.setProperty(runtime, "destination_address", JSIConverter<std::string>::toJSI(runtime, arg.destination_address));
-      obj.setProperty(runtime, "payment_type", JSIConverter<PaymentTypes>::toJSI(runtime, arg.payment_type));
+      obj.setProperty(runtime, "payment_type", JSIConverter<margelo::nitro::nitroark::PaymentTypes>::toJSI(runtime, arg.payment_type));
       return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -75,7 +73,7 @@ namespace margelo::nitro {
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "txid"))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "amount_sat"))) return false;
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "destination_address"))) return false;
-      if (!JSIConverter<PaymentTypes>::canConvert(runtime, obj.getProperty(runtime, "payment_type"))) return false;
+      if (!JSIConverter<margelo::nitro::nitroark::PaymentTypes>::canConvert(runtime, obj.getProperty(runtime, "payment_type"))) return false;
       return true;
     }
   };

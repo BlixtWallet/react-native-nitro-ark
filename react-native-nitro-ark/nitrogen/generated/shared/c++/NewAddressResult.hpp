@@ -42,20 +42,18 @@ namespace margelo::nitro::nitroark {
 
 namespace margelo::nitro {
 
-  using namespace margelo::nitro::nitroark;
-
   // C++ NewAddressResult <> JS NewAddressResult (object)
   template <>
-  struct JSIConverter<NewAddressResult> final {
-    static inline NewAddressResult fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
+  struct JSIConverter<margelo::nitro::nitroark::NewAddressResult> final {
+    static inline margelo::nitro::nitroark::NewAddressResult fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
       jsi::Object obj = arg.asObject(runtime);
-      return NewAddressResult(
+      return margelo::nitro::nitroark::NewAddressResult(
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "user_pubkey")),
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "ark_id")),
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "address"))
       );
     }
-    static inline jsi::Value toJSI(jsi::Runtime& runtime, const NewAddressResult& arg) {
+    static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroark::NewAddressResult& arg) {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, "user_pubkey", JSIConverter<std::string>::toJSI(runtime, arg.user_pubkey));
       obj.setProperty(runtime, "ark_id", JSIConverter<std::string>::toJSI(runtime, arg.ark_id));

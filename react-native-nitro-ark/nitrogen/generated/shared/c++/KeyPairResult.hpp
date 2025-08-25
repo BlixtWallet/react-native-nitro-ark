@@ -41,19 +41,17 @@ namespace margelo::nitro::nitroark {
 
 namespace margelo::nitro {
 
-  using namespace margelo::nitro::nitroark;
-
   // C++ KeyPairResult <> JS KeyPairResult (object)
   template <>
-  struct JSIConverter<KeyPairResult> final {
-    static inline KeyPairResult fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
+  struct JSIConverter<margelo::nitro::nitroark::KeyPairResult> final {
+    static inline margelo::nitro::nitroark::KeyPairResult fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
       jsi::Object obj = arg.asObject(runtime);
-      return KeyPairResult(
+      return margelo::nitro::nitroark::KeyPairResult(
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "public_key")),
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "secret_key"))
       );
     }
-    static inline jsi::Value toJSI(jsi::Runtime& runtime, const KeyPairResult& arg) {
+    static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroark::KeyPairResult& arg) {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, "public_key", JSIConverter<std::string>::toJSI(runtime, arg.public_key));
       obj.setProperty(runtime, "secret_key", JSIConverter<std::string>::toJSI(runtime, arg.secret_key));

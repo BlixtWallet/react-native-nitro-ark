@@ -173,6 +173,28 @@ export function signMessage(message: string, index: number): Promise<string> {
 }
 
 /**
+ * Signs a message with the private key at the specified index.
+ * @param message The message to sign.
+ * @param mnemonic The BIP39 mnemonic phrase to use for signing.
+ * @param network The network to use for signing.
+ * @param index The index of the keypair to use for signing.
+ * @returns A promise resolving to the signature string.
+ */
+export function signMesssageWithMnemonic(
+  message: string,
+  mnemonic: string,
+  network: string,
+  index: number
+): Promise<string> {
+  return NitroArkHybridObject.signMesssageWithMnemonic(
+    message,
+    mnemonic,
+    network,
+    index
+  );
+}
+
+/**
  * Verifies a signed message.
  * @param message The original message.
  * @param signature The signature to verify.
@@ -200,6 +222,7 @@ export function getVtxos(): Promise<BarkVtxo[]> {
  * Gets the list of expiring VTXOs as a JSON Object of type BarkVtxo.
  * @param threshold The block height threshold to check for expiring VTXOs.
  * @returns A promise resolving BarkVtxo[] array.
+ */
 
 export function getExpiringVtxos(threshold: number): Promise<BarkVtxo[]> {
   return NitroArkHybridObject.getExpiringVtxos(threshold);

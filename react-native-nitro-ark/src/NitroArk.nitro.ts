@@ -129,6 +129,12 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   peakKeyPair(index: number): Promise<KeyPairResult>;
   newAddress(): Promise<NewAddressResult>;
   signMessage(message: string, index: number): Promise<string>;
+  signMesssageWithMnemonic(
+    message: string,
+    mnemonic: string,
+    network: string,
+    index: number
+  ): Promise<string>;
   verifyMessage(
     message: string,
     signature: string,

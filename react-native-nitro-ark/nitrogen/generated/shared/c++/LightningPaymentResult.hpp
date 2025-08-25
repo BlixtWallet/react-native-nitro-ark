@@ -44,24 +44,22 @@ namespace margelo::nitro::nitroark {
 
 namespace margelo::nitro {
 
-  using namespace margelo::nitro::nitroark;
-
   // C++ LightningPaymentResult <> JS LightningPaymentResult (object)
   template <>
-  struct JSIConverter<LightningPaymentResult> final {
-    static inline LightningPaymentResult fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
+  struct JSIConverter<margelo::nitro::nitroark::LightningPaymentResult> final {
+    static inline margelo::nitro::nitroark::LightningPaymentResult fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
       jsi::Object obj = arg.asObject(runtime);
-      return LightningPaymentResult(
+      return margelo::nitro::nitroark::LightningPaymentResult(
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "bolt11_invoice")),
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "preimage")),
-        JSIConverter<PaymentTypes>::fromJSI(runtime, obj.getProperty(runtime, "payment_type"))
+        JSIConverter<margelo::nitro::nitroark::PaymentTypes>::fromJSI(runtime, obj.getProperty(runtime, "payment_type"))
       );
     }
-    static inline jsi::Value toJSI(jsi::Runtime& runtime, const LightningPaymentResult& arg) {
+    static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroark::LightningPaymentResult& arg) {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, "bolt11_invoice", JSIConverter<std::string>::toJSI(runtime, arg.bolt11_invoice));
       obj.setProperty(runtime, "preimage", JSIConverter<std::string>::toJSI(runtime, arg.preimage));
-      obj.setProperty(runtime, "payment_type", JSIConverter<PaymentTypes>::toJSI(runtime, arg.payment_type));
+      obj.setProperty(runtime, "payment_type", JSIConverter<margelo::nitro::nitroark::PaymentTypes>::toJSI(runtime, arg.payment_type));
       return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -71,7 +69,7 @@ namespace margelo::nitro {
       jsi::Object obj = value.getObject(runtime);
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "bolt11_invoice"))) return false;
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "preimage"))) return false;
-      if (!JSIConverter<PaymentTypes>::canConvert(runtime, obj.getProperty(runtime, "payment_type"))) return false;
+      if (!JSIConverter<margelo::nitro::nitroark::PaymentTypes>::canConvert(runtime, obj.getProperty(runtime, "payment_type"))) return false;
       return true;
     }
   };

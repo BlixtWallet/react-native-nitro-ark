@@ -46,14 +46,12 @@ namespace margelo::nitro::nitroark {
 
 namespace margelo::nitro {
 
-  using namespace margelo::nitro::nitroark;
-
   // C++ BarkArkInfo <> JS BarkArkInfo (object)
   template <>
-  struct JSIConverter<BarkArkInfo> final {
-    static inline BarkArkInfo fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
+  struct JSIConverter<margelo::nitro::nitroark::BarkArkInfo> final {
+    static inline margelo::nitro::nitroark::BarkArkInfo fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
       jsi::Object obj = arg.asObject(runtime);
-      return BarkArkInfo(
+      return margelo::nitro::nitroark::BarkArkInfo(
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "network")),
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "asp_pubkey")),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "round_interval_secs")),
@@ -63,7 +61,7 @@ namespace margelo::nitro {
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "max_vtxo_amount_sat"))
       );
     }
-    static inline jsi::Value toJSI(jsi::Runtime& runtime, const BarkArkInfo& arg) {
+    static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroark::BarkArkInfo& arg) {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, "network", JSIConverter<std::string>::toJSI(runtime, arg.network));
       obj.setProperty(runtime, "asp_pubkey", JSIConverter<std::string>::toJSI(runtime, arg.asp_pubkey));

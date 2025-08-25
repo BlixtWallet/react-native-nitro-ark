@@ -45,14 +45,12 @@ namespace margelo::nitro::nitroark {
 
 namespace margelo::nitro {
 
-  using namespace margelo::nitro::nitroark;
-
   // C++ BarkVtxo <> JS BarkVtxo (object)
   template <>
-  struct JSIConverter<BarkVtxo> final {
-    static inline BarkVtxo fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
+  struct JSIConverter<margelo::nitro::nitroark::BarkVtxo> final {
+    static inline margelo::nitro::nitroark::BarkVtxo fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
       jsi::Object obj = arg.asObject(runtime);
-      return BarkVtxo(
+      return margelo::nitro::nitroark::BarkVtxo(
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "amount")),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "expiry_height")),
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "asp_pubkey")),
@@ -61,7 +59,7 @@ namespace margelo::nitro {
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "point"))
       );
     }
-    static inline jsi::Value toJSI(jsi::Runtime& runtime, const BarkVtxo& arg) {
+    static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroark::BarkVtxo& arg) {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, "amount", JSIConverter<double>::toJSI(runtime, arg.amount));
       obj.setProperty(runtime, "expiry_height", JSIConverter<double>::toJSI(runtime, arg.expiry_height));

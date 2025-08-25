@@ -21,6 +21,7 @@ use bark::Offboard;
 use bark::SendOnchain;
 use bark::SqliteClient;
 use bark::Wallet;
+use bdk_wallet::bitcoin::bip32;
 use bdk_wallet::bitcoin::key::Keypair;
 use bitcoin_ext::BlockHeight;
 use tokio::runtime::Runtime;
@@ -48,6 +49,7 @@ mod tests;
 
 // Use a static Once to ensure the logger is initialized only once.
 static LOGGER_INIT: Once = Once::new();
+const ARK_PURPOSE_INDEX: u32 = 350;
 
 pub static TOKIO_RUNTIME: LazyLock<Runtime> =
     LazyLock::new(|| Runtime::new().expect("Failed to create Tokio runtime"));
@@ -320,6 +322,25 @@ pub async fn sign_message(
 
         Ok(ecdsa_sig)
     })
+}
+
+pub async fn sign_messsage_with_mnemonic(
+    message: &str,
+    mnemonic: Mnemonic,
+    network: Network,
+    index: u32,
+) -> anyhow::Result<bark::ark::bitcoin::secp256k1::ecdsa::Signature> {
+    let secp = bark::ark::bitcoin::secp256k1::Secp256k1::new();
+    let keypair = bip32::Xpriv::new_master(network, &mnemonic.to_seed(""))?
+        .derive_priv(&secp, &[ARK_PURPOSE_INDEX.into()])?
+        .derive_priv(&secp, &[index.into()])?
+        .to_keypair(&secp);
+
+    let hash = bark::ark::bitcoin::sign_message::signed_msg_hash(message);
+    let msg = bark::ark::bitcoin::secp256k1::Message::from_digest_slice(&hash[..]).unwrap();
+    let ecdsa_sig = secp.sign_ecdsa(&msg, &keypair.secret_key());
+
+    Ok(ecdsa_sig)
 }
 
 pub async fn verify_message(

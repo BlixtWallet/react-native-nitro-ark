@@ -45,26 +45,24 @@ namespace margelo::nitro::nitroark {
 
 namespace margelo::nitro {
 
-  using namespace margelo::nitro::nitroark;
-
   // C++ LnurlPaymentResult <> JS LnurlPaymentResult (object)
   template <>
-  struct JSIConverter<LnurlPaymentResult> final {
-    static inline LnurlPaymentResult fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
+  struct JSIConverter<margelo::nitro::nitroark::LnurlPaymentResult> final {
+    static inline margelo::nitro::nitroark::LnurlPaymentResult fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
       jsi::Object obj = arg.asObject(runtime);
-      return LnurlPaymentResult(
+      return margelo::nitro::nitroark::LnurlPaymentResult(
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "lnurl")),
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "bolt11_invoice")),
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "preimage")),
-        JSIConverter<PaymentTypes>::fromJSI(runtime, obj.getProperty(runtime, "payment_type"))
+        JSIConverter<margelo::nitro::nitroark::PaymentTypes>::fromJSI(runtime, obj.getProperty(runtime, "payment_type"))
       );
     }
-    static inline jsi::Value toJSI(jsi::Runtime& runtime, const LnurlPaymentResult& arg) {
+    static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroark::LnurlPaymentResult& arg) {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, "lnurl", JSIConverter<std::string>::toJSI(runtime, arg.lnurl));
       obj.setProperty(runtime, "bolt11_invoice", JSIConverter<std::string>::toJSI(runtime, arg.bolt11_invoice));
       obj.setProperty(runtime, "preimage", JSIConverter<std::string>::toJSI(runtime, arg.preimage));
-      obj.setProperty(runtime, "payment_type", JSIConverter<PaymentTypes>::toJSI(runtime, arg.payment_type));
+      obj.setProperty(runtime, "payment_type", JSIConverter<margelo::nitro::nitroark::PaymentTypes>::toJSI(runtime, arg.payment_type));
       return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -75,7 +73,7 @@ namespace margelo::nitro {
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "lnurl"))) return false;
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "bolt11_invoice"))) return false;
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "preimage"))) return false;
-      if (!JSIConverter<PaymentTypes>::canConvert(runtime, obj.getProperty(runtime, "payment_type"))) return false;
+      if (!JSIConverter<margelo::nitro::nitroark::PaymentTypes>::canConvert(runtime, obj.getProperty(runtime, "payment_type"))) return false;
       return true;
     }
   };

@@ -6,7 +6,8 @@ use crate::{parse_send_destination, utils, SendDestination, TOKIO_RUNTIME};
 use anyhow::{bail, Context, Ok};
 use bark::ark::bitcoin::hex::DisplayHex;
 use bark::ark::bitcoin::{address, Address};
-use bdk_wallet::bitcoin::{self, FeeRate};
+use bdk_wallet::bitcoin::{self, network, FeeRate};
+use bip39::Mnemonic;
 use logger::log::{self, info};
 use std::path::Path;
 use std::str::FromStr;
@@ -145,6 +146,12 @@ pub(crate) mod ffi {
         fn peak_keypair(index: u32) -> Result<KeyPairResult>;
         fn new_address() -> Result<NewAddressResult>;
         fn sign_message(message: &str, index: u32) -> Result<String>;
+        fn sign_messsage_with_mnemonic(
+            message: &str,
+            mnemonic: &str,
+            network: &str,
+            index: u32,
+        ) -> Result<String>;
         fn verify_message(message: &str, signature: &str, public_key: &str) -> Result<bool>;
         fn get_vtxos() -> Result<Vec<BarkVtxo>>;
         fn get_expiring_vtxos(threshold: u32) -> Result<Vec<BarkVtxo>>;
@@ -279,6 +286,30 @@ pub(crate) fn new_address() -> anyhow::Result<ffi::NewAddressResult> {
 pub(crate) fn sign_message(message: &str, index: u32) -> anyhow::Result<String> {
     let message = crate::TOKIO_RUNTIME
         .block_on(crate::sign_message(message, index))?
+        .to_string();
+    Ok(message)
+}
+
+pub(crate) fn sign_messsage_with_mnemonic(
+    message: &str,
+    mnemonic: &str,
+    network: &str,
+    index: u32,
+) -> anyhow::Result<String> {
+    let mnemonic = Mnemonic::from_str(mnemonic)
+        .with_context(|| format!("Invalid mnemonic format: '{}'", mnemonic))?;
+
+    let network = match network {
+        "mainnet" => network::Network::Bitcoin,
+        "regtest" => network::Network::Regtest,
+        "signet" => network::Network::Signet,
+        _ => bail!("Invalid network format: '{}'", network),
+    };
+
+    let message = crate::TOKIO_RUNTIME
+        .block_on(crate::sign_messsage_with_mnemonic(
+            message, mnemonic, network, index,
+        ))?
         .to_string();
     Ok(message)
 }

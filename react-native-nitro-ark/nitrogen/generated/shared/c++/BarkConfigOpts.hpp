@@ -20,8 +20,8 @@
 
 
 
-#include <optional>
 #include <string>
+#include <optional>
 
 namespace margelo::nitro::nitroark {
 
@@ -48,14 +48,12 @@ namespace margelo::nitro::nitroark {
 
 namespace margelo::nitro {
 
-  using namespace margelo::nitro::nitroark;
-
   // C++ BarkConfigOpts <> JS BarkConfigOpts (object)
   template <>
-  struct JSIConverter<BarkConfigOpts> final {
-    static inline BarkConfigOpts fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
+  struct JSIConverter<margelo::nitro::nitroark::BarkConfigOpts> final {
+    static inline margelo::nitro::nitroark::BarkConfigOpts fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
       jsi::Object obj = arg.asObject(runtime);
-      return BarkConfigOpts(
+      return margelo::nitro::nitroark::BarkConfigOpts(
         JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, "asp")),
         JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, "esplora")),
         JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, "bitcoind")),
@@ -66,7 +64,7 @@ namespace margelo::nitro {
         JSIConverter<std::optional<double>>::fromJSI(runtime, obj.getProperty(runtime, "fallback_fee_rate"))
       );
     }
-    static inline jsi::Value toJSI(jsi::Runtime& runtime, const BarkConfigOpts& arg) {
+    static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroark::BarkConfigOpts& arg) {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, "asp", JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.asp));
       obj.setProperty(runtime, "esplora", JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.esplora));

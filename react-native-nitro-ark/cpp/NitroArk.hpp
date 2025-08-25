@@ -295,6 +295,19 @@ public:
       }
     });
   }
+  
+  std::shared_ptr<Promise<std::string>>
+  signMesssageWithMnemonic(const std::string &message, const std::string &mnemonic, const std::string &network, double index) override {
+    return Promise<std::string>::async([message, mnemonic, network, index]() {
+      try {
+        uint32_t index_val = static_cast<uint32_t>(index);
+        rust::String signature_rs = bark_cxx::sign_messsage_with_mnemonic(message, mnemonic, network, index_val);
+        return std::string(signature_rs.data(), signature_rs.length());
+      } catch (const rust::Error &e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
 
   std::shared_ptr<Promise<bool>>
   verifyMessage(const std::string &message, const std::string &signature,

@@ -39,28 +39,26 @@ namespace margelo::nitro::nitroark {
 
 namespace margelo::nitro {
 
-  using namespace margelo::nitro::nitroark;
-
   // C++ PaymentTypes <> JS PaymentTypes (union)
   template <>
-  struct JSIConverter<PaymentTypes> final {
-    static inline PaymentTypes fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
+  struct JSIConverter<margelo::nitro::nitroark::PaymentTypes> final {
+    static inline margelo::nitro::nitroark::PaymentTypes fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
       std::string unionValue = JSIConverter<std::string>::fromJSI(runtime, arg);
       switch (hashString(unionValue.c_str(), unionValue.size())) {
-        case hashString("Bolt11"): return PaymentTypes::BOLT11;
-        case hashString("Lnurl"): return PaymentTypes::LNURL;
-        case hashString("Arkoor"): return PaymentTypes::ARKOOR;
-        case hashString("Onchain"): return PaymentTypes::ONCHAIN;
+        case hashString("Bolt11"): return margelo::nitro::nitroark::PaymentTypes::BOLT11;
+        case hashString("Lnurl"): return margelo::nitro::nitroark::PaymentTypes::LNURL;
+        case hashString("Arkoor"): return margelo::nitro::nitroark::PaymentTypes::ARKOOR;
+        case hashString("Onchain"): return margelo::nitro::nitroark::PaymentTypes::ONCHAIN;
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert \"" + unionValue + "\" to enum PaymentTypes - invalid value!");
       }
     }
-    static inline jsi::Value toJSI(jsi::Runtime& runtime, PaymentTypes arg) {
+    static inline jsi::Value toJSI(jsi::Runtime& runtime, margelo::nitro::nitroark::PaymentTypes arg) {
       switch (arg) {
-        case PaymentTypes::BOLT11: return JSIConverter<std::string>::toJSI(runtime, "Bolt11");
-        case PaymentTypes::LNURL: return JSIConverter<std::string>::toJSI(runtime, "Lnurl");
-        case PaymentTypes::ARKOOR: return JSIConverter<std::string>::toJSI(runtime, "Arkoor");
-        case PaymentTypes::ONCHAIN: return JSIConverter<std::string>::toJSI(runtime, "Onchain");
+        case margelo::nitro::nitroark::PaymentTypes::BOLT11: return JSIConverter<std::string>::toJSI(runtime, "Bolt11");
+        case margelo::nitro::nitroark::PaymentTypes::LNURL: return JSIConverter<std::string>::toJSI(runtime, "Lnurl");
+        case margelo::nitro::nitroark::PaymentTypes::ARKOOR: return JSIConverter<std::string>::toJSI(runtime, "Arkoor");
+        case margelo::nitro::nitroark::PaymentTypes::ONCHAIN: return JSIConverter<std::string>::toJSI(runtime, "Onchain");
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert PaymentTypes to JS - invalid value: "
                                     + std::to_string(static_cast<int>(arg)) + "!");

@@ -43,21 +43,19 @@ namespace margelo::nitro::nitroark {
 
 namespace margelo::nitro {
 
-  using namespace margelo::nitro::nitroark;
-
   // C++ OnchainBalanceResult <> JS OnchainBalanceResult (object)
   template <>
-  struct JSIConverter<OnchainBalanceResult> final {
-    static inline OnchainBalanceResult fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
+  struct JSIConverter<margelo::nitro::nitroark::OnchainBalanceResult> final {
+    static inline margelo::nitro::nitroark::OnchainBalanceResult fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
       jsi::Object obj = arg.asObject(runtime);
-      return OnchainBalanceResult(
+      return margelo::nitro::nitroark::OnchainBalanceResult(
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "immature")),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "trusted_pending")),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "untrusted_pending")),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "confirmed"))
       );
     }
-    static inline jsi::Value toJSI(jsi::Runtime& runtime, const OnchainBalanceResult& arg) {
+    static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroark::OnchainBalanceResult& arg) {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, "immature", JSIConverter<double>::toJSI(runtime, arg.immature));
       obj.setProperty(runtime, "trusted_pending", JSIConverter<double>::toJSI(runtime, arg.trusted_pending));

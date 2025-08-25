@@ -40,16 +40,16 @@ namespace margelo::nitro::nitroark { struct LightningPaymentResult; }
 // Forward declaration of `LnurlPaymentResult` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct LnurlPaymentResult; }
 
-#include <NitroModules/Promise.hpp>
 #include <string>
+#include <NitroModules/Promise.hpp>
 #include "BarkCreateOpts.hpp"
 #include "BarkConfigOpts.hpp"
 #include "BarkArkInfo.hpp"
 #include "OffchainBalanceResult.hpp"
 #include "KeyPairResult.hpp"
 #include "NewAddressResult.hpp"
-#include <vector>
 #include "BarkVtxo.hpp"
+#include <vector>
 #include "OnchainBalanceResult.hpp"
 #include "OnchainPaymentResult.hpp"
 #include <optional>
@@ -106,6 +106,7 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<KeyPairResult>> peakKeyPair(double index) = 0;
       virtual std::shared_ptr<Promise<NewAddressResult>> newAddress() = 0;
       virtual std::shared_ptr<Promise<std::string>> signMessage(const std::string& message, double index) = 0;
+      virtual std::shared_ptr<Promise<std::string>> signMesssageWithMnemonic(const std::string& message, const std::string& mnemonic, const std::string& network, double index) = 0;
       virtual std::shared_ptr<Promise<bool>> verifyMessage(const std::string& message, const std::string& signature, const std::string& publicKey) = 0;
       virtual std::shared_ptr<Promise<std::vector<BarkVtxo>>> getVtxos() = 0;
       virtual std::shared_ptr<Promise<std::vector<BarkVtxo>>> getExpiringVtxos(double threshold) = 0;

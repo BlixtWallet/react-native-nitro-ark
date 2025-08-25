@@ -41,19 +41,17 @@ namespace margelo::nitro::nitroark {
 
 namespace margelo::nitro {
 
-  using namespace margelo::nitro::nitroark;
-
   // C++ BarkSendManyOutput <> JS BarkSendManyOutput (object)
   template <>
-  struct JSIConverter<BarkSendManyOutput> final {
-    static inline BarkSendManyOutput fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
+  struct JSIConverter<margelo::nitro::nitroark::BarkSendManyOutput> final {
+    static inline margelo::nitro::nitroark::BarkSendManyOutput fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
       jsi::Object obj = arg.asObject(runtime);
-      return BarkSendManyOutput(
+      return margelo::nitro::nitroark::BarkSendManyOutput(
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "destination")),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "amountSat"))
       );
     }
-    static inline jsi::Value toJSI(jsi::Runtime& runtime, const BarkSendManyOutput& arg) {
+    static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroark::BarkSendManyOutput& arg) {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, "destination", JSIConverter<std::string>::toJSI(runtime, arg.destination));
       obj.setProperty(runtime, "amountSat", JSIConverter<double>::toJSI(runtime, arg.amountSat));
