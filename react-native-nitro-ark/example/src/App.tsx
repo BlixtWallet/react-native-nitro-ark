@@ -413,6 +413,18 @@ export default function ArkApp() {
     runOperation('peakKeyPair', () => NitroArk.peakKeyPair(0), 'walletInfo');
   };
 
+  const handleDeriveKeypairFromMnemonic = () => {
+    if (!mnemonic) {
+      setError((prev) => ({ ...prev, walletInfo: 'Mnemonic required' }));
+      return;
+    }
+    runOperation(
+      'deriveKeypairFromMnemonic',
+      () => NitroArk.deriveKeypairFromMnemonic(mnemonic, 'regtest', 0),
+      'walletInfo'
+    );
+  };
+
   const handleNewAddress = () => {
     if (!mnemonic) {
       setError((prev) => ({ ...prev, walletInfo: 'Mnemonic required' }));
@@ -949,6 +961,10 @@ export default function ArkApp() {
               handleDeriveStoreNextKeypair
             )}
             {renderOperationButton('Peak Key Pair', handlePeakKeyPair)}
+            {renderOperationButton(
+              'Derive Keypair from Mnemonic',
+              handleDeriveKeypairFromMnemonic
+            )}
             {renderOperationButton(
               'Generate new Ark address',
               handleNewAddress

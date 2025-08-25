@@ -135,6 +135,11 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
     network: string,
     index: number
   ): Promise<string>;
+  deriveKeypairFromMnemonic(
+    mnemonic: string,
+    network: string,
+    index: number
+  ): Promise<KeyPairResult>;
   verifyMessage(
     message: string,
     signature: string,

@@ -309,6 +309,25 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<KeyPairResult>>
+  deriveKeypairFromMnemonic(const std::string &mnemonic, const std::string &network,
+                            double index) override {
+    return Promise<KeyPairResult>::async([mnemonic, network, index]() {
+      try {
+        uint32_t index_val = static_cast<uint32_t>(index);
+        bark_cxx::KeyPairResult keypair_rs = bark_cxx::derive_keypair_from_mnemonic(mnemonic, network, index_val);
+        KeyPairResult keypair;
+        keypair.public_key = std::string(keypair_rs.public_key.data(),
+                                         keypair_rs.public_key.length());
+        keypair.secret_key = std::string(keypair_rs.secret_key.data(),
+                                         keypair_rs.secret_key.length());
+        return keypair;
+      } catch (const rust::Error &e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   std::shared_ptr<Promise<bool>>
   verifyMessage(const std::string &message, const std::string &signature,
                 const std::string &publicKey) override {

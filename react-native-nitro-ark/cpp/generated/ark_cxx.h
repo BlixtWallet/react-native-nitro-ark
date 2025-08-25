@@ -1028,6 +1028,8 @@ void persist_config(::bark_cxx::ConfigOpts opts);
 
 ::rust::String sign_messsage_with_mnemonic(::rust::Str message, ::rust::Str mnemonic, ::rust::Str network, ::std::uint32_t index);
 
+::bark_cxx::KeyPairResult derive_keypair_from_mnemonic(::rust::Str mnemonic, ::rust::Str network, ::std::uint32_t index);
+
 bool verify_message(::rust::Str message, ::rust::Str signature, ::rust::Str public_key);
 
 ::rust::Vec<::bark_cxx::BarkVtxo> get_vtxos();

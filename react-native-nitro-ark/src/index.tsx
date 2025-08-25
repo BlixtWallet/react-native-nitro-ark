@@ -195,6 +195,26 @@ export function signMesssageWithMnemonic(
 }
 
 /**
+ * Derives a keypair from a mnemonic.
+ * @param mnemonic The mnemonic to derive the keypair from.
+ * @param network The network to derive the keypair for.
+ * @param index The index to derive the keypair from.
+ * @returns A promise resolving to the KeyPairResult object.
+ */
+
+export function deriveKeypairFromMnemonic(
+  mnemonic: string,
+  network: string,
+  index: number
+): Promise<KeyPairResult> {
+  return NitroArkHybridObject.deriveKeypairFromMnemonic(
+    mnemonic,
+    network,
+    index
+  );
+}
+
+/**
  * Verifies a signed message.
  * @param message The original message.
  * @param signature The signature to verify.

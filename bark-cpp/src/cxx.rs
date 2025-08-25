@@ -152,6 +152,11 @@ pub(crate) mod ffi {
             network: &str,
             index: u32,
         ) -> Result<String>;
+        fn derive_keypair_from_mnemonic(
+            mnemonic: &str,
+            network: &str,
+            index: u32,
+        ) -> Result<KeyPairResult>;
         fn verify_message(message: &str, signature: &str, public_key: &str) -> Result<bool>;
         fn get_vtxos() -> Result<Vec<BarkVtxo>>;
         fn get_expiring_vtxos(threshold: u32) -> Result<Vec<BarkVtxo>>;
@@ -312,6 +317,30 @@ pub(crate) fn sign_messsage_with_mnemonic(
         ))?
         .to_string();
     Ok(message)
+}
+
+pub(crate) fn derive_keypair_from_mnemonic(
+    mnemonic: &str,
+    network: &str,
+    index: u32,
+) -> anyhow::Result<ffi::KeyPairResult> {
+    let mnemonic = bip39::Mnemonic::from_str(mnemonic)
+        .with_context(|| format!("Invalid mnemonic format: '{}'", mnemonic))?;
+    let network = match network {
+        "mainnet" => network::Network::Bitcoin,
+        "regtest" => network::Network::Regtest,
+        "signet" => network::Network::Signet,
+        _ => bail!("Invalid network format: '{}'", network),
+    };
+
+    let keypair = crate::TOKIO_RUNTIME.block_on(crate::derive_keypair_from_mnemonic(
+        mnemonic, network, index,
+    ))?;
+
+    Ok(ffi::KeyPairResult {
+        public_key: keypair.public_key().to_string(),
+        secret_key: keypair.secret_key().display_secret().to_string(),
+    })
 }
 
 pub(crate) fn verify_message(

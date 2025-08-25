@@ -343,6 +343,19 @@ pub async fn sign_messsage_with_mnemonic(
     Ok(ecdsa_sig)
 }
 
+pub async fn derive_keypair_from_mnemonic(
+    mnemonic: Mnemonic,
+    network: Network,
+    index: u32,
+) -> anyhow::Result<Keypair> {
+    let secp = bark::ark::bitcoin::secp256k1::Secp256k1::new();
+    let keypair = bip32::Xpriv::new_master(network, &mnemonic.to_seed(""))?
+        .derive_priv(&secp, &[ARK_PURPOSE_INDEX.into()])?
+        .derive_priv(&secp, &[index.into()])?
+        .to_keypair(&secp);
+    Ok(keypair)
+}
+
 pub async fn verify_message(
     message: &str,
     signature: bark::ark::bitcoin::secp256k1::ecdsa::Signature,
