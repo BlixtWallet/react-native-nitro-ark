@@ -22,7 +22,7 @@ pub(crate) const DB_FILE: &str = "db.sqlite";
 impl ConfigOpts {
     pub fn merge_into(self, cfg: &mut Config) -> anyhow::Result<()> {
         if let Some(url) = self.ark {
-            cfg.server_address = https_default_scheme(url).context("invalid asp url")?;
+            cfg.server_address = https_default_scheme(url).context("invalid ark url")?;
         }
         if let Some(v) = self.esplora {
             cfg.esplora_address = match v.is_empty() {
