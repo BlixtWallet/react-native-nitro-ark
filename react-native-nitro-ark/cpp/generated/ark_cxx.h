@@ -971,6 +971,8 @@ struct OffchainBalance final {
   ::std::uint64_t spendable CXX_DEFAULT_VALUE(0);
   // Coins that are in the process of being sent over Lightning.
   ::std::uint64_t pending_lightning_send CXX_DEFAULT_VALUE(0);
+  // Coins locked in a round.
+  ::std::uint64_t pending_in_round CXX_DEFAULT_VALUE(0);
   // Coins that are in the process of unilaterally exiting the Ark.
   ::std::uint64_t pending_exit CXX_DEFAULT_VALUE(0);
 

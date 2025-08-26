@@ -221,6 +221,8 @@ public:
         balance.spendable = static_cast<double>(rust_balance.spendable);
         balance.pending_lightning_send =
             static_cast<double>(rust_balance.pending_lightning_send);
+        balance.pending_in_round =
+            static_cast<double>(rust_balance.pending_in_round);
         balance.pending_exit = static_cast<double>(rust_balance.pending_exit);
         return balance;
       } catch (const rust::Error &e) {

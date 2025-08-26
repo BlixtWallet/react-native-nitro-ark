@@ -258,12 +258,6 @@ pub async fn persist_config(config: Config) -> anyhow::Result<()> {
     })
 }
 
-pub struct Balance {
-    pub onchain: u64,
-    pub offchain: u64,
-    pub pending_exit: u64,
-}
-
 pub async fn balance() -> anyhow::Result<bark::Balance> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager.with_context(|ctx| Ok(ctx.wallet.balance()?))

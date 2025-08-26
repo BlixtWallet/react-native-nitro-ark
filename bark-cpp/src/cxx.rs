@@ -115,6 +115,8 @@ pub(crate) mod ffi {
         pub spendable: u64,
         /// Coins that are in the process of being sent over Lightning.
         pub pending_lightning_send: u64,
+        /// Coins locked in a round.
+        pub pending_in_round: u64,
         /// Coins that are in the process of unilaterally exiting the Ark.
         pub pending_exit: u64,
     }
@@ -260,6 +262,7 @@ pub(crate) fn offchain_balance() -> anyhow::Result<ffi::OffchainBalance> {
     Ok(ffi::OffchainBalance {
         spendable: balance.spendable.to_sat(),
         pending_lightning_send: balance.pending_lightning_send.to_sat(),
+        pending_in_round: balance.pending_in_round.to_sat(),
         pending_exit: balance.pending_exit.to_sat(),
     })
 }

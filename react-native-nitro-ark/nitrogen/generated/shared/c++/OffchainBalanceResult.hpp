@@ -31,11 +31,12 @@ namespace margelo::nitro::nitroark {
   public:
     double spendable     SWIFT_PRIVATE;
     double pending_lightning_send     SWIFT_PRIVATE;
+    double pending_in_round     SWIFT_PRIVATE;
     double pending_exit     SWIFT_PRIVATE;
 
   public:
     OffchainBalanceResult() = default;
-    explicit OffchainBalanceResult(double spendable, double pending_lightning_send, double pending_exit): spendable(spendable), pending_lightning_send(pending_lightning_send), pending_exit(pending_exit) {}
+    explicit OffchainBalanceResult(double spendable, double pending_lightning_send, double pending_in_round, double pending_exit): spendable(spendable), pending_lightning_send(pending_lightning_send), pending_in_round(pending_in_round), pending_exit(pending_exit) {}
   };
 
 } // namespace margelo::nitro::nitroark
@@ -50,6 +51,7 @@ namespace margelo::nitro {
       return margelo::nitro::nitroark::OffchainBalanceResult(
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "spendable")),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "pending_lightning_send")),
+        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "pending_in_round")),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "pending_exit"))
       );
     }
@@ -57,6 +59,7 @@ namespace margelo::nitro {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, "spendable", JSIConverter<double>::toJSI(runtime, arg.spendable));
       obj.setProperty(runtime, "pending_lightning_send", JSIConverter<double>::toJSI(runtime, arg.pending_lightning_send));
+      obj.setProperty(runtime, "pending_in_round", JSIConverter<double>::toJSI(runtime, arg.pending_in_round));
       obj.setProperty(runtime, "pending_exit", JSIConverter<double>::toJSI(runtime, arg.pending_exit));
       return obj;
     }
@@ -67,6 +70,7 @@ namespace margelo::nitro {
       jsi::Object obj = value.getObject(runtime);
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "spendable"))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "pending_lightning_send"))) return false;
+      if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "pending_in_round"))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "pending_exit"))) return false;
       return true;
     }
