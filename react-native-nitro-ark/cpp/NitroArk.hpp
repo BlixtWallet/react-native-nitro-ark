@@ -54,7 +54,7 @@ public:
       try {
         bark_cxx::ConfigOpts config_opts;
         if (opts.config.has_value()) {
-          config_opts.asp = opts.config->asp.value_or("");
+          config_opts.ark = opts.config->ark.value_or("");
           config_opts.esplora = opts.config->esplora.value_or("");
           config_opts.bitcoind = opts.config->bitcoind.value_or("");
           config_opts.bitcoind_cookie =
@@ -119,7 +119,7 @@ public:
     return Promise<void>::async([opts]() {
       try {
         bark_cxx::ConfigOpts config_opts;
-        config_opts.asp = opts.asp.value_or("");
+        config_opts.ark = opts.ark.value_or("");
         config_opts.esplora = opts.esplora.value_or("");
         config_opts.bitcoind = opts.bitcoind.value_or("");
         config_opts.bitcoind_cookie = opts.bitcoind_cookie.value_or("");
@@ -195,8 +195,8 @@ public:
         BarkArkInfo info;
         info.network =
             std::string(rust_info.network.data(), rust_info.network.length());
-        info.asp_pubkey = std::string(rust_info.asp_pubkey.data(),
-                                      rust_info.asp_pubkey.length());
+        info.server_pubkey = std::string(rust_info.server_pubkey.data(),
+                                      rust_info.server_pubkey.length());
         info.round_interval_secs =
             static_cast<double>(rust_info.round_interval_secs);
         info.vtxo_exit_delta = static_cast<double>(rust_info.vtxo_exit_delta);
@@ -349,8 +349,8 @@ public:
           BarkVtxo vtxo;
           vtxo.amount = static_cast<double>(rust_vtxo.amount);
           vtxo.expiry_height = static_cast<double>(rust_vtxo.expiry_height);
-          vtxo.asp_pubkey = std::string(rust_vtxo.asp_pubkey.data(),
-                                        rust_vtxo.asp_pubkey.length());
+          vtxo.server_pubkey = std::string(rust_vtxo.server_pubkey.data(),
+                                        rust_vtxo.server_pubkey.length());
           vtxo.exit_delta = static_cast<double>(rust_vtxo.exit_delta);
           vtxo.anchor_point = std::string(rust_vtxo.anchor_point.data(),
                                           rust_vtxo.anchor_point.length());
@@ -376,8 +376,8 @@ public:
           BarkVtxo vtxo;
           vtxo.amount = static_cast<double>(rust_vtxo.amount);
           vtxo.expiry_height = static_cast<double>(rust_vtxo.expiry_height);
-          vtxo.asp_pubkey = std::string(rust_vtxo.asp_pubkey.data(),
-                                        rust_vtxo.asp_pubkey.length());
+          vtxo.server_pubkey = std::string(rust_vtxo.server_pubkey.data(),
+                                        rust_vtxo.server_pubkey.length());
           vtxo.exit_delta = static_cast<double>(rust_vtxo.exit_delta);
           vtxo.anchor_point = std::string(rust_vtxo.anchor_point.data(),
                                           rust_vtxo.anchor_point.length());
@@ -660,8 +660,8 @@ public:
           BarkVtxo vtxo;
           vtxo.amount = static_cast<double>(rust_vtxo.amount);
           vtxo.expiry_height = static_cast<double>(rust_vtxo.expiry_height);
-          vtxo.asp_pubkey = std::string(rust_vtxo.asp_pubkey.data(),
-                                        rust_vtxo.asp_pubkey.length());
+          vtxo.server_pubkey = std::string(rust_vtxo.server_pubkey.data(),
+                                        rust_vtxo.server_pubkey.length());
           vtxo.exit_delta = static_cast<double>(rust_vtxo.exit_delta);
           vtxo.anchor_point = std::string(rust_vtxo.anchor_point.data(),
                                           rust_vtxo.anchor_point.length());

@@ -5,7 +5,7 @@ import type { HybridObject } from 'react-native-nitro-modules';
 // Note: BarkError is handled via Promise rejection, not exposed directly.
 
 export interface BarkConfigOpts {
-  asp?: string;
+  ark?: string;
   esplora?: string;
   bitcoind?: string;
   bitcoind_cookie?: string;
@@ -26,7 +26,7 @@ export interface BarkCreateOpts {
 
 export interface BarkArkInfo {
   network: string;
-  asp_pubkey: string;
+  server_pubkey: string;
   round_interval_secs: number; // u64
   vtxo_exit_delta: number; // u16
   vtxo_expiry_delta: number; // u16
@@ -43,7 +43,7 @@ export interface BarkSendManyOutput {
 export interface BarkVtxo {
   amount: number; // u64
   expiry_height: number; // u32
-  asp_pubkey: string;
+  server_pubkey: string;
   exit_delta: number; // u16
   anchor_point: string;
   point: string;

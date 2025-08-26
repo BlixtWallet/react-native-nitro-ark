@@ -21,8 +21,8 @@ pub(crate) const DB_FILE: &str = "db.sqlite";
 
 impl ConfigOpts {
     pub fn merge_into(self, cfg: &mut Config) -> anyhow::Result<()> {
-        if let Some(url) = self.asp {
-            cfg.asp_address = https_default_scheme(url).context("invalid asp url")?;
+        if let Some(url) = self.ark {
+            cfg.server_address = https_default_scheme(url).context("invalid asp url")?;
         }
         if let Some(v) = self.esplora {
             cfg.esplora_address = match v.is_empty() {
@@ -81,7 +81,7 @@ pub fn https_default_scheme(url: String) -> anyhow::Result<String> {
 
 #[derive(Debug, Clone)]
 pub struct ConfigOpts {
-    pub asp: Option<String>,
+    pub ark: Option<String>,
 
     /// The esplora HTTP API endpoint
     pub esplora: Option<String>,
@@ -148,7 +148,7 @@ pub(crate) async fn try_create_wallet(
     let db = Arc::new(SqliteClient::open(datadir.join(DB_FILE))?);
 
     let bdk_wallet = OnchainWallet::load_or_create(net, seed, db.clone())?;
-    BarkWallet::create_with_onchain(&mnemonic, net, config, db, &bdk_wallet)
+    BarkWallet::create_with_onchain(&mnemonic, net, config, db, &bdk_wallet, false)
         .await
         .context("error creating wallet")?;
 

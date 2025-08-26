@@ -820,7 +820,7 @@ namespace bark_cxx {
 struct BarkVtxo final {
   ::std::uint64_t amount CXX_DEFAULT_VALUE(0);
   ::std::uint32_t expiry_height CXX_DEFAULT_VALUE(0);
-  ::rust::String asp_pubkey;
+  ::rust::String server_pubkey;
   ::std::uint16_t exit_delta CXX_DEFAULT_VALUE(0);
   ::rust::String anchor_point;
   ::rust::String point;
@@ -901,7 +901,7 @@ struct OnchainPaymentResult final {
 #define CXXBRIDGE1_STRUCT_bark_cxx$CxxArkInfo
 struct CxxArkInfo final {
   ::rust::String network;
-  ::rust::String asp_pubkey;
+  ::rust::String server_pubkey;
   ::std::uint64_t round_interval_secs CXX_DEFAULT_VALUE(0);
   ::std::uint16_t vtxo_exit_delta CXX_DEFAULT_VALUE(0);
   ::std::uint16_t vtxo_expiry_delta CXX_DEFAULT_VALUE(0);
@@ -915,7 +915,7 @@ struct CxxArkInfo final {
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$ConfigOpts
 #define CXXBRIDGE1_STRUCT_bark_cxx$ConfigOpts
 struct ConfigOpts final {
-  ::rust::String asp;
+  ::rust::String ark;
   ::rust::String esplora;
   ::rust::String bitcoind;
   ::rust::String bitcoind_cookie;

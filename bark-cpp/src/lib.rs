@@ -7,6 +7,7 @@ use bark::ark::bitcoin::Address;
 use bark::ark::bitcoin::Amount;
 use bark::ark::bitcoin::Network;
 
+use bark::ark::lightning;
 use bark::ark::lightning::Preimage;
 use bark::ark::rounds::RoundId;
 use bark::ark::ArkInfo;
@@ -89,9 +90,9 @@ impl WalletManager {
         };
 
         let mut config = Config {
-            asp_address: opts
+            server_address: opts
                 .config
-                .asp
+                .ark
                 .clone()
                 .context("ASP address missing, use --asp")?,
             ..Default::default()
@@ -282,7 +283,11 @@ pub async fn get_ark_info() -> anyhow::Result<ArkInfo> {
 
 pub async fn derive_store_next_keypair() -> anyhow::Result<Keypair> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager.with_context(|ctx| Ok(ctx.wallet.derive_store_next_keypair()?))
+    manager.with_context(|ctx| {
+        ctx.wallet
+            .derive_store_next_keypair()
+            .map(|(keypair, _)| keypair)
+    })
 }
 
 pub async fn peak_keypair(index: u32) -> anyhow::Result<Keypair> {
@@ -387,7 +392,7 @@ pub async fn finish_lightning_receive(bolt11: Bolt11Invoice) -> anyhow::Result<(
         .with_context_async(|ctx| async {
             let _ = ctx
                 .wallet
-                .finish_lightning_receive(bolt11)
+                .finish_lightning_receive(&bolt11)
                 .await
                 .context("Failed to claim bolt11 payment")?;
             Ok(())
@@ -528,14 +533,14 @@ pub async fn send_arkoor_payment(
 }
 
 pub async fn send_lightning_payment(
-    destination: Bolt11Invoice,
+    destination: lightning::Invoice,
     amount_sat: Option<Amount>,
 ) -> anyhow::Result<Preimage> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
             ctx.wallet
-                .send_lightning_payment(&destination, amount_sat)
+                .send_lightning_payment(destination, amount_sat)
                 .await
         })
         .await

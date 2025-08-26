@@ -211,7 +211,7 @@ export default function ArkApp() {
       bitcoin: false,
       config: {
         bitcoind: 'http://localhost:18443',
-        asp: 'http://localhost:3535',
+        ark: 'http://localhost:3535',
         bitcoind_user: 'second',
         bitcoind_pass: 'ark',
         vtxo_refresh_expiry_threshold: 288,
