@@ -617,6 +617,41 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<std::optional<LightningReceive>>>
+  lightningReceiveStatus(const std::string &payment) override {
+    return Promise<std::optional<LightningReceive>>::async([payment]() {
+      try {
+        const bark_cxx::LightningReceive *status_ptr =
+            bark_cxx::lightning_receive_status(payment);
+
+        if (status_ptr == nullptr) {
+          return std::optional<LightningReceive>();
+        }
+
+        std::unique_ptr<const bark_cxx::LightningReceive> status(status_ptr);
+
+        LightningReceive result;
+        result.payment_hash = std::string(status->payment_hash.data(),
+                                          status->payment_hash.length());
+        result.payment_preimage = std::string(status->payment_preimage.data(),
+                                              status->payment_preimage.length());
+        result.invoice =
+            std::string(status->invoice.data(), status->invoice.length());
+
+        if (status->preimage_revealed_at != nullptr) {
+          result.preimage_revealed_at =
+              static_cast<double>(*status->preimage_revealed_at);
+        } else {
+          result.preimage_revealed_at = std::nullopt;
+        }
+
+        return std::optional<LightningReceive>(result);
+      } catch (const rust::Error &e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   // --- Ark Operations ---
 
   std::shared_ptr<Promise<std::string>> boardAmount(double amountSat) override {

@@ -110,6 +110,13 @@ pub(crate) mod ffi {
         Specific,
     }
 
+    pub struct LightningReceive {
+        pub payment_hash: String,
+        pub payment_preimage: String,
+        pub invoice: String,
+        pub preimage_revealed_at: *const u64,
+    }
+
     pub struct OffchainBalance {
         /// Coins that are spendable in the Ark, either in-round or out-of-round.
         pub spendable: u64,
@@ -164,6 +171,7 @@ pub(crate) mod ffi {
         fn get_vtxos() -> Result<Vec<BarkVtxo>>;
         fn get_expiring_vtxos(threshold: u32) -> Result<Vec<BarkVtxo>>;
         fn bolt11_invoice(amount_msat: u64) -> Result<String>;
+        fn lightning_receive_status(payment: String) -> Result<*const LightningReceive>;
         fn maintenance() -> Result<()>;
         fn maintenance_refresh() -> Result<()>;
         fn sync() -> Result<()>;
@@ -411,6 +419,30 @@ pub(crate) fn get_expiring_vtxos(threshold: u32) -> anyhow::Result<Vec<BarkVtxo>
 
 pub(crate) fn bolt11_invoice(amount_msat: u64) -> anyhow::Result<String> {
     crate::TOKIO_RUNTIME.block_on(crate::bolt11_invoice(amount_msat))
+}
+
+pub(crate) fn lightning_receive_status(
+    payment: String,
+) -> anyhow::Result<*const ffi::LightningReceive> {
+    let payment = bark::ark::lightning::PaymentHash::from_str(&payment)
+        .with_context(|| format!("Invalid payment hash format: '{}'", payment))?;
+    let status = crate::TOKIO_RUNTIME.block_on(crate::lightning_receive_status(payment))?;
+
+    if status.is_none() {
+        return Ok(std::ptr::null());
+    }
+
+    let status = status.unwrap();
+    let status = Box::new(ffi::LightningReceive {
+        payment_hash: status.payment_hash.to_string(),
+        payment_preimage: status.payment_preimage.to_string(),
+        invoice: status.invoice.to_string(),
+        preimage_revealed_at: status
+            .preimage_revealed_at
+            .as_ref()
+            .map_or(std::ptr::null(), |v| v as *const u64),
+    });
+    Ok(Box::into_raw(status))
 }
 
 pub(crate) fn maintenance() -> anyhow::Result<()> {

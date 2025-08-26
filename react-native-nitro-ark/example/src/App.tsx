@@ -67,6 +67,7 @@ export default function ArkApp() {
   const [signature, setSignature] = useState('');
   const [publicKeyForVerification, setPublicKeyForVerification] = useState('');
   const [arkoorAddressToValidate, setArkoorAddressToValidate] = useState('');
+  const [paymentHash, setPaymentHash] = useState('');
 
   // Ensure data directory exists on mount
   useEffect(() => {
@@ -755,6 +756,21 @@ export default function ArkApp() {
     );
   };
 
+  const handleLightningReceiveStatus = () => {
+    if (!paymentHash) {
+      setError((prev) => ({
+        ...prev,
+        lightning: 'Payment hash is required.',
+      }));
+      return;
+    }
+    runOperation(
+      'lightningReceiveStatus',
+      () => NitroArk.lightningReceiveStatus(paymentHash),
+      'lightning'
+    );
+  };
+
   const handleSignMessage = () => {
     if (!messageToSign) {
       setError((prev) => ({
@@ -1123,6 +1139,22 @@ export default function ArkApp() {
           </View>
           <View style={styles.buttonGrid}>
             {renderOperationButton('Claim Payment', handleClaimPayment)}
+          </View>
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Payment Hash:</Text>
+            <TextInput
+              style={styles.input}
+              value={paymentHash}
+              onChangeText={setPaymentHash}
+              placeholder="Enter payment hash"
+              autoCapitalize="none"
+            />
+          </View>
+          <View style={styles.buttonGrid}>
+            {renderOperationButton(
+              'Get Lightning Receive Status',
+              handleLightningReceiveStatus
+            )}
           </View>
         </View>
 

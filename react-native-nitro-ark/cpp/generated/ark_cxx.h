@@ -809,6 +809,7 @@ namespace bark_cxx {
   struct CreateOpts;
   struct SendManyOutput;
   enum class RefreshModeType : ::std::uint8_t;
+  struct LightningReceive;
   struct OffchainBalance;
   struct OnChainBalance;
   struct KeyPairResult;
@@ -964,6 +965,18 @@ enum class RefreshModeType : ::std::uint8_t {
 };
 #endif // CXXBRIDGE1_ENUM_bark_cxx$RefreshModeType
 
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$LightningReceive
+#define CXXBRIDGE1_STRUCT_bark_cxx$LightningReceive
+struct LightningReceive final {
+  ::rust::String payment_hash;
+  ::rust::String payment_preimage;
+  ::rust::String invoice;
+  ::std::uint64_t const *preimage_revealed_at CXX_DEFAULT_VALUE(nullptr);
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$LightningReceive
+
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$OffchainBalance
 #define CXXBRIDGE1_STRUCT_bark_cxx$OffchainBalance
 struct OffchainBalance final {
@@ -1039,6 +1052,8 @@ bool verify_message(::rust::Str message, ::rust::Str signature, ::rust::Str publ
 ::rust::Vec<::bark_cxx::BarkVtxo> get_expiring_vtxos(::std::uint32_t threshold);
 
 ::rust::String bolt11_invoice(::std::uint64_t amount_msat);
+
+::bark_cxx::LightningReceive const *lightning_receive_status(::rust::String payment);
 
 void maintenance();
 

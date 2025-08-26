@@ -8,6 +8,7 @@ use bark::ark::bitcoin::Amount;
 use bark::ark::bitcoin::Network;
 
 use bark::ark::lightning;
+use bark::ark::lightning::PaymentHash;
 use bark::ark::lightning::Preimage;
 use bark::ark::rounds::RoundId;
 use bark::ark::ArkInfo;
@@ -17,6 +18,7 @@ use bark::lightning_invoice::Bolt11Invoice;
 use bark::lnurllib::lightning_address::LightningAddress;
 use bark::onchain::OnchainWallet;
 use bark::persist::BarkPersister;
+use bark::persist::LightningReceive;
 use bark::Config;
 use bark::Offboard;
 use bark::SendOnchain;
@@ -378,6 +380,19 @@ pub async fn bolt11_invoice(amount: u64) -> anyhow::Result<String> {
             Ok(invoice.to_string())
         })
         .await
+}
+
+pub async fn lightning_receive_status(
+    payment: PaymentHash,
+) -> anyhow::Result<Option<LightningReceive>> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager.with_context(|ctx| {
+        let status = ctx
+            .wallet
+            .lightning_receive_status(payment)
+            .context("Failed to get lightning receive status")?;
+        Ok(status)
+    })
 }
 
 pub async fn finish_lightning_receive(bolt11: Bolt11Invoice) -> anyhow::Result<()> {

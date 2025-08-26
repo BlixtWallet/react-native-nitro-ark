@@ -107,6 +107,13 @@ export interface KeyPairResult {
   secret_key: string;
 }
 
+export interface LightningReceive {
+  payment_hash: string;
+  payment_preimage: string;
+  invoice: string;
+  preimage_revealed_at?: number;
+}
+
 // --- Nitro Module Interface ---
 
 export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
@@ -196,6 +203,9 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
 
   // --- Lightning Invoicing ---
   bolt11Invoice(amountMsat: number): Promise<string>; // Returns invoice string
+  lightningReceiveStatus(
+    payment: string
+  ): Promise<LightningReceive | undefined>;
   finishLightningReceive(bolt11: string): Promise<void>; // Throws on error
 
   // --- Offboarding / Exiting ---
