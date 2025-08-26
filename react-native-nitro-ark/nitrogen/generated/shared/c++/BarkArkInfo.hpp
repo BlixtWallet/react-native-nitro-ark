@@ -30,7 +30,7 @@ namespace margelo::nitro::nitroark {
   struct BarkArkInfo {
   public:
     std::string network     SWIFT_PRIVATE;
-    std::string asp_pubkey     SWIFT_PRIVATE;
+    std::string server_pubkey     SWIFT_PRIVATE;
     double round_interval_secs     SWIFT_PRIVATE;
     double vtxo_exit_delta     SWIFT_PRIVATE;
     double vtxo_expiry_delta     SWIFT_PRIVATE;
@@ -39,7 +39,7 @@ namespace margelo::nitro::nitroark {
 
   public:
     BarkArkInfo() = default;
-    explicit BarkArkInfo(std::string network, std::string asp_pubkey, double round_interval_secs, double vtxo_exit_delta, double vtxo_expiry_delta, double htlc_expiry_delta, double max_vtxo_amount_sat): network(network), asp_pubkey(asp_pubkey), round_interval_secs(round_interval_secs), vtxo_exit_delta(vtxo_exit_delta), vtxo_expiry_delta(vtxo_expiry_delta), htlc_expiry_delta(htlc_expiry_delta), max_vtxo_amount_sat(max_vtxo_amount_sat) {}
+    explicit BarkArkInfo(std::string network, std::string server_pubkey, double round_interval_secs, double vtxo_exit_delta, double vtxo_expiry_delta, double htlc_expiry_delta, double max_vtxo_amount_sat): network(network), server_pubkey(server_pubkey), round_interval_secs(round_interval_secs), vtxo_exit_delta(vtxo_exit_delta), vtxo_expiry_delta(vtxo_expiry_delta), htlc_expiry_delta(htlc_expiry_delta), max_vtxo_amount_sat(max_vtxo_amount_sat) {}
   };
 
 } // namespace margelo::nitro::nitroark
@@ -53,7 +53,7 @@ namespace margelo::nitro {
       jsi::Object obj = arg.asObject(runtime);
       return margelo::nitro::nitroark::BarkArkInfo(
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "network")),
-        JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "asp_pubkey")),
+        JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "server_pubkey")),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "round_interval_secs")),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "vtxo_exit_delta")),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "vtxo_expiry_delta")),
@@ -64,7 +64,7 @@ namespace margelo::nitro {
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroark::BarkArkInfo& arg) {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, "network", JSIConverter<std::string>::toJSI(runtime, arg.network));
-      obj.setProperty(runtime, "asp_pubkey", JSIConverter<std::string>::toJSI(runtime, arg.asp_pubkey));
+      obj.setProperty(runtime, "server_pubkey", JSIConverter<std::string>::toJSI(runtime, arg.server_pubkey));
       obj.setProperty(runtime, "round_interval_secs", JSIConverter<double>::toJSI(runtime, arg.round_interval_secs));
       obj.setProperty(runtime, "vtxo_exit_delta", JSIConverter<double>::toJSI(runtime, arg.vtxo_exit_delta));
       obj.setProperty(runtime, "vtxo_expiry_delta", JSIConverter<double>::toJSI(runtime, arg.vtxo_expiry_delta));
@@ -78,7 +78,7 @@ namespace margelo::nitro {
       }
       jsi::Object obj = value.getObject(runtime);
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "network"))) return false;
-      if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "asp_pubkey"))) return false;
+      if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "server_pubkey"))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "round_interval_secs"))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "vtxo_exit_delta"))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "vtxo_expiry_delta"))) return false;

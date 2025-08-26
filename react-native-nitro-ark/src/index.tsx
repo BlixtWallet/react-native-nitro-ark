@@ -14,6 +14,7 @@ import type {
   OnchainBalanceResult,
   NewAddressResult,
   KeyPairResult,
+  LightningReceive,
 } from './NitroArk.nitro';
 
 // Create the hybrid object instance
@@ -335,6 +336,18 @@ export function bolt11Invoice(amountMsat: number): Promise<string> {
 }
 
 /**
+ * Gets the status of a Lightning receive.
+ * @param payment The payment hash of the Lightning receive.
+ * @returns A promise resolving to the Lightning receive status.
+ */
+
+export function lightningReceiveStatus(
+  payment: string
+): Promise<LightningReceive | undefined> {
+  return NitroArkHybridObject.lightningReceiveStatus(payment);
+}
+
+/**
  * Claims a Lightning payment.
  * @param bolt11 The Lightning invoice string to claim.
  * @returns A promise that resolves on success or rejects on error.
@@ -388,6 +401,15 @@ export function boardAmount(amountSat: number): Promise<string> {
  */
 export function boardAll(): Promise<string> {
   return NitroArkHybridObject.boardAll();
+}
+
+/**
+ * Validates an Arkoor address.
+ * @param address The Arkoor address to validate.
+ * @returns A promise resolving to void.
+ */
+export function validateArkoorAddress(address: string): Promise<void> {
+  return NitroArkHybridObject.validateArkoorAddress(address);
 }
 
 /**
@@ -458,4 +480,5 @@ export type {
   OnchainBalanceResult,
   NewAddressResult,
   KeyPairResult,
+  LightningReceive,
 } from './NitroArk.nitro';

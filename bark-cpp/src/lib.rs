@@ -7,6 +7,8 @@ use bark::ark::bitcoin::Address;
 use bark::ark::bitcoin::Amount;
 use bark::ark::bitcoin::Network;
 
+use bark::ark::lightning;
+use bark::ark::lightning::PaymentHash;
 use bark::ark::lightning::Preimage;
 use bark::ark::rounds::RoundId;
 use bark::ark::ArkInfo;
@@ -16,6 +18,7 @@ use bark::lightning_invoice::Bolt11Invoice;
 use bark::lnurllib::lightning_address::LightningAddress;
 use bark::onchain::OnchainWallet;
 use bark::persist::BarkPersister;
+use bark::persist::LightningReceive;
 use bark::Config;
 use bark::Offboard;
 use bark::SendOnchain;
@@ -89,11 +92,11 @@ impl WalletManager {
         };
 
         let mut config = Config {
-            asp_address: opts
+            server_address: opts
                 .config
-                .asp
+                .ark
                 .clone()
-                .context("ASP address missing, use --asp")?,
+                .context("Ark server address missing, use --ark")?,
             ..Default::default()
         };
         opts.config
@@ -257,12 +260,6 @@ pub async fn persist_config(config: Config) -> anyhow::Result<()> {
     })
 }
 
-pub struct Balance {
-    pub onchain: u64,
-    pub offchain: u64,
-    pub pending_exit: u64,
-}
-
 pub async fn balance() -> anyhow::Result<bark::Balance> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager.with_context(|ctx| Ok(ctx.wallet.balance()?))
@@ -282,7 +279,11 @@ pub async fn get_ark_info() -> anyhow::Result<ArkInfo> {
 
 pub async fn derive_store_next_keypair() -> anyhow::Result<Keypair> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager.with_context(|ctx| Ok(ctx.wallet.derive_store_next_keypair()?))
+    manager.with_context(|ctx| {
+        ctx.wallet
+            .derive_store_next_keypair()
+            .map(|(keypair, _)| keypair)
+    })
 }
 
 pub async fn peak_keypair(index: u32) -> anyhow::Result<Keypair> {
@@ -381,13 +382,26 @@ pub async fn bolt11_invoice(amount: u64) -> anyhow::Result<String> {
         .await
 }
 
+pub async fn lightning_receive_status(
+    payment: PaymentHash,
+) -> anyhow::Result<Option<LightningReceive>> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager.with_context(|ctx| {
+        let status = ctx
+            .wallet
+            .lightning_receive_status(payment)
+            .context("Failed to get lightning receive status")?;
+        Ok(status)
+    })
+}
+
 pub async fn finish_lightning_receive(bolt11: Bolt11Invoice) -> anyhow::Result<()> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
             let _ = ctx
                 .wallet
-                .finish_lightning_receive(bolt11)
+                .finish_lightning_receive(&bolt11)
                 .await
                 .context("Failed to claim bolt11 payment")?;
             Ok(())
@@ -507,6 +521,16 @@ pub async fn sync_rounds() -> anyhow::Result<()> {
         .await
 }
 
+pub async fn validate_arkoor_address(address: bark::ark::Address) -> anyhow::Result<()> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager.with_context(|ctx| {
+        ctx.wallet
+            .validate_arkoor_address(&address)
+            .context("Failed to validate address")?;
+        Ok(())
+    })
+}
+
 pub async fn send_arkoor_payment(
     destination: bark::ark::Address,
     amount_sat: Amount,
@@ -528,14 +552,14 @@ pub async fn send_arkoor_payment(
 }
 
 pub async fn send_lightning_payment(
-    destination: Bolt11Invoice,
+    destination: lightning::Invoice,
     amount_sat: Option<Amount>,
 ) -> anyhow::Result<Preimage> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
             ctx.wallet
-                .send_lightning_payment(&destination, amount_sat)
+                .send_lightning_payment(destination, amount_sat)
                 .await
         })
         .await

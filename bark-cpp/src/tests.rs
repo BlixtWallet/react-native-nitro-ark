@@ -20,7 +20,7 @@ fn setup_test_wallet_opts() -> (tempfile::TempDir, ffi::CreateOpts) {
     let config_opts = ffi::ConfigOpts {
         // Using placeholder values for services not directly hit in most unit tests.
         // For real integration tests, these would point to live regtest services.
-        asp: "http://127.0.0.1:50051".to_string(),
+        ark: "http://127.0.0.1:50051".to_string(),
         esplora: "http://127.0.0.1:3002".to_string(),
         bitcoind: "".to_string(),
         bitcoind_cookie: "".to_string(),

@@ -46,11 +46,13 @@ namespace margelo::nitro::nitroark {
       prototype.registerHybridMethod("onchainSendMany", &HybridNitroArkSpec::onchainSendMany);
       prototype.registerHybridMethod("boardAmount", &HybridNitroArkSpec::boardAmount);
       prototype.registerHybridMethod("boardAll", &HybridNitroArkSpec::boardAll);
+      prototype.registerHybridMethod("validateArkoorAddress", &HybridNitroArkSpec::validateArkoorAddress);
       prototype.registerHybridMethod("sendArkoorPayment", &HybridNitroArkSpec::sendArkoorPayment);
       prototype.registerHybridMethod("sendLightningPayment", &HybridNitroArkSpec::sendLightningPayment);
       prototype.registerHybridMethod("sendLnaddr", &HybridNitroArkSpec::sendLnaddr);
       prototype.registerHybridMethod("sendRoundOnchainPayment", &HybridNitroArkSpec::sendRoundOnchainPayment);
       prototype.registerHybridMethod("bolt11Invoice", &HybridNitroArkSpec::bolt11Invoice);
+      prototype.registerHybridMethod("lightningReceiveStatus", &HybridNitroArkSpec::lightningReceiveStatus);
       prototype.registerHybridMethod("finishLightningReceive", &HybridNitroArkSpec::finishLightningReceive);
       prototype.registerHybridMethod("offboardSpecific", &HybridNitroArkSpec::offboardSpecific);
       prototype.registerHybridMethod("offboardAll", &HybridNitroArkSpec::offboardAll);

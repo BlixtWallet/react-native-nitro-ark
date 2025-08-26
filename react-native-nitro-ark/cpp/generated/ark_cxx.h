@@ -809,6 +809,7 @@ namespace bark_cxx {
   struct CreateOpts;
   struct SendManyOutput;
   enum class RefreshModeType : ::std::uint8_t;
+  struct LightningReceive;
   struct OffchainBalance;
   struct OnChainBalance;
   struct KeyPairResult;
@@ -820,7 +821,7 @@ namespace bark_cxx {
 struct BarkVtxo final {
   ::std::uint64_t amount CXX_DEFAULT_VALUE(0);
   ::std::uint32_t expiry_height CXX_DEFAULT_VALUE(0);
-  ::rust::String asp_pubkey;
+  ::rust::String server_pubkey;
   ::std::uint16_t exit_delta CXX_DEFAULT_VALUE(0);
   ::rust::String anchor_point;
   ::rust::String point;
@@ -901,7 +902,7 @@ struct OnchainPaymentResult final {
 #define CXXBRIDGE1_STRUCT_bark_cxx$CxxArkInfo
 struct CxxArkInfo final {
   ::rust::String network;
-  ::rust::String asp_pubkey;
+  ::rust::String server_pubkey;
   ::std::uint64_t round_interval_secs CXX_DEFAULT_VALUE(0);
   ::std::uint16_t vtxo_exit_delta CXX_DEFAULT_VALUE(0);
   ::std::uint16_t vtxo_expiry_delta CXX_DEFAULT_VALUE(0);
@@ -915,7 +916,7 @@ struct CxxArkInfo final {
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$ConfigOpts
 #define CXXBRIDGE1_STRUCT_bark_cxx$ConfigOpts
 struct ConfigOpts final {
-  ::rust::String asp;
+  ::rust::String ark;
   ::rust::String esplora;
   ::rust::String bitcoind;
   ::rust::String bitcoind_cookie;
@@ -964,6 +965,18 @@ enum class RefreshModeType : ::std::uint8_t {
 };
 #endif // CXXBRIDGE1_ENUM_bark_cxx$RefreshModeType
 
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$LightningReceive
+#define CXXBRIDGE1_STRUCT_bark_cxx$LightningReceive
+struct LightningReceive final {
+  ::rust::String payment_hash;
+  ::rust::String payment_preimage;
+  ::rust::String invoice;
+  ::std::uint64_t const *preimage_revealed_at CXX_DEFAULT_VALUE(nullptr);
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$LightningReceive
+
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$OffchainBalance
 #define CXXBRIDGE1_STRUCT_bark_cxx$OffchainBalance
 struct OffchainBalance final {
@@ -971,6 +984,8 @@ struct OffchainBalance final {
   ::std::uint64_t spendable CXX_DEFAULT_VALUE(0);
   // Coins that are in the process of being sent over Lightning.
   ::std::uint64_t pending_lightning_send CXX_DEFAULT_VALUE(0);
+  // Coins locked in a round.
+  ::std::uint64_t pending_in_round CXX_DEFAULT_VALUE(0);
   // Coins that are in the process of unilaterally exiting the Ark.
   ::std::uint64_t pending_exit CXX_DEFAULT_VALUE(0);
 
@@ -1038,6 +1053,8 @@ bool verify_message(::rust::Str message, ::rust::Str signature, ::rust::Str publ
 
 ::rust::String bolt11_invoice(::std::uint64_t amount_msat);
 
+::bark_cxx::LightningReceive const *lightning_receive_status(::rust::String payment);
+
 void maintenance();
 
 void maintenance_refresh();
@@ -1053,6 +1070,8 @@ void load_wallet(::rust::Str datadir, ::rust::Str mnemonic);
 ::rust::String board_amount(::std::uint64_t amount_sat);
 
 ::rust::String board_all();
+
+void validate_arkoor_address(::rust::Str address);
 
 ::bark_cxx::ArkoorPaymentResult send_arkoor_payment(::rust::Str destination, ::std::uint64_t amount_sat);
 

@@ -5,7 +5,7 @@ import type { HybridObject } from 'react-native-nitro-modules';
 // Note: BarkError is handled via Promise rejection, not exposed directly.
 
 export interface BarkConfigOpts {
-  asp?: string;
+  ark?: string;
   esplora?: string;
   bitcoind?: string;
   bitcoind_cookie?: string;
@@ -26,7 +26,7 @@ export interface BarkCreateOpts {
 
 export interface BarkArkInfo {
   network: string;
-  asp_pubkey: string;
+  server_pubkey: string;
   round_interval_secs: number; // u64
   vtxo_exit_delta: number; // u16
   vtxo_expiry_delta: number; // u16
@@ -43,7 +43,7 @@ export interface BarkSendManyOutput {
 export interface BarkVtxo {
   amount: number; // u64
   expiry_height: number; // u32
-  asp_pubkey: string;
+  server_pubkey: string;
   exit_delta: number; // u16
   anchor_point: string;
   point: string;
@@ -81,6 +81,7 @@ export interface OnchainPaymentResult {
 export interface OffchainBalanceResult {
   spendable: number; // u64
   pending_lightning_send: number; // u64
+  pending_in_round: number; // u64
   pending_exit: number; // u64
 }
 
@@ -104,6 +105,13 @@ export interface NewAddressResult {
 export interface KeyPairResult {
   public_key: string;
   secret_key: string;
+}
+
+export interface LightningReceive {
+  payment_hash: string;
+  payment_preimage: string;
+  invoice: string;
+  preimage_revealed_at?: number;
 }
 
 // --- Nitro Module Interface ---
@@ -174,6 +182,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   // --- Ark & Lightning Payments ---
   boardAmount(amountSat: number): Promise<string>; // Returns JSON status
   boardAll(): Promise<string>; // Returns JSON status
+  validateArkoorAddress(address: string): Promise<void>;
   sendArkoorPayment(
     destination: string,
     amountSat: number
@@ -194,6 +203,9 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
 
   // --- Lightning Invoicing ---
   bolt11Invoice(amountMsat: number): Promise<string>; // Returns invoice string
+  lightningReceiveStatus(
+    payment: string
+  ): Promise<LightningReceive | undefined>;
   finishLightningReceive(bolt11: string): Promise<void>; // Throws on error
 
   // --- Offboarding / Exiting ---

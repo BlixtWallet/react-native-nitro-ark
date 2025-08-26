@@ -2,10 +2,11 @@ use crate::cxx::ffi::{
     ArkoorPaymentResult, BarkVtxo, Bolt11PaymentResult, LnurlPaymentResult, OnchainPaymentResult,
     PaymentTypes,
 };
-use crate::{parse_send_destination, utils, SendDestination, TOKIO_RUNTIME};
+use crate::{utils, TOKIO_RUNTIME};
 use anyhow::{bail, Context, Ok};
 use bark::ark::bitcoin::hex::DisplayHex;
 use bark::ark::bitcoin::{address, Address};
+use bark::ark::lightning;
 use bdk_wallet::bitcoin::{self, network, FeeRate};
 use bip39::Mnemonic;
 use logger::log::{self, info};
@@ -19,7 +20,7 @@ pub(crate) mod ffi {
     pub struct BarkVtxo {
         amount: u64,
         expiry_height: u32,
-        asp_pubkey: String,
+        server_pubkey: String,
         exit_delta: u16,
         anchor_point: String,
         point: String,
@@ -67,7 +68,7 @@ pub(crate) mod ffi {
 
     pub struct CxxArkInfo {
         network: String,
-        asp_pubkey: String,
+        server_pubkey: String,
         round_interval_secs: u64,
         vtxo_exit_delta: u16,
         vtxo_expiry_delta: u16,
@@ -76,7 +77,7 @@ pub(crate) mod ffi {
     }
 
     pub struct ConfigOpts {
-        asp: String,
+        ark: String,
         esplora: String,
         bitcoind: String,
         bitcoind_cookie: String,
@@ -109,11 +110,20 @@ pub(crate) mod ffi {
         Specific,
     }
 
+    pub struct LightningReceive {
+        pub payment_hash: String,
+        pub payment_preimage: String,
+        pub invoice: String,
+        pub preimage_revealed_at: *const u64,
+    }
+
     pub struct OffchainBalance {
         /// Coins that are spendable in the Ark, either in-round or out-of-round.
         pub spendable: u64,
         /// Coins that are in the process of being sent over Lightning.
         pub pending_lightning_send: u64,
+        /// Coins locked in a round.
+        pub pending_in_round: u64,
         /// Coins that are in the process of unilaterally exiting the Ark.
         pub pending_exit: u64,
     }
@@ -161,6 +171,7 @@ pub(crate) mod ffi {
         fn get_vtxos() -> Result<Vec<BarkVtxo>>;
         fn get_expiring_vtxos(threshold: u32) -> Result<Vec<BarkVtxo>>;
         fn bolt11_invoice(amount_msat: u64) -> Result<String>;
+        fn lightning_receive_status(payment: String) -> Result<*const LightningReceive>;
         fn maintenance() -> Result<()>;
         fn maintenance_refresh() -> Result<()>;
         fn sync() -> Result<()>;
@@ -169,6 +180,7 @@ pub(crate) mod ffi {
         fn load_wallet(datadir: &str, mnemonic: &str) -> Result<()>;
         fn board_amount(amount_sat: u64) -> Result<String>;
         fn board_all() -> Result<String>;
+        fn validate_arkoor_address(address: &str) -> Result<()>;
         fn send_arkoor_payment(destination: &str, amount_sat: u64) -> Result<ArkoorPaymentResult>;
         unsafe fn send_lightning_payment(
             destination: &str,
@@ -218,7 +230,7 @@ pub(crate) fn close_wallet() -> anyhow::Result<()> {
 
 pub(crate) fn persist_config(opts: ffi::ConfigOpts) -> anyhow::Result<()> {
     let config_opts = utils::ConfigOpts {
-        asp: Some(opts.asp),
+        ark: Some(opts.ark),
         esplora: Some(opts.esplora),
         bitcoind: Some(opts.bitcoind),
         bitcoind_cookie: Some(opts.bitcoind_cookie),
@@ -245,7 +257,7 @@ pub(crate) fn get_ark_info() -> anyhow::Result<ffi::CxxArkInfo> {
     let info = crate::TOKIO_RUNTIME.block_on(crate::get_ark_info())?;
     Ok(ffi::CxxArkInfo {
         network: info.network.to_string(),
-        asp_pubkey: info.asp_pubkey.to_string(),
+        server_pubkey: info.server_pubkey.to_string(),
         round_interval_secs: info.round_interval.as_secs(),
         vtxo_exit_delta: info.vtxo_exit_delta,
         vtxo_expiry_delta: info.vtxo_expiry_delta,
@@ -259,6 +271,7 @@ pub(crate) fn offchain_balance() -> anyhow::Result<ffi::OffchainBalance> {
     Ok(ffi::OffchainBalance {
         spendable: balance.spendable.to_sat(),
         pending_lightning_send: balance.pending_lightning_send.to_sat(),
+        pending_in_round: balance.pending_in_round.to_sat(),
         pending_exit: balance.pending_exit.to_sat(),
     })
 }
@@ -282,7 +295,7 @@ pub(crate) fn peak_keypair(index: u32) -> anyhow::Result<ffi::KeyPairResult> {
 pub(crate) fn new_address() -> anyhow::Result<ffi::NewAddressResult> {
     let address = crate::TOKIO_RUNTIME.block_on(crate::new_address())?;
     Ok(ffi::NewAddressResult {
-        user_pubkey: address.user_pubkey().to_string(),
+        user_pubkey: address.policy().user_pubkey().to_string(),
         ark_id: address.ark_id().to_string(),
         address: address.to_string(),
     })
@@ -364,7 +377,7 @@ pub(crate) fn get_vtxos() -> anyhow::Result<Vec<BarkVtxo>> {
         .map(|vtxo| BarkVtxo {
             amount: vtxo.amount().to_sat(),
             expiry_height: vtxo.expiry_height(),
-            asp_pubkey: vtxo.asp_pubkey().to_string(),
+            server_pubkey: vtxo.server_pubkey().to_string(),
             exit_delta: vtxo.exit_delta(),
             anchor_point: format!(
                 "{}:{}",
@@ -388,7 +401,7 @@ pub(crate) fn get_expiring_vtxos(threshold: u32) -> anyhow::Result<Vec<BarkVtxo>
         .map(|vtxo| BarkVtxo {
             amount: vtxo.amount().to_sat(),
             expiry_height: vtxo.expiry_height(),
-            asp_pubkey: vtxo.asp_pubkey().to_string(),
+            server_pubkey: vtxo.server_pubkey().to_string(),
             exit_delta: vtxo.exit_delta(),
             anchor_point: format!(
                 "{}:{}",
@@ -406,6 +419,30 @@ pub(crate) fn get_expiring_vtxos(threshold: u32) -> anyhow::Result<Vec<BarkVtxo>
 
 pub(crate) fn bolt11_invoice(amount_msat: u64) -> anyhow::Result<String> {
     crate::TOKIO_RUNTIME.block_on(crate::bolt11_invoice(amount_msat))
+}
+
+pub(crate) fn lightning_receive_status(
+    payment: String,
+) -> anyhow::Result<*const ffi::LightningReceive> {
+    let payment = bark::ark::lightning::PaymentHash::from_str(&payment)
+        .with_context(|| format!("Invalid payment hash format: '{}'", payment))?;
+    let status = crate::TOKIO_RUNTIME.block_on(crate::lightning_receive_status(payment))?;
+
+    if status.is_none() {
+        return Ok(std::ptr::null());
+    }
+
+    let status = status.unwrap();
+    let status = Box::new(ffi::LightningReceive {
+        payment_hash: status.payment_hash.to_string(),
+        payment_preimage: status.payment_preimage.to_string(),
+        invoice: status.invoice.to_string(),
+        preimage_revealed_at: status
+            .preimage_revealed_at
+            .as_ref()
+            .map_or(std::ptr::null(), |v| v as *const u64),
+    });
+    Ok(Box::into_raw(status))
 }
 
 pub(crate) fn maintenance() -> anyhow::Result<()> {
@@ -426,7 +463,7 @@ pub(crate) fn sync_rounds() -> anyhow::Result<()> {
 
 pub(crate) fn create_wallet(datadir: &str, opts: ffi::CreateOpts) -> anyhow::Result<()> {
     let config_opts = utils::ConfigOpts {
-        asp: Some(opts.config.asp),
+        ark: Some(opts.config.ark),
         esplora: Some(opts.config.esplora),
         bitcoind: Some(opts.config.bitcoind),
         bitcoind_cookie: Some(opts.config.bitcoind_cookie),
@@ -477,6 +514,12 @@ pub(crate) fn board_all() -> anyhow::Result<String> {
     crate::TOKIO_RUNTIME.block_on(crate::board_all())
 }
 
+pub(crate) fn validate_arkoor_address(address: &str) -> anyhow::Result<()> {
+    let address = bark::ark::Address::from_str(address)
+        .with_context(|| format!("Invalid address format: '{}'", address))?;
+    crate::TOKIO_RUNTIME.block_on(crate::validate_arkoor_address(address))
+}
+
 pub(crate) fn send_arkoor_payment(
     destination: &str,
     amount_sat: u64,
@@ -492,7 +535,7 @@ pub(crate) fn send_arkoor_payment(
             .map(|vtxo| BarkVtxo {
                 amount: vtxo.amount().to_sat(),
                 expiry_height: vtxo.expiry_height(),
-                asp_pubkey: vtxo.asp_pubkey().to_string(),
+                server_pubkey: vtxo.server_pubkey().to_string(),
                 exit_delta: vtxo.exit_delta(),
                 anchor_point: format!(
                     "{}:{}",
@@ -521,13 +564,7 @@ pub(crate) fn send_lightning_payment(
         None => None,
     };
 
-    let parsed_destination = parse_send_destination(destination)?;
-
-    // --- Logic per destination type ---
-    let invoice = match parsed_destination {
-        SendDestination::Bolt11(invoice) => invoice,
-        _ => bail!("Invalid destination type for send_lightning_payment"),
-    };
+    let invoice = lightning::Invoice::from_str(destination)?;
 
     let preimage = crate::TOKIO_RUNTIME
         .block_on(crate::send_lightning_payment(invoice, amount_opt))?
@@ -715,7 +752,7 @@ pub(crate) fn onchain_utxos() -> anyhow::Result<String> {
                     amount: exit.vtxo.amount().to_sat(),
                     anchor_point: format!("{}:{}", exit.vtxo.chain_anchor().txid, exit.vtxo.chain_anchor().vout),
                     exit_delta: exit.vtxo.exit_delta(),
-                    asp_pubkey: exit.vtxo.asp_pubkey().to_string(),
+                    server_pubkey: exit.vtxo.server_pubkey().to_string(),
                     expiry_height: exit.vtxo.expiry_height(),
                     point: format!("{}:{}", exit.vtxo.point().txid.to_string(), exit.vtxo.point().vout.to_string()),
                 },

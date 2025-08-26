@@ -54,7 +54,7 @@ public:
       try {
         bark_cxx::ConfigOpts config_opts;
         if (opts.config.has_value()) {
-          config_opts.asp = opts.config->asp.value_or("");
+          config_opts.ark = opts.config->ark.value_or("");
           config_opts.esplora = opts.config->esplora.value_or("");
           config_opts.bitcoind = opts.config->bitcoind.value_or("");
           config_opts.bitcoind_cookie =
@@ -119,7 +119,7 @@ public:
     return Promise<void>::async([opts]() {
       try {
         bark_cxx::ConfigOpts config_opts;
-        config_opts.asp = opts.asp.value_or("");
+        config_opts.ark = opts.ark.value_or("");
         config_opts.esplora = opts.esplora.value_or("");
         config_opts.bitcoind = opts.bitcoind.value_or("");
         config_opts.bitcoind_cookie = opts.bitcoind_cookie.value_or("");
@@ -195,8 +195,8 @@ public:
         BarkArkInfo info;
         info.network =
             std::string(rust_info.network.data(), rust_info.network.length());
-        info.asp_pubkey = std::string(rust_info.asp_pubkey.data(),
-                                      rust_info.asp_pubkey.length());
+        info.server_pubkey = std::string(rust_info.server_pubkey.data(),
+                                      rust_info.server_pubkey.length());
         info.round_interval_secs =
             static_cast<double>(rust_info.round_interval_secs);
         info.vtxo_exit_delta = static_cast<double>(rust_info.vtxo_exit_delta);
@@ -221,6 +221,8 @@ public:
         balance.spendable = static_cast<double>(rust_balance.spendable);
         balance.pending_lightning_send =
             static_cast<double>(rust_balance.pending_lightning_send);
+        balance.pending_in_round =
+            static_cast<double>(rust_balance.pending_in_round);
         balance.pending_exit = static_cast<double>(rust_balance.pending_exit);
         return balance;
       } catch (const rust::Error &e) {
@@ -349,8 +351,8 @@ public:
           BarkVtxo vtxo;
           vtxo.amount = static_cast<double>(rust_vtxo.amount);
           vtxo.expiry_height = static_cast<double>(rust_vtxo.expiry_height);
-          vtxo.asp_pubkey = std::string(rust_vtxo.asp_pubkey.data(),
-                                        rust_vtxo.asp_pubkey.length());
+          vtxo.server_pubkey = std::string(rust_vtxo.server_pubkey.data(),
+                                        rust_vtxo.server_pubkey.length());
           vtxo.exit_delta = static_cast<double>(rust_vtxo.exit_delta);
           vtxo.anchor_point = std::string(rust_vtxo.anchor_point.data(),
                                           rust_vtxo.anchor_point.length());
@@ -376,8 +378,8 @@ public:
           BarkVtxo vtxo;
           vtxo.amount = static_cast<double>(rust_vtxo.amount);
           vtxo.expiry_height = static_cast<double>(rust_vtxo.expiry_height);
-          vtxo.asp_pubkey = std::string(rust_vtxo.asp_pubkey.data(),
-                                        rust_vtxo.asp_pubkey.length());
+          vtxo.server_pubkey = std::string(rust_vtxo.server_pubkey.data(),
+                                        rust_vtxo.server_pubkey.length());
           vtxo.exit_delta = static_cast<double>(rust_vtxo.exit_delta);
           vtxo.anchor_point = std::string(rust_vtxo.anchor_point.data(),
                                           rust_vtxo.anchor_point.length());
@@ -615,6 +617,41 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<std::optional<LightningReceive>>>
+  lightningReceiveStatus(const std::string &payment) override {
+    return Promise<std::optional<LightningReceive>>::async([payment]() {
+      try {
+        const bark_cxx::LightningReceive *status_ptr =
+            bark_cxx::lightning_receive_status(payment);
+
+        if (status_ptr == nullptr) {
+          return std::optional<LightningReceive>();
+        }
+
+        std::unique_ptr<const bark_cxx::LightningReceive> status(status_ptr);
+
+        LightningReceive result;
+        result.payment_hash = std::string(status->payment_hash.data(),
+                                          status->payment_hash.length());
+        result.payment_preimage = std::string(status->payment_preimage.data(),
+                                              status->payment_preimage.length());
+        result.invoice =
+            std::string(status->invoice.data(), status->invoice.length());
+
+        if (status->preimage_revealed_at != nullptr) {
+          result.preimage_revealed_at =
+              static_cast<double>(*status->preimage_revealed_at);
+        } else {
+          result.preimage_revealed_at = std::nullopt;
+        }
+
+        return std::optional<LightningReceive>(result);
+      } catch (const rust::Error &e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   // --- Ark Operations ---
 
   std::shared_ptr<Promise<std::string>> boardAmount(double amountSat) override {
@@ -634,6 +671,16 @@ public:
       try {
         rust::String status_rs = bark_cxx::board_all();
         return std::string(status_rs.data(), status_rs.length());
+      } catch (const rust::Error &e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<void>> validateArkoorAddress(const std::string &address) override {
+    return Promise<void>::async([address]() {
+      try {
+        bark_cxx::validate_arkoor_address(address);
       } catch (const rust::Error &e) {
         throw std::runtime_error(e.what());
       }
@@ -660,8 +707,8 @@ public:
           BarkVtxo vtxo;
           vtxo.amount = static_cast<double>(rust_vtxo.amount);
           vtxo.expiry_height = static_cast<double>(rust_vtxo.expiry_height);
-          vtxo.asp_pubkey = std::string(rust_vtxo.asp_pubkey.data(),
-                                        rust_vtxo.asp_pubkey.length());
+          vtxo.server_pubkey = std::string(rust_vtxo.server_pubkey.data(),
+                                        rust_vtxo.server_pubkey.length());
           vtxo.exit_delta = static_cast<double>(rust_vtxo.exit_delta);
           vtxo.anchor_point = std::string(rust_vtxo.anchor_point.data(),
                                           rust_vtxo.anchor_point.length());

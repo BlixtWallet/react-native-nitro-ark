@@ -30,7 +30,7 @@ namespace margelo::nitro::nitroark {
    */
   struct BarkConfigOpts {
   public:
-    std::optional<std::string> asp     SWIFT_PRIVATE;
+    std::optional<std::string> ark     SWIFT_PRIVATE;
     std::optional<std::string> esplora     SWIFT_PRIVATE;
     std::optional<std::string> bitcoind     SWIFT_PRIVATE;
     std::optional<std::string> bitcoind_cookie     SWIFT_PRIVATE;
@@ -41,7 +41,7 @@ namespace margelo::nitro::nitroark {
 
   public:
     BarkConfigOpts() = default;
-    explicit BarkConfigOpts(std::optional<std::string> asp, std::optional<std::string> esplora, std::optional<std::string> bitcoind, std::optional<std::string> bitcoind_cookie, std::optional<std::string> bitcoind_user, std::optional<std::string> bitcoind_pass, std::optional<double> vtxo_refresh_expiry_threshold, std::optional<double> fallback_fee_rate): asp(asp), esplora(esplora), bitcoind(bitcoind), bitcoind_cookie(bitcoind_cookie), bitcoind_user(bitcoind_user), bitcoind_pass(bitcoind_pass), vtxo_refresh_expiry_threshold(vtxo_refresh_expiry_threshold), fallback_fee_rate(fallback_fee_rate) {}
+    explicit BarkConfigOpts(std::optional<std::string> ark, std::optional<std::string> esplora, std::optional<std::string> bitcoind, std::optional<std::string> bitcoind_cookie, std::optional<std::string> bitcoind_user, std::optional<std::string> bitcoind_pass, std::optional<double> vtxo_refresh_expiry_threshold, std::optional<double> fallback_fee_rate): ark(ark), esplora(esplora), bitcoind(bitcoind), bitcoind_cookie(bitcoind_cookie), bitcoind_user(bitcoind_user), bitcoind_pass(bitcoind_pass), vtxo_refresh_expiry_threshold(vtxo_refresh_expiry_threshold), fallback_fee_rate(fallback_fee_rate) {}
   };
 
 } // namespace margelo::nitro::nitroark
@@ -54,7 +54,7 @@ namespace margelo::nitro {
     static inline margelo::nitro::nitroark::BarkConfigOpts fromJSI(jsi::Runtime& runtime, const jsi::Value& arg) {
       jsi::Object obj = arg.asObject(runtime);
       return margelo::nitro::nitroark::BarkConfigOpts(
-        JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, "asp")),
+        JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, "ark")),
         JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, "esplora")),
         JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, "bitcoind")),
         JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, "bitcoind_cookie")),
@@ -66,7 +66,7 @@ namespace margelo::nitro {
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroark::BarkConfigOpts& arg) {
       jsi::Object obj(runtime);
-      obj.setProperty(runtime, "asp", JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.asp));
+      obj.setProperty(runtime, "ark", JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.ark));
       obj.setProperty(runtime, "esplora", JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.esplora));
       obj.setProperty(runtime, "bitcoind", JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.bitcoind));
       obj.setProperty(runtime, "bitcoind_cookie", JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.bitcoind_cookie));
@@ -81,7 +81,7 @@ namespace margelo::nitro {
         return false;
       }
       jsi::Object obj = value.getObject(runtime);
-      if (!JSIConverter<std::optional<std::string>>::canConvert(runtime, obj.getProperty(runtime, "asp"))) return false;
+      if (!JSIConverter<std::optional<std::string>>::canConvert(runtime, obj.getProperty(runtime, "ark"))) return false;
       if (!JSIConverter<std::optional<std::string>>::canConvert(runtime, obj.getProperty(runtime, "esplora"))) return false;
       if (!JSIConverter<std::optional<std::string>>::canConvert(runtime, obj.getProperty(runtime, "bitcoind"))) return false;
       if (!JSIConverter<std::optional<std::string>>::canConvert(runtime, obj.getProperty(runtime, "bitcoind_cookie"))) return false;
