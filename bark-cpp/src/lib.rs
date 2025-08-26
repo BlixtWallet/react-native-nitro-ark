@@ -94,7 +94,7 @@ impl WalletManager {
                 .config
                 .ark
                 .clone()
-                .context("ASP address missing, use --asp")?,
+                .context("Ark server address missing, use --ark")?,
             ..Default::default()
         };
         opts.config
