@@ -121,6 +121,7 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<std::string>> onchainSendMany(const std::vector<BarkSendManyOutput>& outputs, std::optional<double> feeRate) = 0;
       virtual std::shared_ptr<Promise<std::string>> boardAmount(double amountSat) = 0;
       virtual std::shared_ptr<Promise<std::string>> boardAll() = 0;
+      virtual std::shared_ptr<Promise<void>> validateArkoorAddress(const std::string& address) = 0;
       virtual std::shared_ptr<Promise<ArkoorPaymentResult>> sendArkoorPayment(const std::string& destination, double amountSat) = 0;
       virtual std::shared_ptr<Promise<LightningPaymentResult>> sendLightningPayment(const std::string& destination, std::optional<double> amountSat) = 0;
       virtual std::shared_ptr<Promise<LnurlPaymentResult>> sendLnaddr(const std::string& addr, double amountSat, const std::string& comment) = 0;

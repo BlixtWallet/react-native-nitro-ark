@@ -172,6 +172,7 @@ pub(crate) mod ffi {
         fn load_wallet(datadir: &str, mnemonic: &str) -> Result<()>;
         fn board_amount(amount_sat: u64) -> Result<String>;
         fn board_all() -> Result<String>;
+        fn validate_arkoor_address(address: &str) -> Result<()>;
         fn send_arkoor_payment(destination: &str, amount_sat: u64) -> Result<ArkoorPaymentResult>;
         unsafe fn send_lightning_payment(
             destination: &str,
@@ -479,6 +480,12 @@ pub(crate) fn board_amount(amount_sat: u64) -> anyhow::Result<String> {
 
 pub(crate) fn board_all() -> anyhow::Result<String> {
     crate::TOKIO_RUNTIME.block_on(crate::board_all())
+}
+
+pub(crate) fn validate_arkoor_address(address: &str) -> anyhow::Result<()> {
+    let address = bark::ark::Address::from_str(address)
+        .with_context(|| format!("Invalid address format: '{}'", address))?;
+    crate::TOKIO_RUNTIME.block_on(crate::validate_arkoor_address(address))
 }
 
 pub(crate) fn send_arkoor_payment(

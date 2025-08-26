@@ -1056,6 +1056,8 @@ void load_wallet(::rust::Str datadir, ::rust::Str mnemonic);
 
 ::rust::String board_all();
 
+void validate_arkoor_address(::rust::Str address);
+
 ::bark_cxx::ArkoorPaymentResult send_arkoor_payment(::rust::Str destination, ::std::uint64_t amount_sat);
 
 ::bark_cxx::Bolt11PaymentResult send_lightning_payment(::rust::Str destination, ::std::uint64_t const *amount_sat);

@@ -175,6 +175,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   // --- Ark & Lightning Payments ---
   boardAmount(amountSat: number): Promise<string>; // Returns JSON status
   boardAll(): Promise<string>; // Returns JSON status
+  validateArkoorAddress(address: string): Promise<void>;
   sendArkoorPayment(
     destination: string,
     amountSat: number

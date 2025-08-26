@@ -391,6 +391,15 @@ export function boardAll(): Promise<string> {
 }
 
 /**
+ * Validates an Arkoor address.
+ * @param address The Arkoor address to validate.
+ * @returns A promise resolving to void.
+ */
+export function validateArkoorAddress(address: string): Promise<void> {
+  return NitroArkHybridObject.validateArkoorAddress(address);
+}
+
+/**
  * Sends an Arkoor payment.
  * @param destination The destination Arkoor address.
  * @param amountSat The amount in satoshis to send.

@@ -506,6 +506,16 @@ pub async fn sync_rounds() -> anyhow::Result<()> {
         .await
 }
 
+pub async fn validate_arkoor_address(address: bark::ark::Address) -> anyhow::Result<()> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager.with_context(|ctx| {
+        ctx.wallet
+            .validate_arkoor_address(&address)
+            .context("Failed to validate address")?;
+        Ok(())
+    })
+}
+
 pub async fn send_arkoor_payment(
     destination: bark::ark::Address,
     amount_sat: Amount,

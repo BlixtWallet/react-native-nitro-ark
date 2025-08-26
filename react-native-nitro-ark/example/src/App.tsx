@@ -66,6 +66,7 @@ export default function ArkApp() {
   const [messageToSign, setMessageToSign] = useState('hello world');
   const [signature, setSignature] = useState('');
   const [publicKeyForVerification, setPublicKeyForVerification] = useState('');
+  const [arkoorAddressToValidate, setArkoorAddressToValidate] = useState('');
 
   // Ensure data directory exists on mount
   useEffect(() => {
@@ -649,6 +650,21 @@ export default function ArkApp() {
     );
   };
 
+  const handleValidateArkoorAddress = () => {
+    if (!arkoorAddressToValidate) {
+      setError((prev) => ({
+        ...prev,
+        ark: 'Arkoor address to validate is required.',
+      }));
+      return;
+    }
+    runOperation(
+      'validateArkoorAddress',
+      () => NitroArk.validateArkoorAddress(arkoorAddressToValidate),
+      'ark'
+    );
+  };
+
   const handleOffboardSpecific = () => {
     if (!vtxoIdsInput || !optionalAddress) {
       setError((prev) => ({
@@ -1058,6 +1074,22 @@ export default function ArkApp() {
             {renderOperationButton(
               'Send Round Onchain',
               handleSendRoundOnchainPayment
+            )}
+          </View>
+          <View style={styles.inputContainer}>
+            <Text style={styles.inputLabel}>Arkoor Address to Validate:</Text>
+            <TextInput
+              style={styles.input}
+              value={arkoorAddressToValidate}
+              onChangeText={setArkoorAddressToValidate}
+              placeholder="Enter Arkoor address"
+              autoCapitalize="none"
+            />
+          </View>
+          <View style={styles.buttonGrid}>
+            {renderOperationButton(
+              'Validate Arkoor Address',
+              handleValidateArkoorAddress
             )}
           </View>
         </View>

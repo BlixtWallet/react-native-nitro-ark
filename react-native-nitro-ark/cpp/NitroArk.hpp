@@ -642,6 +642,16 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<void>> validateArkoorAddress(const std::string &address) override {
+    return Promise<void>::async([address]() {
+      try {
+        bark_cxx::validate_arkoor_address(address);
+      } catch (const rust::Error &e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   std::shared_ptr<Promise<ArkoorPaymentResult>>
   sendArkoorPayment(const std::string &destination, double amountSat) override {
     return Promise<ArkoorPaymentResult>::async([destination, amountSat]() {
