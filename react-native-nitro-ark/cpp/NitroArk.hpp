@@ -14,16 +14,16 @@ using namespace margelo::nitro;
 // Helper function to convert rust cxx payment type to nitrogen payment type
 inline PaymentTypes convertPaymentType(bark_cxx::PaymentTypes type) {
   switch (type) {
-  case bark_cxx::PaymentTypes::Bolt11:
-    return PaymentTypes::BOLT11;
-  case bark_cxx::PaymentTypes::Lnurl:
-    return PaymentTypes::LNURL;
-  case bark_cxx::PaymentTypes::Arkoor:
-    return PaymentTypes::ARKOOR;
-  case bark_cxx::PaymentTypes::Onchain:
-    return PaymentTypes::ONCHAIN;
-  default:
-    throw std::runtime_error("Invalid payment type");
+    case bark_cxx::PaymentTypes::Bolt11:
+      return PaymentTypes::BOLT11;
+    case bark_cxx::PaymentTypes::Lnurl:
+      return PaymentTypes::LNURL;
+    case bark_cxx::PaymentTypes::Arkoor:
+      return PaymentTypes::ARKOOR;
+    case bark_cxx::PaymentTypes::Onchain:
+      return PaymentTypes::ONCHAIN;
+    default:
+      throw std::runtime_error("Invalid payment type");
   }
 }
 
@@ -41,15 +41,13 @@ public:
       try {
         rust::String mnemonic_rs = bark_cxx::create_mnemonic();
         return std::string(mnemonic_rs.data(), mnemonic_rs.length());
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
   }
 
-  std::shared_ptr<Promise<void>>
-  createWallet(const std::string &datadir,
-               const BarkCreateOpts &opts) override {
+  std::shared_ptr<Promise<void>> createWallet(const std::string& datadir, const BarkCreateOpts& opts) override {
     return Promise<void>::async([datadir, opts]() {
       try {
         bark_cxx::ConfigOpts config_opts;
@@ -57,14 +55,12 @@ public:
           config_opts.ark = opts.config->ark.value_or("");
           config_opts.esplora = opts.config->esplora.value_or("");
           config_opts.bitcoind = opts.config->bitcoind.value_or("");
-          config_opts.bitcoind_cookie =
-              opts.config->bitcoind_cookie.value_or("");
+          config_opts.bitcoind_cookie = opts.config->bitcoind_cookie.value_or("");
           config_opts.bitcoind_user = opts.config->bitcoind_user.value_or("");
           config_opts.bitcoind_pass = opts.config->bitcoind_pass.value_or("");
-          config_opts.vtxo_refresh_expiry_threshold = static_cast<uint32_t>(
-              opts.config->vtxo_refresh_expiry_threshold.value_or(0));
-          config_opts.fallback_fee_rate =
-              static_cast<uint64_t>(opts.config->fallback_fee_rate.value_or(0));
+          config_opts.vtxo_refresh_expiry_threshold =
+              static_cast<uint32_t>(opts.config->vtxo_refresh_expiry_threshold.value_or(0));
+          config_opts.fallback_fee_rate = static_cast<uint64_t>(opts.config->fallback_fee_rate.value_or(0));
         }
 
         bark_cxx::CreateOpts create_opts;
@@ -74,8 +70,7 @@ public:
         create_opts.mnemonic = opts.mnemonic;
         uint32_t birthday_height_val;
         if (opts.birthday_height.has_value()) {
-          birthday_height_val =
-              static_cast<uint32_t>(opts.birthday_height.value());
+          birthday_height_val = static_cast<uint32_t>(opts.birthday_height.value());
           create_opts.birthday_height = &birthday_height_val;
         } else {
           create_opts.birthday_height = nullptr;
@@ -83,18 +78,17 @@ public:
         create_opts.config = config_opts;
 
         bark_cxx::create_wallet(datadir, create_opts);
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
   }
 
-  std::shared_ptr<Promise<void>>
-  loadWallet(const std::string &datadir, const std::string &mnemonic) override {
+  std::shared_ptr<Promise<void>> loadWallet(const std::string& datadir, const std::string& mnemonic) override {
     return Promise<void>::async([datadir, mnemonic]() {
       try {
         bark_cxx::load_wallet(datadir, mnemonic);
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
@@ -104,7 +98,7 @@ public:
     return Promise<void>::async([]() {
       try {
         bark_cxx::close_wallet();
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
@@ -114,8 +108,7 @@ public:
     return Promise<bool>::async([]() { return bark_cxx::is_wallet_loaded(); });
   }
 
-  std::shared_ptr<Promise<void>>
-  persistConfig(const BarkConfigOpts &opts) override {
+  std::shared_ptr<Promise<void>> persistConfig(const BarkConfigOpts& opts) override {
     return Promise<void>::async([opts]() {
       try {
         bark_cxx::ConfigOpts config_opts;
@@ -125,12 +118,11 @@ public:
         config_opts.bitcoind_cookie = opts.bitcoind_cookie.value_or("");
         config_opts.bitcoind_user = opts.bitcoind_user.value_or("");
         config_opts.bitcoind_pass = opts.bitcoind_pass.value_or("");
-        config_opts.vtxo_refresh_expiry_threshold = static_cast<uint32_t>(
-            opts.vtxo_refresh_expiry_threshold.value_or(0));
-        config_opts.fallback_fee_rate =
-            static_cast<uint64_t>(opts.fallback_fee_rate.value_or(0));
+        config_opts.vtxo_refresh_expiry_threshold =
+            static_cast<uint32_t>(opts.vtxo_refresh_expiry_threshold.value_or(0));
+        config_opts.fallback_fee_rate = static_cast<uint64_t>(opts.fallback_fee_rate.value_or(0));
         bark_cxx::persist_config(config_opts);
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
@@ -140,7 +132,7 @@ public:
     return Promise<void>::async([]() {
       try {
         bark_cxx::maintenance();
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
@@ -150,7 +142,7 @@ public:
     return Promise<void>::async([]() {
       try {
         bark_cxx::maintenance_refresh();
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
@@ -160,7 +152,7 @@ public:
     return Promise<void>::async([]() {
       try {
         bark_cxx::sync();
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
@@ -170,7 +162,7 @@ public:
     return Promise<void>::async([]() {
       try {
         bark_cxx::sync_exits();
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
@@ -180,7 +172,7 @@ public:
     return Promise<void>::async([]() {
       try {
         bark_cxx::sync_rounds();
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
@@ -193,21 +185,15 @@ public:
       try {
         bark_cxx::CxxArkInfo rust_info = bark_cxx::get_ark_info();
         BarkArkInfo info;
-        info.network =
-            std::string(rust_info.network.data(), rust_info.network.length());
-        info.server_pubkey = std::string(rust_info.server_pubkey.data(),
-                                      rust_info.server_pubkey.length());
-        info.round_interval_secs =
-            static_cast<double>(rust_info.round_interval_secs);
+        info.network = std::string(rust_info.network.data(), rust_info.network.length());
+        info.server_pubkey = std::string(rust_info.server_pubkey.data(), rust_info.server_pubkey.length());
+        info.round_interval_secs = static_cast<double>(rust_info.round_interval_secs);
         info.vtxo_exit_delta = static_cast<double>(rust_info.vtxo_exit_delta);
-        info.vtxo_expiry_delta =
-            static_cast<double>(rust_info.vtxo_expiry_delta);
-        info.htlc_expiry_delta =
-            static_cast<double>(rust_info.htlc_expiry_delta);
-        info.max_vtxo_amount_sat =
-            static_cast<double>(rust_info.max_vtxo_amount_sat);
+        info.vtxo_expiry_delta = static_cast<double>(rust_info.vtxo_expiry_delta);
+        info.htlc_expiry_delta = static_cast<double>(rust_info.htlc_expiry_delta);
+        info.max_vtxo_amount_sat = static_cast<double>(rust_info.max_vtxo_amount_sat);
         return info;
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
@@ -219,13 +205,11 @@ public:
         bark_cxx::OffchainBalance rust_balance = bark_cxx::offchain_balance();
         OffchainBalanceResult balance;
         balance.spendable = static_cast<double>(rust_balance.spendable);
-        balance.pending_lightning_send =
-            static_cast<double>(rust_balance.pending_lightning_send);
-        balance.pending_in_round =
-            static_cast<double>(rust_balance.pending_in_round);
+        balance.pending_lightning_send = static_cast<double>(rust_balance.pending_lightning_send);
+        balance.pending_in_round = static_cast<double>(rust_balance.pending_in_round);
         balance.pending_exit = static_cast<double>(rust_balance.pending_exit);
         return balance;
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
@@ -234,16 +218,13 @@ public:
   std::shared_ptr<Promise<KeyPairResult>> deriveStoreNextKeypair() override {
     return Promise<KeyPairResult>::async([]() {
       try {
-        bark_cxx::KeyPairResult keypair_rs =
-            bark_cxx::derive_store_next_keypair();
+        bark_cxx::KeyPairResult keypair_rs = bark_cxx::derive_store_next_keypair();
         KeyPairResult keypair;
-        keypair.public_key = std::string(keypair_rs.public_key.data(),
-                                         keypair_rs.public_key.length());
-        keypair.secret_key = std::string(keypair_rs.secret_key.data(),
-                                         keypair_rs.secret_key.length());
+        keypair.public_key = std::string(keypair_rs.public_key.data(), keypair_rs.public_key.length());
+        keypair.secret_key = std::string(keypair_rs.secret_key.data(), keypair_rs.secret_key.length());
 
         return keypair;
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
@@ -255,12 +236,10 @@ public:
         uint32_t index_val = static_cast<uint32_t>(index);
         bark_cxx::KeyPairResult keypair_rs = bark_cxx::peak_keypair(index_val);
         KeyPairResult keypair;
-        keypair.public_key = std::string(keypair_rs.public_key.data(),
-                                         keypair_rs.public_key.length());
-        keypair.secret_key = std::string(keypair_rs.secret_key.data(),
-                                         keypair_rs.secret_key.length());
+        keypair.public_key = std::string(keypair_rs.public_key.data(), keypair_rs.public_key.length());
+        keypair.secret_key = std::string(keypair_rs.secret_key.data(), keypair_rs.secret_key.length());
         return keypair;
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
@@ -271,72 +250,65 @@ public:
       try {
         bark_cxx::NewAddressResult address_rs = bark_cxx::new_address();
         NewAddressResult address;
-        address.user_pubkey = std::string(address_rs.user_pubkey.data(),
-                                          address_rs.user_pubkey.length());
-        address.ark_id =
-            std::string(address_rs.ark_id.data(), address_rs.ark_id.length());
-        address.address =
-            std::string(address_rs.address.data(), address_rs.address.length());
+        address.user_pubkey = std::string(address_rs.user_pubkey.data(), address_rs.user_pubkey.length());
+        address.ark_id = std::string(address_rs.ark_id.data(), address_rs.ark_id.length());
+        address.address = std::string(address_rs.address.data(), address_rs.address.length());
         return address;
 
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
   }
 
-  std::shared_ptr<Promise<std::string>> signMessage(const std::string &message,
-                                                    double index) override {
+  std::shared_ptr<Promise<std::string>> signMessage(const std::string& message, double index) override {
     return Promise<std::string>::async([message, index]() {
       try {
         uint32_t index_val = static_cast<uint32_t>(index);
         rust::String signature_rs = bark_cxx::sign_message(message, index_val);
         return std::string(signature_rs.data(), signature_rs.length());
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
   }
-  
-  std::shared_ptr<Promise<std::string>>
-  signMesssageWithMnemonic(const std::string &message, const std::string &mnemonic, const std::string &network, double index) override {
+
+  std::shared_ptr<Promise<std::string>> signMesssageWithMnemonic(const std::string& message,
+                                                                 const std::string& mnemonic,
+                                                                 const std::string& network, double index) override {
     return Promise<std::string>::async([message, mnemonic, network, index]() {
       try {
         uint32_t index_val = static_cast<uint32_t>(index);
         rust::String signature_rs = bark_cxx::sign_messsage_with_mnemonic(message, mnemonic, network, index_val);
         return std::string(signature_rs.data(), signature_rs.length());
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
   }
 
-  std::shared_ptr<Promise<KeyPairResult>>
-  deriveKeypairFromMnemonic(const std::string &mnemonic, const std::string &network,
-                            double index) override {
+  std::shared_ptr<Promise<KeyPairResult>> deriveKeypairFromMnemonic(const std::string& mnemonic,
+                                                                    const std::string& network, double index) override {
     return Promise<KeyPairResult>::async([mnemonic, network, index]() {
       try {
         uint32_t index_val = static_cast<uint32_t>(index);
         bark_cxx::KeyPairResult keypair_rs = bark_cxx::derive_keypair_from_mnemonic(mnemonic, network, index_val);
         KeyPairResult keypair;
-        keypair.public_key = std::string(keypair_rs.public_key.data(),
-                                         keypair_rs.public_key.length());
-        keypair.secret_key = std::string(keypair_rs.secret_key.data(),
-                                         keypair_rs.secret_key.length());
+        keypair.public_key = std::string(keypair_rs.public_key.data(), keypair_rs.public_key.length());
+        keypair.secret_key = std::string(keypair_rs.secret_key.data(), keypair_rs.secret_key.length());
         return keypair;
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
   }
 
-  std::shared_ptr<Promise<bool>>
-  verifyMessage(const std::string &message, const std::string &signature,
-                const std::string &publicKey) override {
+  std::shared_ptr<Promise<bool>> verifyMessage(const std::string& message, const std::string& signature,
+                                               const std::string& publicKey) override {
     return Promise<bool>::async([message, signature, publicKey]() {
       try {
         return bark_cxx::verify_message(message, signature, publicKey);
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
@@ -347,48 +319,40 @@ public:
       try {
         rust::Vec<bark_cxx::BarkVtxo> rust_vtxos = bark_cxx::get_vtxos();
         std::vector<BarkVtxo> vtxos;
-        for (const auto &rust_vtxo : rust_vtxos) {
+        for (const auto& rust_vtxo : rust_vtxos) {
           BarkVtxo vtxo;
           vtxo.amount = static_cast<double>(rust_vtxo.amount);
           vtxo.expiry_height = static_cast<double>(rust_vtxo.expiry_height);
-          vtxo.server_pubkey = std::string(rust_vtxo.server_pubkey.data(),
-                                        rust_vtxo.server_pubkey.length());
+          vtxo.server_pubkey = std::string(rust_vtxo.server_pubkey.data(), rust_vtxo.server_pubkey.length());
           vtxo.exit_delta = static_cast<double>(rust_vtxo.exit_delta);
-          vtxo.anchor_point = std::string(rust_vtxo.anchor_point.data(),
-                                          rust_vtxo.anchor_point.length());
-          vtxo.point =
-              std::string(rust_vtxo.point.data(), rust_vtxo.point.length());
+          vtxo.anchor_point = std::string(rust_vtxo.anchor_point.data(), rust_vtxo.anchor_point.length());
+          vtxo.point = std::string(rust_vtxo.point.data(), rust_vtxo.point.length());
           vtxos.push_back(vtxo);
         }
         return vtxos;
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
   }
 
-  std::shared_ptr<Promise<std::vector<BarkVtxo>>>
-  getExpiringVtxos(double threshold) override {
+  std::shared_ptr<Promise<std::vector<BarkVtxo>>> getExpiringVtxos(double threshold) override {
     return Promise<std::vector<BarkVtxo>>::async([threshold]() {
       try {
-        rust::Vec<bark_cxx::BarkVtxo> rust_vtxos =
-            bark_cxx::get_expiring_vtxos(static_cast<uint32_t>(threshold));
+        rust::Vec<bark_cxx::BarkVtxo> rust_vtxos = bark_cxx::get_expiring_vtxos(static_cast<uint32_t>(threshold));
         std::vector<BarkVtxo> vtxos;
-        for (const auto &rust_vtxo : rust_vtxos) {
+        for (const auto& rust_vtxo : rust_vtxos) {
           BarkVtxo vtxo;
           vtxo.amount = static_cast<double>(rust_vtxo.amount);
           vtxo.expiry_height = static_cast<double>(rust_vtxo.expiry_height);
-          vtxo.server_pubkey = std::string(rust_vtxo.server_pubkey.data(),
-                                        rust_vtxo.server_pubkey.length());
+          vtxo.server_pubkey = std::string(rust_vtxo.server_pubkey.data(), rust_vtxo.server_pubkey.length());
           vtxo.exit_delta = static_cast<double>(rust_vtxo.exit_delta);
-          vtxo.anchor_point = std::string(rust_vtxo.anchor_point.data(),
-                                          rust_vtxo.anchor_point.length());
-          vtxo.point =
-              std::string(rust_vtxo.point.data(), rust_vtxo.point.length());
+          vtxo.anchor_point = std::string(rust_vtxo.anchor_point.data(), rust_vtxo.anchor_point.length());
+          vtxo.point = std::string(rust_vtxo.point.data(), rust_vtxo.point.length());
           vtxos.push_back(vtxo);
         }
         return vtxos;
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
@@ -402,13 +366,11 @@ public:
         bark_cxx::OnChainBalance rust_balance = bark_cxx::onchain_balance();
         OnchainBalanceResult balance;
         balance.immature = static_cast<double>(rust_balance.immature);
-        balance.trusted_pending =
-            static_cast<double>(rust_balance.trusted_pending);
-        balance.untrusted_pending =
-            static_cast<double>(rust_balance.untrusted_pending);
+        balance.trusted_pending = static_cast<double>(rust_balance.trusted_pending);
+        balance.untrusted_pending = static_cast<double>(rust_balance.untrusted_pending);
         balance.confirmed = static_cast<double>(rust_balance.confirmed);
         return balance;
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
@@ -418,7 +380,7 @@ public:
     return Promise<void>::async([]() {
       try {
         bark_cxx::onchain_sync();
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
@@ -429,7 +391,7 @@ public:
       try {
         rust::String json_rs = bark_cxx::onchain_list_unspent();
         return std::string(json_rs.data(), json_rs.length());
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
@@ -440,7 +402,7 @@ public:
       try {
         rust::String json_rs = bark_cxx::onchain_utxos();
         return std::string(json_rs.data(), json_rs.length());
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
@@ -451,48 +413,41 @@ public:
       try {
         rust::String address_rs = bark_cxx::onchain_address();
         return std::string(address_rs.data(), address_rs.length());
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
   }
 
-  std::shared_ptr<Promise<OnchainPaymentResult>>
-  onchainSend(const std::string &destination, double amountSat,
-              std::optional<double> feeRate) override {
-    return Promise<OnchainPaymentResult>::async(
-        [destination, amountSat, feeRate]() {
-          try {
-            uint64_t feeRate_val;
-            bark_cxx::OnchainPaymentResult rust_result;
-            if (feeRate.has_value()) {
-              feeRate_val = static_cast<uint64_t>(feeRate.value());
-              rust_result = bark_cxx::onchain_send(
-                  destination, static_cast<uint64_t>(amountSat), &feeRate_val);
-            } else {
-              rust_result = bark_cxx::onchain_send(
-                  destination, static_cast<uint64_t>(amountSat), nullptr);
-            }
+  std::shared_ptr<Promise<OnchainPaymentResult>> onchainSend(const std::string& destination, double amountSat,
+                                                             std::optional<double> feeRate) override {
+    return Promise<OnchainPaymentResult>::async([destination, amountSat, feeRate]() {
+      try {
+        uint64_t feeRate_val;
+        bark_cxx::OnchainPaymentResult rust_result;
+        if (feeRate.has_value()) {
+          feeRate_val = static_cast<uint64_t>(feeRate.value());
+          rust_result = bark_cxx::onchain_send(destination, static_cast<uint64_t>(amountSat), &feeRate_val);
+        } else {
+          rust_result = bark_cxx::onchain_send(destination, static_cast<uint64_t>(amountSat), nullptr);
+        }
 
-            OnchainPaymentResult result;
-            result.txid =
-                std::string(rust_result.txid.data(), rust_result.txid.length());
-            result.amount_sat = static_cast<double>(rust_result.amount_sat);
-            result.destination_address =
-                std::string(rust_result.destination_address.data(),
-                            rust_result.destination_address.length());
-            result.payment_type = convertPaymentType(rust_result.payment_type);
+        OnchainPaymentResult result;
+        result.txid = std::string(rust_result.txid.data(), rust_result.txid.length());
+        result.amount_sat = static_cast<double>(rust_result.amount_sat);
+        result.destination_address =
+            std::string(rust_result.destination_address.data(), rust_result.destination_address.length());
+        result.payment_type = convertPaymentType(rust_result.payment_type);
 
-            return result;
-          } catch (const rust::Error &e) {
-            throw std::runtime_error(e.what());
-          }
-        });
+        return result;
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
   }
 
-  std::shared_ptr<Promise<std::string>>
-  onchainDrain(const std::string &destination,
-               std::optional<double> feeRate) override {
+  std::shared_ptr<Promise<std::string>> onchainDrain(const std::string& destination,
+                                                     std::optional<double> feeRate) override {
     return Promise<std::string>::async([destination, feeRate]() {
       try {
         uint64_t feeRate_val;
@@ -504,34 +459,30 @@ public:
           txid_rs = bark_cxx::onchain_drain(destination, nullptr);
         }
         return std::string(txid_rs.data(), txid_rs.length());
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
   }
 
-  std::shared_ptr<Promise<std::string>>
-  onchainSendMany(const std::vector<BarkSendManyOutput> &outputs,
-                  std::optional<double> feeRate) override {
+  std::shared_ptr<Promise<std::string>> onchainSendMany(const std::vector<BarkSendManyOutput>& outputs,
+                                                        std::optional<double> feeRate) override {
     return Promise<std::string>::async([outputs, feeRate]() {
       try {
         rust::Vec<bark_cxx::SendManyOutput> cxx_outputs;
-        for (const auto &output : outputs) {
-          cxx_outputs.push_back({rust::String(output.destination),
-                                 static_cast<uint64_t>(output.amountSat)});
+        for (const auto& output : outputs) {
+          cxx_outputs.push_back({rust::String(output.destination), static_cast<uint64_t>(output.amountSat)});
         }
         uint64_t feeRate_val;
         rust::String txid_rs;
         if (feeRate.has_value()) {
           feeRate_val = static_cast<uint64_t>(feeRate.value());
-          txid_rs =
-              bark_cxx::onchain_send_many(std::move(cxx_outputs), &feeRate_val);
+          txid_rs = bark_cxx::onchain_send_many(std::move(cxx_outputs), &feeRate_val);
         } else {
-          txid_rs =
-              bark_cxx::onchain_send_many(std::move(cxx_outputs), nullptr);
+          txid_rs = bark_cxx::onchain_send_many(std::move(cxx_outputs), nullptr);
         }
         return std::string(txid_rs.data(), txid_rs.length());
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
@@ -539,90 +490,76 @@ public:
 
   // --- Lightning Operations ---
 
-  std::shared_ptr<Promise<LightningPaymentResult>>
-  sendLightningPayment(const std::string &destination,
-                       std::optional<double> amountSat) override {
+  std::shared_ptr<Promise<LightningPaymentResult>> sendLightningPayment(const std::string& destination,
+                                                                        std::optional<double> amountSat) override {
     return Promise<LightningPaymentResult>::async([destination, amountSat]() {
       try {
         bark_cxx::Bolt11PaymentResult rust_result;
         if (amountSat.has_value()) {
           uint64_t amountSat_val = static_cast<uint64_t>(amountSat.value());
-          rust_result =
-              bark_cxx::send_lightning_payment(destination, &amountSat_val);
+          rust_result = bark_cxx::send_lightning_payment(destination, &amountSat_val);
         } else {
           rust_result = bark_cxx::send_lightning_payment(destination, nullptr);
         }
 
         LightningPaymentResult result;
-        result.bolt11_invoice =
-            std::string(rust_result.bolt11_invoice.data(),
-                        rust_result.bolt11_invoice.length());
-        result.preimage = std::string(rust_result.preimage.data(),
-                                      rust_result.preimage.length());
+        result.bolt11_invoice = std::string(rust_result.bolt11_invoice.data(), rust_result.bolt11_invoice.length());
+        result.preimage = std::string(rust_result.preimage.data(), rust_result.preimage.length());
         result.payment_type = convertPaymentType(rust_result.payment_type);
 
         return result;
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
   }
 
-  std::shared_ptr<Promise<LnurlPaymentResult>>
-  sendLnaddr(const std::string &addr, double amountSat,
-             const std::string &comment) override {
+  std::shared_ptr<Promise<LnurlPaymentResult>> sendLnaddr(const std::string& addr, double amountSat,
+                                                          const std::string& comment) override {
     return Promise<LnurlPaymentResult>::async([addr, amountSat, comment]() {
       try {
-        bark_cxx::LnurlPaymentResult rust_result = bark_cxx::send_lnaddr(
-            addr, static_cast<uint64_t>(amountSat), comment);
+        bark_cxx::LnurlPaymentResult rust_result =
+            bark_cxx::send_lnaddr(addr, static_cast<uint64_t>(amountSat), comment);
 
         LnurlPaymentResult result;
-        result.lnurl =
-            std::string(rust_result.lnurl.data(), rust_result.lnurl.length());
-        result.bolt11_invoice =
-            std::string(rust_result.bolt11_invoice.data(),
-                        rust_result.bolt11_invoice.length());
-        result.preimage = std::string(rust_result.preimage.data(),
-                                      rust_result.preimage.length());
+        result.lnurl = std::string(rust_result.lnurl.data(), rust_result.lnurl.length());
+        result.bolt11_invoice = std::string(rust_result.bolt11_invoice.data(), rust_result.bolt11_invoice.length());
+        result.preimage = std::string(rust_result.preimage.data(), rust_result.preimage.length());
         result.payment_type = convertPaymentType(rust_result.payment_type);
 
         return result;
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
   }
 
-  std::shared_ptr<Promise<std::string>>
-  bolt11Invoice(double amountMsat) override {
+  std::shared_ptr<Promise<std::string>> bolt11Invoice(double amountMsat) override {
     return Promise<std::string>::async([amountMsat]() {
       try {
-        rust::String invoice_rs =
-            bark_cxx::bolt11_invoice(static_cast<uint64_t>(amountMsat));
+        rust::String invoice_rs = bark_cxx::bolt11_invoice(static_cast<uint64_t>(amountMsat));
         return std::string(invoice_rs.data(), invoice_rs.length());
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
   }
 
-  std::shared_ptr<Promise<void>>
-  finishLightningReceive(const std::string &bolt11) override {
+  std::shared_ptr<Promise<void>> finishLightningReceive(const std::string& bolt11) override {
     return Promise<void>::async([bolt11]() {
       try {
         bark_cxx::finish_lightning_receive(bolt11);
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
   }
 
   std::shared_ptr<Promise<std::optional<LightningReceive>>>
-  lightningReceiveStatus(const std::string &payment) override {
+  lightningReceiveStatus(const std::string& payment) override {
     return Promise<std::optional<LightningReceive>>::async([payment]() {
       try {
-        const bark_cxx::LightningReceive *status_ptr =
-            bark_cxx::lightning_receive_status(payment);
+        const bark_cxx::LightningReceive* status_ptr = bark_cxx::lightning_receive_status(payment);
 
         if (status_ptr == nullptr) {
           return std::optional<LightningReceive>();
@@ -631,22 +568,18 @@ public:
         std::unique_ptr<const bark_cxx::LightningReceive> status(status_ptr);
 
         LightningReceive result;
-        result.payment_hash = std::string(status->payment_hash.data(),
-                                          status->payment_hash.length());
-        result.payment_preimage = std::string(status->payment_preimage.data(),
-                                              status->payment_preimage.length());
-        result.invoice =
-            std::string(status->invoice.data(), status->invoice.length());
+        result.payment_hash = std::string(status->payment_hash.data(), status->payment_hash.length());
+        result.payment_preimage = std::string(status->payment_preimage.data(), status->payment_preimage.length());
+        result.invoice = std::string(status->invoice.data(), status->invoice.length());
 
         if (status->preimage_revealed_at != nullptr) {
-          result.preimage_revealed_at =
-              static_cast<double>(*status->preimage_revealed_at);
+          result.preimage_revealed_at = static_cast<double>(*status->preimage_revealed_at);
         } else {
           result.preimage_revealed_at = std::nullopt;
         }
 
         return std::optional<LightningReceive>(result);
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
@@ -657,10 +590,9 @@ public:
   std::shared_ptr<Promise<std::string>> boardAmount(double amountSat) override {
     return Promise<std::string>::async([amountSat]() {
       try {
-        rust::String status_rs =
-            bark_cxx::board_amount(static_cast<uint64_t>(amountSat));
+        rust::String status_rs = bark_cxx::board_amount(static_cast<uint64_t>(amountSat));
         return std::string(status_rs.data(), status_rs.length());
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
@@ -671,69 +603,62 @@ public:
       try {
         rust::String status_rs = bark_cxx::board_all();
         return std::string(status_rs.data(), status_rs.length());
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
   }
 
-  std::shared_ptr<Promise<void>> validateArkoorAddress(const std::string &address) override {
+  std::shared_ptr<Promise<void>> validateArkoorAddress(const std::string& address) override {
     return Promise<void>::async([address]() {
       try {
         bark_cxx::validate_arkoor_address(address);
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
   }
 
-  std::shared_ptr<Promise<ArkoorPaymentResult>>
-  sendArkoorPayment(const std::string &destination, double amountSat) override {
+  std::shared_ptr<Promise<ArkoorPaymentResult>> sendArkoorPayment(const std::string& destination,
+                                                                  double amountSat) override {
     return Promise<ArkoorPaymentResult>::async([destination, amountSat]() {
       try {
         bark_cxx::ArkoorPaymentResult rust_result =
-            bark_cxx::send_arkoor_payment(destination,
-                                          static_cast<uint64_t>(amountSat));
+            bark_cxx::send_arkoor_payment(destination, static_cast<uint64_t>(amountSat));
 
         ArkoorPaymentResult result;
         result.amount_sat = static_cast<double>(rust_result.amount_sat);
         result.destination_pubkey =
-            std::string(rust_result.destination_pubkey.data(),
-                        rust_result.destination_pubkey.length());
+            std::string(rust_result.destination_pubkey.data(), rust_result.destination_pubkey.length());
         result.payment_type = convertPaymentType(rust_result.payment_type);
 
         std::vector<BarkVtxo> vtxos;
-        for (const auto &rust_vtxo : rust_result.vtxos) {
+        for (const auto& rust_vtxo : rust_result.vtxos) {
           BarkVtxo vtxo;
           vtxo.amount = static_cast<double>(rust_vtxo.amount);
           vtxo.expiry_height = static_cast<double>(rust_vtxo.expiry_height);
-          vtxo.server_pubkey = std::string(rust_vtxo.server_pubkey.data(),
-                                        rust_vtxo.server_pubkey.length());
+          vtxo.server_pubkey = std::string(rust_vtxo.server_pubkey.data(), rust_vtxo.server_pubkey.length());
           vtxo.exit_delta = static_cast<double>(rust_vtxo.exit_delta);
-          vtxo.anchor_point = std::string(rust_vtxo.anchor_point.data(),
-                                          rust_vtxo.anchor_point.length());
-          vtxo.point =
-              std::string(rust_vtxo.point.data(), rust_vtxo.point.length());
+          vtxo.anchor_point = std::string(rust_vtxo.anchor_point.data(), rust_vtxo.anchor_point.length());
+          vtxo.point = std::string(rust_vtxo.point.data(), rust_vtxo.point.length());
           vtxos.push_back(vtxo);
         }
         result.vtxos = vtxos;
 
         return result;
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
   }
 
-  std::shared_ptr<Promise<std::string>>
-  sendRoundOnchainPayment(const std::string &destination,
-                          double amountSat) override {
+  std::shared_ptr<Promise<std::string>> sendRoundOnchainPayment(const std::string& destination,
+                                                                double amountSat) override {
     return Promise<std::string>::async([destination, amountSat]() {
       try {
-        rust::String status_rs = bark_cxx::send_round_onchain_payment(
-            destination, static_cast<uint64_t>(amountSat));
+        rust::String status_rs = bark_cxx::send_round_onchain_payment(destination, static_cast<uint64_t>(amountSat));
         return std::string(status_rs.data(), status_rs.length());
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
@@ -741,31 +666,28 @@ public:
 
   // --- Offboarding / Exiting ---
 
-  std::shared_ptr<Promise<std::string>>
-  offboardSpecific(const std::vector<std::string> &vtxoIds,
-                   const std::string &destinationAddress) override {
+  std::shared_ptr<Promise<std::string>> offboardSpecific(const std::vector<std::string>& vtxoIds,
+                                                         const std::string& destinationAddress) override {
     return Promise<std::string>::async([vtxoIds, destinationAddress]() {
       try {
         rust::Vec<rust::String> rust_vtxo_ids;
-        for (const auto &id : vtxoIds) {
+        for (const auto& id : vtxoIds) {
           rust_vtxo_ids.push_back(rust::String(id));
         }
-        rust::String status_rs = bark_cxx::offboard_specific(
-            std::move(rust_vtxo_ids), destinationAddress);
+        rust::String status_rs = bark_cxx::offboard_specific(std::move(rust_vtxo_ids), destinationAddress);
         return std::string(status_rs.data(), status_rs.length());
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
   }
 
-  std::shared_ptr<Promise<std::string>>
-  offboardAll(const std::string &destinationAddress) override {
+  std::shared_ptr<Promise<std::string>> offboardAll(const std::string& destinationAddress) override {
     return Promise<std::string>::async([destinationAddress]() {
       try {
         rust::String status_rs = bark_cxx::offboard_all(destinationAddress);
         return std::string(status_rs.data(), status_rs.length());
-      } catch (const rust::Error &e) {
+      } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });

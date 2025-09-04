@@ -18,9 +18,8 @@
     },
     "[cpp]": {
         "editor.formatOnSave": true,
-        "editor.defaultFormatter": "ms-vscode.cpptools"
+        "editor.defaultFormatter": "xaver.clang-format"
     },
-    "C_Cpp.errorSquiggles": "disabled",
     "files.associations": {
         "__node_handle": "cpp",
         "optional": "cpp",
