@@ -10,12 +10,8 @@ import {
   TextInput,
   ActivityIndicator,
 } from 'react-native';
-import {
-  DocumentDirectoryPath,
-  exists,
-  mkdir,
-  unlink,
-} from '@dr.pogodin/react-native-fs';
+import RNFSTurbo from 'react-native-fs-turbo';
+
 import * as NitroArk from 'react-native-nitro-ark';
 import type {
   BarkArkInfo,
@@ -28,7 +24,7 @@ import type {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Constants
-const ARK_DATA_PATH = `${DocumentDirectoryPath}/bark_data`;
+const ARK_DATA_PATH = `${RNFSTurbo.DocumentDirectoryPath}/bark_data`;
 const MNEMONIC_STORAGE_KEY = 'NITRO_ARK_MNEMONIC';
 
 // Helper to format satoshis
@@ -73,9 +69,9 @@ export default function ArkApp() {
   useEffect(() => {
     const setupDirectory = async () => {
       try {
-        const dirExists = await exists(ARK_DATA_PATH);
+        const dirExists = RNFSTurbo.exists(ARK_DATA_PATH);
         if (!dirExists) {
-          await mkdir(ARK_DATA_PATH, {
+          RNFSTurbo.mkdir(ARK_DATA_PATH, {
             NSURLIsExcludedFromBackupKey: true, // iOS specific
           });
           console.log('Data directory created:', ARK_DATA_PATH);
@@ -180,7 +176,7 @@ export default function ArkApp() {
     setIsLoading(true);
     try {
       await AsyncStorage.removeItem(MNEMONIC_STORAGE_KEY);
-      await unlink(ARK_DATA_PATH); // Clear the data directory
+      RNFSTurbo.unlink(ARK_DATA_PATH); // Clear the data directory
       setMnemonic(undefined);
       setResults((prev) => ({
         ...prev,
