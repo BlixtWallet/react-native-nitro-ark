@@ -15,7 +15,6 @@ import RNFSTurbo from 'react-native-fs-turbo';
 import * as NitroArk from 'react-native-nitro-ark';
 import type {
   BarkArkInfo,
-  BarkConfigOpts,
   BarkSendManyOutput,
   OnchainBalanceResult,
   OffchainBalanceResult,
@@ -292,18 +291,6 @@ export default function ArkApp() {
     );
   };
 
-  const handlePersistConfig = () => {
-    // Example config, ideally from UI inputs
-    const opts: BarkConfigOpts = {
-      fallback_fee_rate: 1200,
-    };
-    runOperation(
-      'persistConfig',
-      () => NitroArk.persistConfig(opts),
-      'management'
-    );
-  };
-
   const handleMaintenance = () => {
     runOperation('maintenance', () => NitroArk.maintenance(), 'management');
   };
@@ -363,8 +350,12 @@ export default function ArkApp() {
     runOperation('syncExits', () => NitroArk.syncExits(), 'management');
   };
 
-  const handleSyncRounds = () => {
-    runOperation('syncRounds', () => NitroArk.syncRounds(), 'management');
+  const handleSyncPastRounds = () => {
+    runOperation(
+      'syncPastRounds',
+      () => NitroArk.syncPastRounds(),
+      'management'
+    );
   };
 
   const handleGetArkInfo = () => {
@@ -929,7 +920,6 @@ export default function ArkApp() {
                 disabled={isLoading}
               />
             </View>
-            {renderOperationButton('Persist Config', handlePersistConfig)}
             {renderOperationButton('Maintenance', handleMaintenance)}
             {renderOperationButton(
               'Maintenance Refresh',
@@ -938,7 +928,7 @@ export default function ArkApp() {
             {renderOperationButton('Sync', handleSync)}
             {renderOperationButton('Onchain Sync', handleOnchainSync)}
             {renderOperationButton('Sync Exits', handleSyncExits)}
-            {renderOperationButton('Sync Rounds', handleSyncRounds)}
+            {renderOperationButton('Sync Past Rounds', handleSyncPastRounds)}
           </View>
         </View>
 

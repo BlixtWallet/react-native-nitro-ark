@@ -2,7 +2,6 @@ import { NitroModules } from 'react-native-nitro-modules';
 import type {
   NitroArk,
   BarkCreateOpts,
-  BarkConfigOpts,
   BarkArkInfo,
   BarkSendManyOutput,
   ArkoorPaymentResult,
@@ -75,15 +74,6 @@ export function isWalletLoaded(): Promise<boolean> {
 }
 
 /**
- * Persists wallet configuration.
- * @param opts The configuration options to persist.
- * @returns A promise that resolves on success or rejects on error.
- */
-export function persistConfig(opts: BarkConfigOpts): Promise<void> {
-  return NitroArkHybridObject.persistConfig(opts);
-}
-
-/**
  * Runs wallet maintenance tasks.
  * @returns A promise that resolves on success.
  */
@@ -119,8 +109,8 @@ export function syncExits(): Promise<void> {
  * Synchronizes the rounds of the wallet.
  * @returns A promise that resolves on success.
  */
-export function syncRounds(): Promise<void> {
-  return NitroArkHybridObject.syncRounds();
+export function syncPastRounds(): Promise<void> {
+  return NitroArkHybridObject.syncPastRounds();
 }
 
 // --- Wallet Info ---
