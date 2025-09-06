@@ -48,11 +48,14 @@ export function createWallet(
  * Loads an existing wallet or creates a new one at the specified directory.
  * Once loaded, the wallet state is managed internally.
  * @param datadir Path to the data directory.
- * @param mnemonic The BIP39 mnemonic phrase for the wallet.
+ * @param config The configuration options for the wallet.
  * @returns A promise that resolves on success or rejects on error.
  */
-export function loadWallet(datadir: string, mnemonic: string): Promise<void> {
-  return NitroArkHybridObject.loadWallet(datadir, mnemonic);
+export function loadWallet(
+  datadir: string,
+  config: BarkCreateOpts
+): Promise<void> {
+  return NitroArkHybridObject.loadWallet(datadir, config);
 }
 
 /**

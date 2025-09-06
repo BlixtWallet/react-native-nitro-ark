@@ -120,7 +120,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   // --- Management ---
   createMnemonic(): Promise<string>;
   createWallet(datadir: string, opts: BarkCreateOpts): Promise<void>;
-  loadWallet(datadir: string, mnemonic: string): Promise<void>;
+  loadWallet(datadir: string, config: BarkCreateOpts): Promise<void>;
   isWalletLoaded(): Promise<boolean>;
   closeWallet(): Promise<void>;
   persistConfig(opts: BarkConfigOpts): Promise<void>;

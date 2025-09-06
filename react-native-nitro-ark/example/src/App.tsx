@@ -252,9 +252,24 @@ export default function ArkApp() {
       return;
     }
 
+    const opts: NitroArk.BarkCreateOpts = {
+      mnemonic: mnemonic,
+      regtest: true,
+      signet: false,
+      bitcoin: false,
+      config: {
+        bitcoind: 'http://localhost:18443',
+        ark: 'http://localhost:3535',
+        bitcoind_user: 'second',
+        bitcoind_pass: 'ark',
+        vtxo_refresh_expiry_threshold: 288,
+        fallback_fee_rate: 10000,
+      },
+    };
+
     runOperation(
       'loadWallet',
-      () => NitroArk.loadWallet(ARK_DATA_PATH, mnemonic),
+      () => NitroArk.loadWallet(ARK_DATA_PATH, opts),
       'management',
       () => {
         setResults((prev) => ({
