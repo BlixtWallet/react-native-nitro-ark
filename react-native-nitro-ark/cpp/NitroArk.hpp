@@ -46,27 +46,6 @@ private:
     return config_opts;
   }
 
-  // Helper function to create CreateOpts from BarkCreateOpts
-  static std::pair<bark_cxx::CreateOpts, uint32_t> createCreateOpts(const BarkCreateOpts& opts) {
-    bark_cxx::CreateOpts create_opts;
-    create_opts.regtest = opts.regtest.value_or(false);
-    create_opts.signet = opts.signet.value_or(false);
-    create_opts.bitcoin = opts.bitcoin.value_or(true);
-    create_opts.mnemonic = opts.mnemonic;
-
-    uint32_t birthday_height_val = 0;
-    if (opts.birthday_height.has_value()) {
-      birthday_height_val = static_cast<uint32_t>(opts.birthday_height.value());
-      create_opts.birthday_height = &birthday_height_val;
-    } else {
-      create_opts.birthday_height = nullptr;
-    }
-
-    create_opts.config = createConfigOpts(opts.config);
-
-    return std::make_pair(create_opts, birthday_height_val);
-  }
-
 public:
   NitroArk() : HybridObject(TAG) {
     // Initialize the Rust logger once when a NitroArk object is created.
@@ -89,7 +68,22 @@ public:
   std::shared_ptr<Promise<void>> createWallet(const std::string& datadir, const BarkCreateOpts& opts) override {
     return Promise<void>::async([datadir, opts]() {
       try {
-        auto [create_opts, birthday_height_val] = createCreateOpts(opts);
+        bark_cxx::CreateOpts create_opts;
+        create_opts.regtest = opts.regtest.value_or(false);
+        create_opts.signet = opts.signet.value_or(false);
+        create_opts.bitcoin = opts.bitcoin.value_or(true);
+        create_opts.mnemonic = opts.mnemonic;
+
+        uint32_t birthday_height_val;
+        if (opts.birthday_height.has_value()) {
+          birthday_height_val = static_cast<uint32_t>(opts.birthday_height.value());
+          create_opts.birthday_height = &birthday_height_val;
+        } else {
+          create_opts.birthday_height = nullptr;
+        }
+
+        create_opts.config = createConfigOpts(opts.config);
+
         bark_cxx::create_wallet(datadir, create_opts);
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
@@ -100,7 +94,22 @@ public:
   std::shared_ptr<Promise<void>> loadWallet(const std::string& datadir, const BarkCreateOpts& opts) override {
     return Promise<void>::async([datadir, opts]() {
       try {
-        auto [create_opts, birthday_height_val] = createCreateOpts(opts);
+        bark_cxx::CreateOpts create_opts;
+        create_opts.regtest = opts.regtest.value_or(false);
+        create_opts.signet = opts.signet.value_or(false);
+        create_opts.bitcoin = opts.bitcoin.value_or(true);
+        create_opts.mnemonic = opts.mnemonic;
+
+        uint32_t birthday_height_val;
+        if (opts.birthday_height.has_value()) {
+          birthday_height_val = static_cast<uint32_t>(opts.birthday_height.value());
+          create_opts.birthday_height = &birthday_height_val;
+        } else {
+          create_opts.birthday_height = nullptr;
+        }
+
+        create_opts.config = createConfigOpts(opts.config);
+
         bark_cxx::load_wallet(datadir, create_opts);
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
