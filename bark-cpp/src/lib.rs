@@ -84,36 +84,19 @@ impl WalletManager {
     async fn create_wallet(&mut self, datadir: &Path, opts: CreateOpts) -> anyhow::Result<()> {
         debug!("Creating wallet in {}", datadir.display());
 
-        let net = match (opts.bitcoin, opts.signet, opts.regtest) {
-            (true, false, false) => Network::Bitcoin,
-            (false, true, false) => Network::Signet,
-            (false, false, true) => Network::Regtest,
-            _ => bail!("A network must be specified. Use either --signet, --regtest or --bitcoin"),
-        };
-
-        let mut config = Config {
-            server_address: opts
-                .config
-                .ark
-                .clone()
-                .context("Ark server address missing, use --ark")?,
-            ..Default::default()
-        };
-        opts.config
-            .clone()
-            .merge_into(&mut config)
-            .context("invalid configuration")?;
-
-        if datadir.exists() {
-            bail!("Datadir already exists. Please choose a new path or load the existing wallet.");
-        }
+        let (config, net) = merge_config_opts(opts.clone())?;
 
         try_create_wallet(datadir, net, config.clone(), Some(opts.mnemonic.clone())).await?;
 
         Ok(())
     }
 
-    async fn load_wallet(&mut self, datadir: &Path, mnemonic: Mnemonic) -> anyhow::Result<()> {
+    async fn load_wallet(
+        &mut self,
+        datadir: &Path,
+        mnemonic: Mnemonic,
+        config: Config,
+    ) -> anyhow::Result<()> {
         if self.context.is_some() {
             bail!("Wallet is already loaded. Please close it first.");
         }
@@ -125,7 +108,7 @@ impl WalletManager {
         }
 
         info!("Attempting to open wallet...");
-        let (wallet, onchain_wallet) = self.open_wallet(datadir, mnemonic).await?;
+        let (wallet, onchain_wallet) = self.open_wallet(datadir, mnemonic, config).await?;
 
         self.context = Some(WalletContext {
             wallet: wallet,
@@ -197,6 +180,7 @@ impl WalletManager {
         &self,
         datadir: &Path,
         mnemonic: Mnemonic,
+        config: Config,
     ) -> anyhow::Result<(Wallet, OnchainWallet)> {
         debug!("Opening bark wallet in {}", datadir.display());
 
@@ -207,7 +191,8 @@ impl WalletManager {
 
         let onchain_wallet =
             OnchainWallet::load_or_create(properties.network, mnemonic.to_seed(""), db.clone())?;
-        let wallet = Wallet::open_with_onchain(&mnemonic, db.clone(), &onchain_wallet).await?;
+        let wallet =
+            Wallet::open_with_onchain(&mnemonic, db.clone(), &onchain_wallet, config).await?;
 
         Ok((wallet, onchain_wallet))
     }
@@ -233,9 +218,9 @@ pub async fn create_wallet(datadir: &Path, opts: CreateOpts) -> anyhow::Result<(
     manager.create_wallet(datadir, opts).await
 }
 
-pub async fn load_wallet(datadir: &Path, mnemonic: Mnemonic) -> anyhow::Result<()> {
+pub async fn load_wallet(datadir: &Path, mnemonic: Mnemonic, config: Config) -> anyhow::Result<()> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager.load_wallet(datadir, mnemonic).await
+    manager.load_wallet(datadir, mnemonic, config).await
 }
 
 pub async fn close_wallet() -> anyhow::Result<()> {
@@ -246,18 +231,6 @@ pub async fn close_wallet() -> anyhow::Result<()> {
 pub async fn is_wallet_loaded() -> bool {
     let manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager.is_loaded()
-}
-
-pub async fn persist_config(config: Config) -> anyhow::Result<()> {
-    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager.with_context(|ctx| {
-        ctx.wallet.set_config(config);
-        ctx.wallet
-            .persist_config()
-            .context("Failed to persist wallet config to disk")?;
-        info!("Wallet configuration updated successfully.");
-        Ok(())
-    })
 }
 
 pub async fn balance() -> anyhow::Result<bark::Balance> {
@@ -508,12 +481,12 @@ pub async fn board_all() -> anyhow::Result<String> {
         .await
 }
 
-pub async fn sync_rounds() -> anyhow::Result<()> {
+pub async fn sync_past_rounds() -> anyhow::Result<()> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
             ctx.wallet
-                .sync_rounds()
+                .sync_past_rounds()
                 .await
                 .context("Failed to sync rounds")?;
             Ok(())

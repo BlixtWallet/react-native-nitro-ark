@@ -1027,8 +1027,6 @@ bool is_wallet_loaded() noexcept;
 
 void close_wallet();
 
-void persist_config(::bark_cxx::ConfigOpts opts);
-
 ::bark_cxx::CxxArkInfo get_ark_info();
 
 ::bark_cxx::OffchainBalance offchain_balance();
@@ -1061,11 +1059,11 @@ void maintenance_refresh();
 
 void sync();
 
-void sync_rounds();
+void sync_past_rounds();
 
 void create_wallet(::rust::Str datadir, ::bark_cxx::CreateOpts opts);
 
-void load_wallet(::rust::Str datadir, ::rust::Str mnemonic);
+void load_wallet(::rust::Str datadir, ::bark_cxx::CreateOpts config);
 
 ::rust::String board_amount(::std::uint64_t amount_sat);
 

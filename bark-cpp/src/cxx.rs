@@ -149,7 +149,6 @@ pub(crate) mod ffi {
         fn create_mnemonic() -> Result<String>;
         fn is_wallet_loaded() -> bool;
         fn close_wallet() -> Result<()>;
-        fn persist_config(opts: ConfigOpts) -> Result<()>;
         fn get_ark_info() -> Result<CxxArkInfo>;
         fn offchain_balance() -> Result<OffchainBalance>;
         fn derive_store_next_keypair() -> Result<KeyPairResult>;
@@ -175,9 +174,9 @@ pub(crate) mod ffi {
         fn maintenance() -> Result<()>;
         fn maintenance_refresh() -> Result<()>;
         fn sync() -> Result<()>;
-        fn sync_rounds() -> Result<()>;
+        fn sync_past_rounds() -> Result<()>;
         fn create_wallet(datadir: &str, opts: CreateOpts) -> Result<()>;
-        fn load_wallet(datadir: &str, mnemonic: &str) -> Result<()>;
+        fn load_wallet(datadir: &str, config: CreateOpts) -> Result<()>;
         fn board_amount(amount_sat: u64) -> Result<String>;
         fn board_all() -> Result<String>;
         fn validate_arkoor_address(address: &str) -> Result<()>;
@@ -226,31 +225,6 @@ pub(crate) fn is_wallet_loaded() -> bool {
 
 pub(crate) fn close_wallet() -> anyhow::Result<()> {
     crate::TOKIO_RUNTIME.block_on(crate::close_wallet())
-}
-
-pub(crate) fn persist_config(opts: ffi::ConfigOpts) -> anyhow::Result<()> {
-    let config_opts = utils::ConfigOpts {
-        ark: Some(opts.ark),
-        esplora: Some(opts.esplora),
-        bitcoind: Some(opts.bitcoind),
-        bitcoind_cookie: Some(opts.bitcoind_cookie),
-        bitcoind_user: Some(opts.bitcoind_user),
-        bitcoind_pass: Some(opts.bitcoind_pass),
-        vtxo_refresh_expiry_threshold: Some(opts.vtxo_refresh_expiry_threshold),
-        fallback_fee_rate: Some(opts.fallback_fee_rate),
-    };
-
-    crate::TOKIO_RUNTIME.block_on(async {
-        let mut manager = crate::GLOBAL_WALLET_MANAGER.lock().await;
-        manager.with_context(|ctx| {
-            let mut current_config = ctx.wallet.config().clone();
-            config_opts.merge_into(&mut current_config)?;
-            ctx.wallet.set_config(current_config);
-            ctx.wallet
-                .persist_config()
-                .context("Failed to persist wallet config to disk")
-        })
-    })
 }
 
 pub(crate) fn get_ark_info() -> anyhow::Result<ffi::CxxArkInfo> {
@@ -457,52 +431,29 @@ pub(crate) fn sync() -> anyhow::Result<()> {
     crate::TOKIO_RUNTIME.block_on(crate::sync())
 }
 
-pub(crate) fn sync_rounds() -> anyhow::Result<()> {
-    crate::TOKIO_RUNTIME.block_on(crate::sync_rounds())
+pub(crate) fn sync_past_rounds() -> anyhow::Result<()> {
+    crate::TOKIO_RUNTIME.block_on(crate::sync_past_rounds())
 }
 
 pub(crate) fn create_wallet(datadir: &str, opts: ffi::CreateOpts) -> anyhow::Result<()> {
-    let config_opts = utils::ConfigOpts {
-        ark: Some(opts.config.ark),
-        esplora: Some(opts.config.esplora),
-        bitcoind: Some(opts.config.bitcoind),
-        bitcoind_cookie: Some(opts.config.bitcoind_cookie),
-        bitcoind_user: Some(opts.config.bitcoind_user),
-        bitcoind_pass: Some(opts.config.bitcoind_pass),
-        vtxo_refresh_expiry_threshold: Some(opts.config.vtxo_refresh_expiry_threshold),
-        fallback_fee_rate: Some(opts.config.fallback_fee_rate),
-    };
-
-    log::info!(
-        "Creating wallet with datadir: {}, regtest: {}, signet: {}, bitcoin: {}, birthday_height: {:?}",
-        datadir,
-        opts.regtest,
-        opts.signet,
-        opts.bitcoin,
-        unsafe { opts.birthday_height.as_ref().map(|r| *r) }
-    );
-
-    let create_opts = utils::CreateOpts {
-        regtest: opts.regtest,
-        signet: opts.signet,
-        bitcoin: opts.bitcoin,
-        mnemonic: bip39::Mnemonic::from_str(&opts.mnemonic)?,
-        birthday_height: unsafe { opts.birthday_height.as_ref().map(|r| *r) },
-        config: config_opts,
-    };
+    let create_opts = utils::ffi_config_to_config(opts)?;
 
     log::info!("Creating wallet with options: {:?}", create_opts);
 
     crate::TOKIO_RUNTIME.block_on(crate::create_wallet(Path::new(datadir), create_opts))
 }
 
-pub(crate) fn load_wallet(datadir: &str, mnemonic: &str) -> anyhow::Result<()> {
-    let mnemonic = bip39::Mnemonic::from_str(mnemonic)
-        .with_context(|| format!("Invalid mnemonic format: '{}'", mnemonic))?;
+pub(crate) fn load_wallet(datadir: &str, config: ffi::CreateOpts) -> anyhow::Result<()> {
+    let mnemonic = bip39::Mnemonic::from_str(&config.mnemonic)
+        .with_context(|| format!("Invalid mnemonic format: '{}'", config.mnemonic))?;
 
     log::info!("Loading wallet with datadir: {}", datadir);
 
-    crate::TOKIO_RUNTIME.block_on(crate::load_wallet(Path::new(datadir), mnemonic))
+    let create_opts = utils::ffi_config_to_config(config)?;
+
+    let (config, _) = utils::merge_config_opts(create_opts)?;
+
+    crate::TOKIO_RUNTIME.block_on(crate::load_wallet(Path::new(datadir), mnemonic, config))
 }
 
 pub(crate) fn board_amount(amount_sat: u64) -> anyhow::Result<String> {

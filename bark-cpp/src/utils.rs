@@ -17,6 +17,8 @@ use logger::log::{debug, info};
 use tokio::fs;
 use tonic::transport::Uri;
 
+use crate::cxx::ffi;
+
 pub(crate) const DB_FILE: &str = "db.sqlite";
 
 impl ConfigOpts {
@@ -179,4 +181,54 @@ pub fn parse_send_destination(destination: &str) -> anyhow::Result<SendDestinati
             destination
         )
     }
+}
+
+/// Configuration of the Bark wallet.
+/// Merge CreateOpts into ConfigOpts
+pub fn merge_config_opts(opts: CreateOpts) -> anyhow::Result<(Config, Network)> {
+    let net = match (opts.bitcoin, opts.signet, opts.regtest) {
+        (true, false, false) => Network::Bitcoin,
+        (false, true, false) => Network::Signet,
+        (false, false, true) => Network::Regtest,
+        _ => bail!("A network must be specified. Use either --signet, --regtest or --bitcoin"),
+    };
+
+    let mut config = Config {
+        server_address: opts
+            .config
+            .ark
+            .clone()
+            .context("Ark server address missing, use --ark")?,
+        ..Default::default()
+    };
+    opts.config
+        .clone()
+        .merge_into(&mut config)
+        .context("invalid configuration")?;
+
+    Ok((config, net))
+}
+
+pub fn ffi_config_to_config(opts: ffi::CreateOpts) -> anyhow::Result<CreateOpts> {
+    let config_opts = ConfigOpts {
+        ark: Some(opts.config.ark),
+        esplora: Some(opts.config.esplora),
+        bitcoind: Some(opts.config.bitcoind),
+        bitcoind_cookie: Some(opts.config.bitcoind_cookie),
+        bitcoind_user: Some(opts.config.bitcoind_user),
+        bitcoind_pass: Some(opts.config.bitcoind_pass),
+        vtxo_refresh_expiry_threshold: Some(opts.config.vtxo_refresh_expiry_threshold),
+        fallback_fee_rate: Some(opts.config.fallback_fee_rate),
+    };
+
+    let create_opts = CreateOpts {
+        regtest: opts.regtest,
+        signet: opts.signet,
+        bitcoin: opts.bitcoin,
+        mnemonic: bip39::Mnemonic::from_str(&opts.mnemonic)?,
+        birthday_height: unsafe { opts.birthday_height.as_ref().map(|r| *r) },
+        config: config_opts,
+    };
+
+    Ok(create_opts)
 }

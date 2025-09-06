@@ -28,6 +28,24 @@ inline PaymentTypes convertPaymentType(bark_cxx::PaymentTypes type) {
 }
 
 class NitroArk : public HybridNitroArkSpec {
+private:
+  // Helper function to create ConfigOpts from BarkConfigOpts
+  static bark_cxx::ConfigOpts createConfigOpts(const std::optional<BarkConfigOpts>& config) {
+    bark_cxx::ConfigOpts config_opts;
+    if (config.has_value()) {
+      config_opts.ark = config->ark.value_or("");
+      config_opts.esplora = config->esplora.value_or("");
+      config_opts.bitcoind = config->bitcoind.value_or("");
+      config_opts.bitcoind_cookie = config->bitcoind_cookie.value_or("");
+      config_opts.bitcoind_user = config->bitcoind_user.value_or("");
+      config_opts.bitcoind_pass = config->bitcoind_pass.value_or("");
+      config_opts.vtxo_refresh_expiry_threshold =
+          static_cast<uint32_t>(config->vtxo_refresh_expiry_threshold.value_or(0));
+      config_opts.fallback_fee_rate = static_cast<uint64_t>(config->fallback_fee_rate.value_or(0));
+    }
+    return config_opts;
+  }
+
 public:
   NitroArk() : HybridObject(TAG) {
     // Initialize the Rust logger once when a NitroArk object is created.
@@ -50,24 +68,12 @@ public:
   std::shared_ptr<Promise<void>> createWallet(const std::string& datadir, const BarkCreateOpts& opts) override {
     return Promise<void>::async([datadir, opts]() {
       try {
-        bark_cxx::ConfigOpts config_opts;
-        if (opts.config.has_value()) {
-          config_opts.ark = opts.config->ark.value_or("");
-          config_opts.esplora = opts.config->esplora.value_or("");
-          config_opts.bitcoind = opts.config->bitcoind.value_or("");
-          config_opts.bitcoind_cookie = opts.config->bitcoind_cookie.value_or("");
-          config_opts.bitcoind_user = opts.config->bitcoind_user.value_or("");
-          config_opts.bitcoind_pass = opts.config->bitcoind_pass.value_or("");
-          config_opts.vtxo_refresh_expiry_threshold =
-              static_cast<uint32_t>(opts.config->vtxo_refresh_expiry_threshold.value_or(0));
-          config_opts.fallback_fee_rate = static_cast<uint64_t>(opts.config->fallback_fee_rate.value_or(0));
-        }
-
         bark_cxx::CreateOpts create_opts;
         create_opts.regtest = opts.regtest.value_or(false);
         create_opts.signet = opts.signet.value_or(false);
         create_opts.bitcoin = opts.bitcoin.value_or(true);
         create_opts.mnemonic = opts.mnemonic;
+
         uint32_t birthday_height_val;
         if (opts.birthday_height.has_value()) {
           birthday_height_val = static_cast<uint32_t>(opts.birthday_height.value());
@@ -75,7 +81,8 @@ public:
         } else {
           create_opts.birthday_height = nullptr;
         }
-        create_opts.config = config_opts;
+
+        create_opts.config = createConfigOpts(opts.config);
 
         bark_cxx::create_wallet(datadir, create_opts);
       } catch (const rust::Error& e) {
@@ -84,10 +91,26 @@ public:
     });
   }
 
-  std::shared_ptr<Promise<void>> loadWallet(const std::string& datadir, const std::string& mnemonic) override {
-    return Promise<void>::async([datadir, mnemonic]() {
+  std::shared_ptr<Promise<void>> loadWallet(const std::string& datadir, const BarkCreateOpts& opts) override {
+    return Promise<void>::async([datadir, opts]() {
       try {
-        bark_cxx::load_wallet(datadir, mnemonic);
+        bark_cxx::CreateOpts create_opts;
+        create_opts.regtest = opts.regtest.value_or(false);
+        create_opts.signet = opts.signet.value_or(false);
+        create_opts.bitcoin = opts.bitcoin.value_or(true);
+        create_opts.mnemonic = opts.mnemonic;
+
+        uint32_t birthday_height_val;
+        if (opts.birthday_height.has_value()) {
+          birthday_height_val = static_cast<uint32_t>(opts.birthday_height.value());
+          create_opts.birthday_height = &birthday_height_val;
+        } else {
+          create_opts.birthday_height = nullptr;
+        }
+
+        create_opts.config = createConfigOpts(opts.config);
+
+        bark_cxx::load_wallet(datadir, create_opts);
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
@@ -106,26 +129,6 @@ public:
 
   std::shared_ptr<Promise<bool>> isWalletLoaded() override {
     return Promise<bool>::async([]() { return bark_cxx::is_wallet_loaded(); });
-  }
-
-  std::shared_ptr<Promise<void>> persistConfig(const BarkConfigOpts& opts) override {
-    return Promise<void>::async([opts]() {
-      try {
-        bark_cxx::ConfigOpts config_opts;
-        config_opts.ark = opts.ark.value_or("");
-        config_opts.esplora = opts.esplora.value_or("");
-        config_opts.bitcoind = opts.bitcoind.value_or("");
-        config_opts.bitcoind_cookie = opts.bitcoind_cookie.value_or("");
-        config_opts.bitcoind_user = opts.bitcoind_user.value_or("");
-        config_opts.bitcoind_pass = opts.bitcoind_pass.value_or("");
-        config_opts.vtxo_refresh_expiry_threshold =
-            static_cast<uint32_t>(opts.vtxo_refresh_expiry_threshold.value_or(0));
-        config_opts.fallback_fee_rate = static_cast<uint64_t>(opts.fallback_fee_rate.value_or(0));
-        bark_cxx::persist_config(config_opts);
-      } catch (const rust::Error& e) {
-        throw std::runtime_error(e.what());
-      }
-    });
   }
 
   std::shared_ptr<Promise<void>> maintenance() override {
@@ -168,10 +171,10 @@ public:
     });
   }
 
-  std::shared_ptr<Promise<void>> syncRounds() override {
+  std::shared_ptr<Promise<void>> syncPastRounds() override {
     return Promise<void>::async([]() {
       try {
-        bark_cxx::sync_rounds();
+        bark_cxx::sync_past_rounds();
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }

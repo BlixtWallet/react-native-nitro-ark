@@ -2,7 +2,6 @@ import { NitroModules } from 'react-native-nitro-modules';
 import type {
   NitroArk,
   BarkCreateOpts,
-  BarkConfigOpts,
   BarkArkInfo,
   BarkSendManyOutput,
   ArkoorPaymentResult,
@@ -48,11 +47,14 @@ export function createWallet(
  * Loads an existing wallet or creates a new one at the specified directory.
  * Once loaded, the wallet state is managed internally.
  * @param datadir Path to the data directory.
- * @param mnemonic The BIP39 mnemonic phrase for the wallet.
+ * @param config The configuration options for the wallet.
  * @returns A promise that resolves on success or rejects on error.
  */
-export function loadWallet(datadir: string, mnemonic: string): Promise<void> {
-  return NitroArkHybridObject.loadWallet(datadir, mnemonic);
+export function loadWallet(
+  datadir: string,
+  config: BarkCreateOpts
+): Promise<void> {
+  return NitroArkHybridObject.loadWallet(datadir, config);
 }
 
 /**
@@ -69,15 +71,6 @@ export function closeWallet(): Promise<void> {
  */
 export function isWalletLoaded(): Promise<boolean> {
   return NitroArkHybridObject.isWalletLoaded();
-}
-
-/**
- * Persists wallet configuration.
- * @param opts The configuration options to persist.
- * @returns A promise that resolves on success or rejects on error.
- */
-export function persistConfig(opts: BarkConfigOpts): Promise<void> {
-  return NitroArkHybridObject.persistConfig(opts);
 }
 
 /**
@@ -116,8 +109,8 @@ export function syncExits(): Promise<void> {
  * Synchronizes the rounds of the wallet.
  * @returns A promise that resolves on success.
  */
-export function syncRounds(): Promise<void> {
-  return NitroArkHybridObject.syncRounds();
+export function syncPastRounds(): Promise<void> {
+  return NitroArkHybridObject.syncPastRounds();
 }
 
 // --- Wallet Info ---

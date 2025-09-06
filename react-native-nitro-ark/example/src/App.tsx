@@ -15,7 +15,6 @@ import RNFSTurbo from 'react-native-fs-turbo';
 import * as NitroArk from 'react-native-nitro-ark';
 import type {
   BarkArkInfo,
-  BarkConfigOpts,
   BarkSendManyOutput,
   OnchainBalanceResult,
   OffchainBalanceResult,
@@ -252,9 +251,24 @@ export default function ArkApp() {
       return;
     }
 
+    const opts: NitroArk.BarkCreateOpts = {
+      mnemonic: mnemonic,
+      regtest: true,
+      signet: false,
+      bitcoin: false,
+      config: {
+        bitcoind: 'http://localhost:18443',
+        ark: 'http://localhost:3535',
+        bitcoind_user: 'second',
+        bitcoind_pass: 'ark',
+        vtxo_refresh_expiry_threshold: 288,
+        fallback_fee_rate: 10000,
+      },
+    };
+
     runOperation(
       'loadWallet',
-      () => NitroArk.loadWallet(ARK_DATA_PATH, mnemonic),
+      () => NitroArk.loadWallet(ARK_DATA_PATH, opts),
       'management',
       () => {
         setResults((prev) => ({
@@ -273,18 +287,6 @@ export default function ArkApp() {
     runOperation(
       'isWalletLoaded',
       () => NitroArk.isWalletLoaded(),
-      'management'
-    );
-  };
-
-  const handlePersistConfig = () => {
-    // Example config, ideally from UI inputs
-    const opts: BarkConfigOpts = {
-      fallback_fee_rate: 1200,
-    };
-    runOperation(
-      'persistConfig',
-      () => NitroArk.persistConfig(opts),
       'management'
     );
   };
@@ -348,8 +350,12 @@ export default function ArkApp() {
     runOperation('syncExits', () => NitroArk.syncExits(), 'management');
   };
 
-  const handleSyncRounds = () => {
-    runOperation('syncRounds', () => NitroArk.syncRounds(), 'management');
+  const handleSyncPastRounds = () => {
+    runOperation(
+      'syncPastRounds',
+      () => NitroArk.syncPastRounds(),
+      'management'
+    );
   };
 
   const handleGetArkInfo = () => {
@@ -914,7 +920,6 @@ export default function ArkApp() {
                 disabled={isLoading}
               />
             </View>
-            {renderOperationButton('Persist Config', handlePersistConfig)}
             {renderOperationButton('Maintenance', handleMaintenance)}
             {renderOperationButton(
               'Maintenance Refresh',
@@ -923,7 +928,7 @@ export default function ArkApp() {
             {renderOperationButton('Sync', handleSync)}
             {renderOperationButton('Onchain Sync', handleOnchainSync)}
             {renderOperationButton('Sync Exits', handleSyncExits)}
-            {renderOperationButton('Sync Rounds', handleSyncRounds)}
+            {renderOperationButton('Sync Past Rounds', handleSyncPastRounds)}
           </View>
         </View>
 

@@ -15,8 +15,6 @@
 
 // Forward declaration of `BarkCreateOpts` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct BarkCreateOpts; }
-// Forward declaration of `BarkConfigOpts` to properly resolve imports.
-namespace margelo::nitro::nitroark { struct BarkConfigOpts; }
 // Forward declaration of `BarkArkInfo` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct BarkArkInfo; }
 // Forward declaration of `OffchainBalanceResult` to properly resolve imports.
@@ -45,7 +43,6 @@ namespace margelo::nitro::nitroark { struct LightningReceive; }
 #include <string>
 #include <NitroModules/Promise.hpp>
 #include "BarkCreateOpts.hpp"
-#include "BarkConfigOpts.hpp"
 #include "BarkArkInfo.hpp"
 #include "OffchainBalanceResult.hpp"
 #include "KeyPairResult.hpp"
@@ -94,15 +91,14 @@ namespace margelo::nitro::nitroark {
       // Methods
       virtual std::shared_ptr<Promise<std::string>> createMnemonic() = 0;
       virtual std::shared_ptr<Promise<void>> createWallet(const std::string& datadir, const BarkCreateOpts& opts) = 0;
-      virtual std::shared_ptr<Promise<void>> loadWallet(const std::string& datadir, const std::string& mnemonic) = 0;
+      virtual std::shared_ptr<Promise<void>> loadWallet(const std::string& datadir, const BarkCreateOpts& config) = 0;
       virtual std::shared_ptr<Promise<bool>> isWalletLoaded() = 0;
       virtual std::shared_ptr<Promise<void>> closeWallet() = 0;
-      virtual std::shared_ptr<Promise<void>> persistConfig(const BarkConfigOpts& opts) = 0;
       virtual std::shared_ptr<Promise<void>> maintenance() = 0;
       virtual std::shared_ptr<Promise<void>> maintenanceRefresh() = 0;
       virtual std::shared_ptr<Promise<void>> sync() = 0;
       virtual std::shared_ptr<Promise<void>> syncExits() = 0;
-      virtual std::shared_ptr<Promise<void>> syncRounds() = 0;
+      virtual std::shared_ptr<Promise<void>> syncPastRounds() = 0;
       virtual std::shared_ptr<Promise<BarkArkInfo>> getArkInfo() = 0;
       virtual std::shared_ptr<Promise<OffchainBalanceResult>> offchainBalance() = 0;
       virtual std::shared_ptr<Promise<KeyPairResult>> deriveStoreNextKeypair() = 0;
