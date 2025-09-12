@@ -8,7 +8,7 @@ PODS:
   - hermes-engine (0.81.1):
     - hermes-engine/Pre-built (= 0.81.1)
   - hermes-engine/Pre-built (0.81.1)
-  - NitroArk (0.0.55):
+  - NitroArk (0.0.56):
     - boost
     - DoubleConversion
     - fast_float
@@ -2614,7 +2614,7 @@ SPEC CHECKSUMS:
   fmt: a40bb5bd0294ea969aaaba240a927bd33d878cdd
   glog: 5683914934d5b6e4240e497e0f4a3b42d1854183
   hermes-engine: 4f8246b1f6d79f625e0d99472d1f3a71da4d28ca
-  NitroArk: b505b337b590f25f1e5a69b0e49016836dcaddd1
+  NitroArk: b0f4e88cb31ee9f064beb72c2f4c301802b30960
   NitroModules: f7655c5fc97d0ca32a0b9a7059e9a73f8628855c
   RCT-Folly: 59ec0ac1f2f39672a0c6e6cecdd39383b764646f
   RCTDeprecation: c4b9e2fd0ab200e3af72b013ed6113187c607077

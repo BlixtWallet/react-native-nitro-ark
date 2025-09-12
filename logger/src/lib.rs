@@ -16,7 +16,7 @@ impl Logger {
             // Android-specific logger initialization
             android_logger::init_once(
                 Config::default()
-                    .with_max_level(LevelFilter::Trace) // Set the max log level
+                    .with_max_level(LevelFilter::Debug) // Set the max log level
                     .with_tag("NitroArk"), // Set a custom tag for logcat
             );
             log::info!("Android logger initialized.");
@@ -25,7 +25,7 @@ impl Logger {
         #[cfg(target_os = "ios")]
         {
             OsLogger::new("com.nitro.ark")
-                .level_filter(LevelFilter::Trace)
+                .level_filter(LevelFilter::Debug)
                 .init()
                 .unwrap();
             log::info!("oslog initialized.");
