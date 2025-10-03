@@ -13,11 +13,11 @@
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.1.2",
-    "@react-native/new-app-screen": "0.81.1",
+    "@react-native/new-app-screen": "0.81.4",
     "react": "19.1.0",
-    "react-native": "0.81.1",
+    "react-native": "0.81.4",
     "react-native-fs-turbo": "^0.3.7",
-    "react-native-nitro-modules": "^0.29.3"
+    "react-native-nitro-modules": "^0.29.8"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
@@ -26,9 +26,9 @@
     "@react-native-community/cli": "20.0.1",
     "@react-native-community/cli-platform-android": "20.0.1",
     "@react-native-community/cli-platform-ios": "20.0.1",
-    "@react-native/babel-preset": "0.81.1",
-    "@react-native/metro-config": "0.81.1",
-    "@react-native/typescript-config": "0.81.1",
+    "@react-native/babel-preset": "0.81.4",
+    "@react-native/metro-config": "0.81.4",
+    "@react-native/typescript-config": "0.81.4",
     "@types/react": "^19.0.10",
     "react-native-builder-bob": "^0.40.13"
   },

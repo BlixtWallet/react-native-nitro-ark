@@ -201,33 +201,33 @@ export default function ArkApp() {
       return;
     }
 
-    const opts: NitroArk.BarkCreateOpts = {
-      mnemonic: mnemonic,
-      regtest: true,
-      signet: false,
-      bitcoin: false,
-      config: {
-        bitcoind: 'http://localhost:18443',
-        ark: 'http://localhost:3535',
-        bitcoind_user: 'second',
-        bitcoind_pass: 'ark',
-        vtxo_refresh_expiry_threshold: 288,
-        fallback_fee_rate: 10000,
-      },
-    };
-
     // const opts: NitroArk.BarkCreateOpts = {
     //   mnemonic: mnemonic,
-    //   regtest: false,
-    //   signet: true,
+    //   regtest: true,
+    //   signet: false,
     //   bitcoin: false,
     //   config: {
-    //     esplora: 'esplora.signet.2nd.dev',
-    //     asp: 'ark.signet.2nd.dev',
+    //     bitcoind: 'http://localhost:18443',
+    //     ark: 'http://localhost:3535',
+    //     bitcoind_user: 'second',
+    //     bitcoind_pass: 'ark',
     //     vtxo_refresh_expiry_threshold: 288,
-    //     fallback_fee_rate: 100000,
+    //     fallback_fee_rate: 10000,
     //   },
     // };
+
+    const opts: NitroArk.BarkCreateOpts = {
+      mnemonic: mnemonic,
+      regtest: false,
+      signet: true,
+      bitcoin: false,
+      config: {
+        esplora: 'esplora.signet.2nd.dev',
+        ark: 'ark.signet.2nd.dev',
+        vtxo_refresh_expiry_threshold: 288,
+        fallback_fee_rate: 100000,
+      },
+    };
 
     runOperation(
       'createWallet',
@@ -251,18 +251,31 @@ export default function ArkApp() {
       return;
     }
 
+    // const opts: NitroArk.BarkCreateOpts = {
+    //   mnemonic: mnemonic,
+    //   regtest: true,
+    //   signet: false,
+    //   bitcoin: false,
+    //   config: {
+    //     bitcoind: 'http://localhost:18443',
+    //     ark: 'http://localhost:3535',
+    //     bitcoind_user: 'second',
+    //     bitcoind_pass: 'ark',
+    //     vtxo_refresh_expiry_threshold: 288,
+    //     fallback_fee_rate: 10000,
+    //   },
+    // };
+
     const opts: NitroArk.BarkCreateOpts = {
       mnemonic: mnemonic,
-      regtest: true,
-      signet: false,
+      regtest: false,
+      signet: true,
       bitcoin: false,
       config: {
-        bitcoind: 'http://localhost:18443',
-        ark: 'http://localhost:3535',
-        bitcoind_user: 'second',
-        bitcoind_pass: 'ark',
+        esplora: 'esplora.signet.2nd.dev',
+        ark: 'ark.signet.2nd.dev',
         vtxo_refresh_expiry_threshold: 288,
-        fallback_fee_rate: 10000,
+        fallback_fee_rate: 100000,
       },
     };
 
