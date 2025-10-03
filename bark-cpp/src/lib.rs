@@ -7,6 +7,8 @@ use bark::ark::bitcoin::Address;
 use bark::ark::bitcoin::Amount;
 use bark::ark::bitcoin::Network;
 
+use async_executor::Executor;
+use async_lock::Mutex;
 use bark::ark::lightning;
 use bark::ark::lightning::PaymentHash;
 use bark::ark::lightning::Preimage;
@@ -27,8 +29,7 @@ use bark::Wallet;
 use bdk_wallet::bitcoin::bip32;
 use bdk_wallet::bitcoin::key::Keypair;
 use bitcoin_ext::BlockHeight;
-use tokio::runtime::Runtime;
-use tokio::sync::Mutex;
+use std::thread;
 mod cxx;
 mod onchain;
 mod utils;
@@ -54,8 +55,20 @@ mod tests;
 static LOGGER_INIT: Once = Once::new();
 const ARK_PURPOSE_INDEX: u32 = 350;
 
-pub static TOKIO_RUNTIME: LazyLock<Runtime> =
-    LazyLock::new(|| Runtime::new().expect("Failed to create Tokio runtime"));
+pub static SMOL_EXECUTOR: LazyLock<Arc<Executor<'static>>> = LazyLock::new(|| {
+    let executor = Arc::new(Executor::new());
+    for _ in 0..4 {
+        let ex = executor.clone();
+        thread::spawn(move || loop {
+            smol::block_on(ex.run(async { std::future::pending::<()>().await }));
+        });
+    }
+    executor
+});
+
+pub fn block_on<F: std::future::Future>(future: F) -> F::Output {
+    smol::block_on(SMOL_EXECUTOR.run(future))
+}
 
 // Global wallet manager instance
 static GLOBAL_WALLET_MANAGER: LazyLock<Mutex<WalletManager>> =

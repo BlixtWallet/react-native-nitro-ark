@@ -1,21 +1,21 @@
 use std::{path::Path, str::FromStr, sync::Arc};
 
-use anyhow::{self, bail, Context};
+use anyhow::{self, Context, bail};
 use bark::{
+    Config, SqliteClient, Wallet as BarkWallet,
     ark::{
-        bitcoin::{secp256k1::PublicKey, FeeRate, Network},
         VtxoId,
+        bitcoin::{FeeRate, Network, secp256k1::PublicKey},
     },
     lightning_invoice::Bolt11Invoice,
     lnurllib::lightning_address::LightningAddress,
     onchain::OnchainWallet,
-    Config, SqliteClient, Wallet as BarkWallet,
 };
 
+use async_fs as fs;
 use bitcoin_ext::FeeRateExt;
+use http::Uri;
 use logger::log::{debug, info};
-use tokio::fs;
-use tonic::transport::Uri;
 
 use crate::cxx::ffi;
 
