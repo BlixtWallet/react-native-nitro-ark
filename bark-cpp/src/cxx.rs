@@ -24,6 +24,7 @@ pub(crate) mod ffi {
         exit_delta: u16,
         anchor_point: String,
         point: String,
+        state: String,
     }
 
     pub enum PaymentTypes {
@@ -345,49 +346,17 @@ pub(crate) fn verify_message(
 
 pub(crate) fn get_vtxos() -> anyhow::Result<Vec<BarkVtxo>> {
     let vtxos = crate::TOKIO_RUNTIME.block_on(crate::get_vtxos())?;
-
     Ok(vtxos
         .into_iter()
-        .map(|vtxo| BarkVtxo {
-            amount: vtxo.amount().to_sat(),
-            expiry_height: vtxo.expiry_height(),
-            server_pubkey: vtxo.server_pubkey().to_string(),
-            exit_delta: vtxo.exit_delta(),
-            anchor_point: format!(
-                "{}:{}",
-                vtxo.chain_anchor().txid.to_string(),
-                vtxo.chain_anchor().vout.to_string()
-            ),
-            point: format!(
-                "{}:{}",
-                vtxo.point().txid.to_string(),
-                vtxo.point().vout.to_string()
-            ),
-        })
+        .map(utils::wallet_vtxo_to_bark_vtxo)
         .collect())
 }
 
 pub(crate) fn get_expiring_vtxos(threshold: u32) -> anyhow::Result<Vec<BarkVtxo>> {
     let expiring_vtxos = crate::TOKIO_RUNTIME.block_on(crate::get_expiring_vtxos(threshold))?;
-
     Ok(expiring_vtxos
         .into_iter()
-        .map(|vtxo| BarkVtxo {
-            amount: vtxo.amount().to_sat(),
-            expiry_height: vtxo.expiry_height(),
-            server_pubkey: vtxo.server_pubkey().to_string(),
-            exit_delta: vtxo.exit_delta(),
-            anchor_point: format!(
-                "{}:{}",
-                vtxo.chain_anchor().txid.to_string(),
-                vtxo.chain_anchor().vout.to_string()
-            ),
-            point: format!(
-                "{}:{}",
-                vtxo.point().txid.to_string(),
-                vtxo.point().vout.to_string()
-            ),
-        })
+        .map(utils::wallet_vtxo_to_bark_vtxo)
         .collect())
 }
 
@@ -481,25 +450,7 @@ pub(crate) fn send_arkoor_payment(
     let oor_result = crate::TOKIO_RUNTIME.block_on(crate::send_arkoor_payment(dest, amount))?;
 
     Ok(ArkoorPaymentResult {
-        vtxos: oor_result
-            .iter()
-            .map(|vtxo| BarkVtxo {
-                amount: vtxo.amount().to_sat(),
-                expiry_height: vtxo.expiry_height(),
-                server_pubkey: vtxo.server_pubkey().to_string(),
-                exit_delta: vtxo.exit_delta(),
-                anchor_point: format!(
-                    "{}:{}",
-                    vtxo.chain_anchor().txid.to_string(),
-                    vtxo.chain_anchor().vout.to_string()
-                ),
-                point: format!(
-                    "{}:{}",
-                    vtxo.point().txid.to_string(),
-                    vtxo.point().vout.to_string()
-                ),
-            })
-            .collect(),
+        vtxos: oor_result.iter().map(utils::vtxo_to_bark_vtxo).collect(),
         destination_pubkey: destination.to_string(),
         amount_sat,
         payment_type: PaymentTypes::Arkoor,
@@ -699,14 +650,7 @@ pub(crate) fn onchain_utxos() -> anyhow::Result<String> {
                 "confirmation_height": local.confirmation_height.map_or(0, |_h| 0),
             }),
             bark::onchain::Utxo::Exit(exit) => serde_json::json!({
-                "vtxo": BarkVtxo {
-                    amount: exit.vtxo.amount().to_sat(),
-                    anchor_point: format!("{}:{}", exit.vtxo.chain_anchor().txid, exit.vtxo.chain_anchor().vout),
-                    exit_delta: exit.vtxo.exit_delta(),
-                    server_pubkey: exit.vtxo.server_pubkey().to_string(),
-                    expiry_height: exit.vtxo.expiry_height(),
-                    point: format!("{}:{}", exit.vtxo.point().txid.to_string(), exit.vtxo.point().vout.to_string()),
-                },
+                "vtxo": utils::vtxo_to_bark_vtxo(&exit.vtxo),
                 "height": exit.height
             }),
         })
