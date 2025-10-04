@@ -8,6 +8,8 @@ use bark::ark::bitcoin::Amount;
 use bark::ark::bitcoin::Network;
 
 use bark::ark::lightning;
+use bark::ark::lightning::Bolt12Invoice;
+use bark::ark::lightning::Offer;
 use bark::ark::lightning::PaymentHash;
 use bark::ark::lightning::Preimage;
 use bark::ark::rounds::RoundId;
@@ -17,13 +19,15 @@ use bark::ark::VtxoId;
 use bark::lightning_invoice::Bolt11Invoice;
 use bark::lnurllib::lightning_address::LightningAddress;
 use bark::onchain::OnchainWallet;
+use bark::persist::models::LightningReceive;
 use bark::persist::BarkPersister;
-use bark::persist::LightningReceive;
 use bark::Config;
 use bark::Offboard;
+use bark::Pagination;
 use bark::SendOnchain;
 use bark::SqliteClient;
 use bark::Wallet;
+use bark::WalletVtxo;
 use bdk_wallet::bitcoin::bip32;
 use bdk_wallet::bitcoin::key::Keypair;
 use bitcoin_ext::BlockHeight;
@@ -368,6 +372,17 @@ pub async fn lightning_receive_status(
     })
 }
 
+pub async fn lightning_receives(pagination: Pagination) -> anyhow::Result<Vec<LightningReceive>> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager.with_context(|ctx| {
+        let receives = ctx
+            .wallet
+            .lightning_receives(pagination)
+            .context("Failed to get lightning receives")?;
+        Ok(receives)
+    })
+}
+
 pub async fn finish_lightning_receive(bolt11: Bolt11Invoice) -> anyhow::Result<()> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
@@ -418,12 +433,12 @@ pub async fn sync() -> anyhow::Result<()> {
         .await
 }
 
-pub async fn get_vtxos() -> anyhow::Result<Vec<Vtxo>> {
+pub async fn get_vtxos() -> anyhow::Result<Vec<WalletVtxo>> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager.with_context(|ctx| Ok(ctx.wallet.vtxos()?))
 }
 
-pub async fn get_expiring_vtxos(threshold: BlockHeight) -> anyhow::Result<Vec<Vtxo>> {
+pub async fn get_expiring_vtxos(threshold: BlockHeight) -> anyhow::Result<Vec<WalletVtxo>> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
 
     manager
@@ -446,6 +461,27 @@ pub async fn refresh_vtxos(vtxos: Vec<Vtxo>) -> anyhow::Result<Option<RoundId>> 
                 .context("Failed to refresh vtxos")
         })
         .await
+}
+
+/// Returns the block height at which the first VTXO will expire
+pub async fn get_first_expiring_vtxo_blockheight() -> anyhow::Result<Option<BlockHeight>> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager.with_context(|ctx| {
+        ctx.wallet
+            .get_first_expiring_vtxo_blockheight()
+            .context("Failed to get first expiring vtxo blockheight")
+    })
+}
+
+/// Returns the next block height at which we have a VTXO that we
+/// want to refresh
+pub async fn get_next_required_refresh_blockheight() -> anyhow::Result<Option<BlockHeight>> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager.with_context(|ctx| {
+        ctx.wallet
+            .get_next_required_refresh_blockheight()
+            .context("Failed to get next required refresh blockheight")
+    })
 }
 
 pub async fn board_amount(amount: Amount) -> anyhow::Result<String> {
@@ -535,6 +571,16 @@ pub async fn send_lightning_payment(
                 .send_lightning_payment(destination, amount_sat)
                 .await
         })
+        .await
+}
+
+pub async fn pay_offer(
+    offer: Offer,
+    amount: Option<Amount>,
+) -> anyhow::Result<(Bolt12Invoice, Preimage)> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async { ctx.wallet.pay_offer(offer, amount).await })
         .await
 }
 
