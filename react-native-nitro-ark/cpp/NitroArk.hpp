@@ -497,9 +497,9 @@ public:
 
   // --- Lightning Operations ---
 
-  std::shared_ptr<Promise<LightningPaymentResult>> sendLightningPayment(const std::string& destination,
-                                                                        std::optional<double> amountSat) override {
-    return Promise<LightningPaymentResult>::async([destination, amountSat]() {
+  std::shared_ptr<Promise<Bolt11PaymentResult>> sendLightningPayment(const std::string& destination,
+                                                                     std::optional<double> amountSat) override {
+    return Promise<Bolt11PaymentResult>::async([destination, amountSat]() {
       try {
         bark_cxx::Bolt11PaymentResult rust_result;
         if (amountSat.has_value()) {
@@ -509,7 +509,7 @@ public:
           rust_result = bark_cxx::send_lightning_payment(destination, nullptr);
         }
 
-        LightningPaymentResult result;
+        Bolt11PaymentResult result;
         result.bolt11_invoice = std::string(rust_result.bolt11_invoice.data(), rust_result.bolt11_invoice.length());
         result.preimage = std::string(rust_result.preimage.data(), rust_result.preimage.length());
         result.payment_type = convertPaymentType(rust_result.payment_type);

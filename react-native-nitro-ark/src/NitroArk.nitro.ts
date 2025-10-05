@@ -59,7 +59,7 @@ export interface ArkoorPaymentResult {
   payment_type: PaymentTypes; // 'Arkoor'
 }
 
-export interface LightningPaymentResult {
+export interface Bolt11PaymentResult {
   bolt11_invoice: string;
   preimage: string;
   payment_type: PaymentTypes; // 'Lightning'
@@ -196,7 +196,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   sendLightningPayment(
     destination: string,
     amountSat?: number
-  ): Promise<LightningPaymentResult>;
+  ): Promise<Bolt11PaymentResult>;
   payOffer(offer: string, amountSat?: number): Promise<Bolt12PaymentResult>;
   sendLnaddr(
     addr: string,
