@@ -279,6 +279,6 @@ pub fn vtxo_to_bark_vtxo(vtxo: &Vtxo) -> crate::cxx::ffi::BarkVtxo {
             vtxo.point().txid.to_string(),
             vtxo.point().vout.to_string()
         ),
-        state: "null".to_string(),
+        state: "unknown".to_string(),
     }
 }

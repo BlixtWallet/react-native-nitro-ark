@@ -28,7 +28,8 @@ export type BarkVtxo = {
     | 'Spent'
     | 'UnregisteredBoard'
     | 'PendingLightningSend'
-    | 'PendingLightningRecv';
+    | 'PendingLightningRecv'
+    | 'Unknown';
 };
 
 // Create the hybrid object instance

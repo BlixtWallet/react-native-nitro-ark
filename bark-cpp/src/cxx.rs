@@ -372,21 +372,19 @@ pub(crate) fn get_expiring_vtxos(threshold: u32) -> anyhow::Result<Vec<BarkVtxo>
 
 pub(crate) fn get_first_expiring_vtxo_blockheight() -> anyhow::Result<*const u32> {
     let blockheight = crate::TOKIO_RUNTIME.block_on(crate::get_first_expiring_vtxo_blockheight())?;
-
-    let result_height = blockheight
-        .as_ref()
-        .map_or(std::ptr::null(), |v| v as *const u32);
-    Ok(result_height)
+    match blockheight {
+        Some(height) => Ok(Box::into_raw(Box::new(height))),
+        None => Ok(std::ptr::null()),
+    }
 }
 
 pub(crate) fn get_next_required_refresh_blockheight() -> anyhow::Result<*const u32> {
     let blockheight =
         crate::TOKIO_RUNTIME.block_on(crate::get_next_required_refresh_blockheight())?;
-
-    let result_height = blockheight
-        .as_ref()
-        .map_or(std::ptr::null(), |v| v as *const u32);
-    Ok(result_height)
+    match blockheight {
+        Some(height) => Ok(Box::into_raw(Box::new(height))),
+        None => Ok(std::ptr::null()),
+    }
 }
 
 pub(crate) fn bolt11_invoice(amount_msat: u64) -> anyhow::Result<String> {
@@ -411,8 +409,7 @@ pub(crate) fn lightning_receive_status(
         invoice: status.invoice.to_string(),
         preimage_revealed_at: status
             .preimage_revealed_at
-            .as_ref()
-            .map_or(std::ptr::null(), |v| v as *const u64),
+            .map_or(std::ptr::null(), |v| Box::into_raw(Box::new(v))),
     });
     Ok(Box::into_raw(status))
 }

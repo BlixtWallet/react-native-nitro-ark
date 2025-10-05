@@ -372,7 +372,9 @@ public:
         if (result_ptr == nullptr) {
           return std::optional<double>(std::nullopt);
         }
-        return std::optional<double>(static_cast<double>(*result_ptr));
+        double value = static_cast<double>(*result_ptr);
+        delete result_ptr; // Free the heap-allocated memory from Rust
+        return std::optional<double>(value);
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
@@ -386,7 +388,9 @@ public:
         if (result_ptr == nullptr) {
           return std::optional<double>(std::nullopt);
         }
-        return std::optional<double>(static_cast<double>(*result_ptr));
+        double value = static_cast<double>(*result_ptr);
+        delete result_ptr; // Free the heap-allocated memory from Rust
+        return std::optional<double>(value);
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
@@ -633,6 +637,7 @@ public:
 
         if (status->preimage_revealed_at != nullptr) {
           result.preimage_revealed_at = static_cast<double>(*status->preimage_revealed_at);
+          delete status->preimage_revealed_at; // Free the heap-allocated memory from Rust
         } else {
           result.preimage_revealed_at = std::nullopt;
         }
