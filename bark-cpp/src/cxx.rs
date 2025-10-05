@@ -10,7 +10,6 @@ use bark::ark::lightning;
 use bdk_wallet::bitcoin::{self, network, FeeRate};
 use bip39::Mnemonic;
 use logger::log::{self, info};
-use std::fmt::format;
 use std::path::Path;
 use std::str::FromStr;
 
@@ -181,7 +180,7 @@ pub(crate) mod ffi {
         fn get_first_expiring_vtxo_blockheight() -> Result<*const u32>;
         fn get_next_required_refresh_blockheight() -> Result<*const u32>;
         fn bolt11_invoice(amount_msat: u64) -> Result<String>;
-        fn lightning_receive_status(payment: String) -> Result<*const LightningReceive>;
+        fn lightning_receive_status(payment_hash: String) -> Result<*const LightningReceive>;
         fn maintenance() -> Result<()>;
         fn maintenance_refresh() -> Result<()>;
         fn sync() -> Result<()>;
@@ -393,10 +392,10 @@ pub(crate) fn bolt11_invoice(amount_msat: u64) -> anyhow::Result<String> {
 }
 
 pub(crate) fn lightning_receive_status(
-    payment: String,
+    payment_hash: String,
 ) -> anyhow::Result<*const ffi::LightningReceive> {
-    let payment = bark::ark::lightning::PaymentHash::from_str(&payment)
-        .with_context(|| format!("Invalid payment hash format: '{}'", payment))?;
+    let payment = bark::ark::lightning::PaymentHash::from_str(&payment_hash)
+        .with_context(|| format!("Invalid payment hash format: '{}'", payment_hash))?;
     let status = crate::TOKIO_RUNTIME.block_on(crate::lightning_receive_status(payment))?;
 
     if status.is_none() {

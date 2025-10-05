@@ -619,10 +619,10 @@ public:
   }
 
   std::shared_ptr<Promise<std::optional<LightningReceive>>>
-  lightningReceiveStatus(const std::string& payment) override {
-    return Promise<std::optional<LightningReceive>>::async([payment]() {
+  lightningReceiveStatus(const std::string& paymentHash) override {
+    return Promise<std::optional<LightningReceive>>::async([paymentHash]() {
       try {
-        const bark_cxx::LightningReceive* status_ptr = bark_cxx::lightning_receive_status(payment);
+        const bark_cxx::LightningReceive* status_ptr = bark_cxx::lightning_receive_status(paymentHash);
 
         if (status_ptr == nullptr) {
           return std::optional<LightningReceive>();

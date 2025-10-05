@@ -1069,7 +1069,7 @@ bool verify_message(::rust::Str message, ::rust::Str signature, ::rust::Str publ
 
 ::rust::String bolt11_invoice(::std::uint64_t amount_msat);
 
-::bark_cxx::LightningReceive const *lightning_receive_status(::rust::String payment);
+::bark_cxx::LightningReceive const *lightning_receive_status(::rust::String payment_hash);
 
 void maintenance();
 

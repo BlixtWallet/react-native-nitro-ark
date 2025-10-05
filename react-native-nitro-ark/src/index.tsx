@@ -366,14 +366,14 @@ export function bolt11Invoice(amountMsat: number): Promise<string> {
 
 /**
  * Gets the status of a Lightning receive.
- * @param payment The payment hash of the Lightning receive.
+ * @param paymentHash The payment hash of the Lightning receive.
  * @returns A promise resolving to the Lightning receive status.
  */
 
 export function lightningReceiveStatus(
-  payment: string
+  paymentHash: string
 ): Promise<LightningReceive | undefined> {
-  return NitroArkHybridObject.lightningReceiveStatus(payment);
+  return NitroArkHybridObject.lightningReceiveStatus(paymentHash);
 }
 
 /**
