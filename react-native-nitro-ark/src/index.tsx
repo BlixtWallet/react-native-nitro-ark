@@ -369,11 +369,23 @@ export function bolt11Invoice(amountMsat: number): Promise<string> {
  * @param paymentHash The payment hash of the Lightning receive.
  * @returns A promise resolving to the Lightning receive status.
  */
-
 export function lightningReceiveStatus(
   paymentHash: string
 ): Promise<LightningReceive | undefined> {
   return NitroArkHybridObject.lightningReceiveStatus(paymentHash);
+}
+
+/**
+ * Gets a page of Lightning receives.
+ * @param pageSize The number of items to retrieve.
+ * @param pageIndex The index of the page to retrieve.
+ * @returns A promise resolving to an array of Lightning receives.
+ */
+export function lightningReceives(
+  pageSize: number,
+  pageIndex: number
+): Promise<LightningReceive[]> {
+  return NitroArkHybridObject.lightningReceives(pageSize, pageIndex);
 }
 
 /**

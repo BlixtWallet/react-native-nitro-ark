@@ -1071,6 +1071,8 @@ bool verify_message(::rust::Str message, ::rust::Str signature, ::rust::Str publ
 
 ::bark_cxx::LightningReceive const *lightning_receive_status(::rust::String payment_hash);
 
+::rust::Vec<::bark_cxx::LightningReceive> lightning_receives(::std::uint16_t page_index, ::std::uint16_t page_size);
+
 void maintenance();
 
 void maintenance_refresh();

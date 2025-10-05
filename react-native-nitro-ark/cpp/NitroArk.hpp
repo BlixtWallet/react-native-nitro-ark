@@ -649,6 +649,40 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<std::vector<LightningReceive>>> lightningReceives(double pageSize,
+                                                                            double pageIndex) override {
+    return Promise<std::vector<LightningReceive>>::async([pageSize, pageIndex]() {
+      try {
+        rust::Vec<bark_cxx::LightningReceive> receives_rs =
+            bark_cxx::lightning_receives(static_cast<uint16_t>(pageIndex), static_cast<uint16_t>(pageSize));
+
+        std::vector<LightningReceive> receives;
+        receives.reserve(receives_rs.size());
+
+        for (const auto& receive_rs : receives_rs) {
+          LightningReceive receive;
+          receive.payment_hash = std::string(receive_rs.payment_hash.data(), receive_rs.payment_hash.length());
+          receive.payment_preimage =
+              std::string(receive_rs.payment_preimage.data(), receive_rs.payment_preimage.length());
+          receive.invoice = std::string(receive_rs.invoice.data(), receive_rs.invoice.length());
+
+          if (receive_rs.preimage_revealed_at != nullptr) {
+            receive.preimage_revealed_at = static_cast<double>(*receive_rs.preimage_revealed_at);
+            delete receive_rs.preimage_revealed_at;
+          } else {
+            receive.preimage_revealed_at = std::nullopt;
+          }
+
+          receives.push_back(std::move(receive));
+        }
+
+        return receives;
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   // --- Ark Operations ---
 
   std::shared_ptr<Promise<std::string>> boardAmount(double amountSat) override {

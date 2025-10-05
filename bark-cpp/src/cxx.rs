@@ -181,6 +181,7 @@ pub(crate) mod ffi {
         fn get_next_required_refresh_blockheight() -> Result<*const u32>;
         fn bolt11_invoice(amount_msat: u64) -> Result<String>;
         fn lightning_receive_status(payment_hash: String) -> Result<*const LightningReceive>;
+        fn lightning_receives(page_index: u16, page_size: u16) -> Result<Vec<LightningReceive>>;
         fn maintenance() -> Result<()>;
         fn maintenance_refresh() -> Result<()>;
         fn sync() -> Result<()>;
@@ -412,6 +413,32 @@ pub(crate) fn lightning_receive_status(
             .map_or(std::ptr::null(), |v| Box::into_raw(Box::new(v))),
     });
     Ok(Box::into_raw(status))
+}
+
+pub(crate) fn lightning_receives(
+    page_index: u16,
+    page_size: u16,
+) -> anyhow::Result<Vec<ffi::LightningReceive>> {
+    let receives = crate::TOKIO_RUNTIME.block_on(crate::lightning_receives(bark::Pagination {
+        page_index,
+        page_size,
+    }))?;
+
+    let receives = receives
+        .into_iter()
+        .map(|receive| {
+            ffi::LightningReceive {
+                payment_hash: receive.payment_hash.to_string(),
+                payment_preimage: receive.payment_preimage.to_string(),
+                invoice: receive.invoice.to_string(),
+                preimage_revealed_at: receive
+                    .preimage_revealed_at
+                    .map_or(std::ptr::null(), |v| Box::into_raw(Box::new(v))),
+            }
+        })
+        .collect();
+
+    Ok(receives)
 }
 
 pub(crate) fn maintenance() -> anyhow::Result<()> {
