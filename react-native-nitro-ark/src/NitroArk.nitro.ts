@@ -160,6 +160,8 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
     publicKey: string
   ): Promise<boolean>;
   getVtxos(): Promise<BarkVtxo[]>;
+  getFirstExpiringVtxoBlockheight(): Promise<number | undefined>;
+  getNextRequiredRefreshBlockheight(): Promise<number | undefined>;
   getExpiringVtxos(threshold: number): Promise<BarkVtxo[]>;
 
   // --- Onchain Operations ---

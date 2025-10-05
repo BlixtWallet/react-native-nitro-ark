@@ -51,9 +51,9 @@ namespace margelo::nitro::nitroark { struct LightningReceive; }
 #include "NewAddressResult.hpp"
 #include "BarkVtxo.hpp"
 #include <vector>
+#include <optional>
 #include "OnchainBalanceResult.hpp"
 #include "OnchainPaymentResult.hpp"
-#include <optional>
 #include "BarkSendManyOutput.hpp"
 #include "ArkoorPaymentResult.hpp"
 #include "Bolt11PaymentResult.hpp"
@@ -112,6 +112,8 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<KeyPairResult>> deriveKeypairFromMnemonic(const std::string& mnemonic, const std::string& network, double index) = 0;
       virtual std::shared_ptr<Promise<bool>> verifyMessage(const std::string& message, const std::string& signature, const std::string& publicKey) = 0;
       virtual std::shared_ptr<Promise<std::vector<BarkVtxo>>> getVtxos() = 0;
+      virtual std::shared_ptr<Promise<std::optional<double>>> getFirstExpiringVtxoBlockheight() = 0;
+      virtual std::shared_ptr<Promise<std::optional<double>>> getNextRequiredRefreshBlockheight() = 0;
       virtual std::shared_ptr<Promise<std::vector<BarkVtxo>>> getExpiringVtxos(double threshold) = 0;
       virtual std::shared_ptr<Promise<OnchainBalanceResult>> onchainBalance() = 0;
       virtual std::shared_ptr<Promise<void>> onchainSync() = 0;

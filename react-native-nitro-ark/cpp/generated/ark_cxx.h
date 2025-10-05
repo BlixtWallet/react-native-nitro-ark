@@ -1063,6 +1063,10 @@ bool verify_message(::rust::Str message, ::rust::Str signature, ::rust::Str publ
 
 ::rust::Vec<::bark_cxx::BarkVtxo> get_expiring_vtxos(::std::uint32_t threshold);
 
+::std::uint32_t const *get_first_expiring_vtxo_blockheight();
+
+::std::uint32_t const *get_next_required_refresh_blockheight();
+
 ::rust::String bolt11_invoice(::std::uint64_t amount_msat);
 
 ::bark_cxx::LightningReceive const *lightning_receive_status(::rust::String payment);

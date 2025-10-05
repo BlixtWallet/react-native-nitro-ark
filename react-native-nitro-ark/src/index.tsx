@@ -248,6 +248,24 @@ export function getVtxos(): Promise<BarkVtxo[]> {
 }
 
 /**
+ * Gets the first expiring VTXO blockheight for the loaded wallet.
+ * @returns A promise resolving to the first expiring VTXO blockheight.
+ */
+export function getFirstExpiringVtxoBlockheight(): Promise<number | undefined> {
+  return NitroArkHybridObject.getFirstExpiringVtxoBlockheight();
+}
+
+/**
+ * Gets the next required refresh blockheight for the loaded wallet for the first expiring VTXO.
+ * @returns A promise resolving to the next required refresh blockheight.
+ */
+export function getNextRequiredRefreshBlockheight(): Promise<
+  number | undefined
+> {
+  return NitroArkHybridObject.getNextRequiredRefreshBlockheight();
+}
+
+/**
  * Gets the list of expiring VTXOs as a JSON Object of type BarkVtxo.
  * @param threshold The block height threshold to check for expiring VTXOs.
  * @returns A promise resolving BarkVtxo[] array.

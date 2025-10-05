@@ -177,6 +177,8 @@ pub(crate) mod ffi {
         fn verify_message(message: &str, signature: &str, public_key: &str) -> Result<bool>;
         fn get_vtxos() -> Result<Vec<BarkVtxo>>;
         fn get_expiring_vtxos(threshold: u32) -> Result<Vec<BarkVtxo>>;
+        fn get_first_expiring_vtxo_blockheight() -> Result<*const u32>;
+        fn get_next_required_refresh_blockheight() -> Result<*const u32>;
         fn bolt11_invoice(amount_msat: u64) -> Result<String>;
         fn lightning_receive_status(payment: String) -> Result<*const LightningReceive>;
         fn maintenance() -> Result<()>;
@@ -366,6 +368,25 @@ pub(crate) fn get_expiring_vtxos(threshold: u32) -> anyhow::Result<Vec<BarkVtxo>
         .into_iter()
         .map(utils::wallet_vtxo_to_bark_vtxo)
         .collect())
+}
+
+pub(crate) fn get_first_expiring_vtxo_blockheight() -> anyhow::Result<*const u32> {
+    let blockheight = crate::TOKIO_RUNTIME.block_on(crate::get_first_expiring_vtxo_blockheight())?;
+
+    let result_height = blockheight
+        .as_ref()
+        .map_or(std::ptr::null(), |v| v as *const u32);
+    Ok(result_height)
+}
+
+pub(crate) fn get_next_required_refresh_blockheight() -> anyhow::Result<*const u32> {
+    let blockheight =
+        crate::TOKIO_RUNTIME.block_on(crate::get_next_required_refresh_blockheight())?;
+
+    let result_height = blockheight
+        .as_ref()
+        .map_or(std::ptr::null(), |v| v as *const u32);
+    Ok(result_height)
 }
 
 pub(crate) fn bolt11_invoice(amount_msat: u64) -> anyhow::Result<String> {

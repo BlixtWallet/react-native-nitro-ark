@@ -365,6 +365,34 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<std::optional<double>>> getFirstExpiringVtxoBlockheight() override {
+    return Promise<std::optional<double>>::async([]() {
+      try {
+        const uint32_t* result_ptr = bark_cxx::get_first_expiring_vtxo_blockheight();
+        if (result_ptr == nullptr) {
+          return std::optional<double>(std::nullopt);
+        }
+        return std::optional<double>(static_cast<double>(*result_ptr));
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<std::optional<double>>> getNextRequiredRefreshBlockheight() override {
+    return Promise<std::optional<double>>::async([]() {
+      try {
+        const uint32_t* result_ptr = bark_cxx::get_next_required_refresh_blockheight();
+        if (result_ptr == nullptr) {
+          return std::optional<double>(std::nullopt);
+        }
+        return std::optional<double>(static_cast<double>(*result_ptr));
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   // --- Onchain Operations ---
 
   std::shared_ptr<Promise<OnchainBalanceResult>> onchainBalance() override {
