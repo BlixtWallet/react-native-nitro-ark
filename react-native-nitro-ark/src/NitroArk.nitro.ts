@@ -40,13 +40,14 @@ export interface BarkSendManyOutput {
   amountSat: number; // uint64_t -> number
 }
 
-export interface BarkVtxo {
+interface BarkVtxo {
   amount: number; // u64
   expiry_height: number; // u32
   server_pubkey: string;
   exit_delta: number; // u16
   anchor_point: string;
   point: string;
+  state: string;
 }
 
 export type PaymentTypes = 'Bolt11' | 'Lnurl' | 'Arkoor' | 'Onchain';

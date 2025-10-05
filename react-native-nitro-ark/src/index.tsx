@@ -8,13 +8,27 @@ import type {
   LightningPaymentResult,
   LnurlPaymentResult,
   OnchainPaymentResult,
-  BarkVtxo,
   OffchainBalanceResult,
   OnchainBalanceResult,
   NewAddressResult,
   KeyPairResult,
   LightningReceive,
 } from './NitroArk.nitro';
+
+export type BarkVtxo = {
+  amount: number; // u64
+  expiry_height: number; // u32
+  server_pubkey: string;
+  exit_delta: number; // u16
+  anchor_point: string;
+  point: string;
+  state:
+    | 'Spendable'
+    | 'Spent'
+    | 'UnregisteredBoard'
+    | 'PendingLightningSend'
+    | 'PendingLightningRecv';
+};
 
 // Create the hybrid object instance
 export const NitroArkHybridObject =
@@ -229,7 +243,7 @@ export function verifyMessage(
  * @returns A promise resolving BarkVtxo[] array.
  */
 export function getVtxos(): Promise<BarkVtxo[]> {
-  return NitroArkHybridObject.getVtxos();
+  return NitroArkHybridObject.getVtxos() as Promise<BarkVtxo[]>;
 }
 
 /**
@@ -239,7 +253,9 @@ export function getVtxos(): Promise<BarkVtxo[]> {
  */
 
 export function getExpiringVtxos(threshold: number): Promise<BarkVtxo[]> {
-  return NitroArkHybridObject.getExpiringVtxos(threshold);
+  return NitroArkHybridObject.getExpiringVtxos(threshold) as Promise<
+    BarkVtxo[]
+  >;
 }
 
 // --- Onchain Operations ---

@@ -330,6 +330,7 @@ public:
           vtxo.exit_delta = static_cast<double>(rust_vtxo.exit_delta);
           vtxo.anchor_point = std::string(rust_vtxo.anchor_point.data(), rust_vtxo.anchor_point.length());
           vtxo.point = std::string(rust_vtxo.point.data(), rust_vtxo.point.length());
+          vtxo.state = std::string(rust_vtxo.state.data(), rust_vtxo.state.length());
           vtxos.push_back(vtxo);
         }
         return vtxos;
@@ -352,6 +353,7 @@ public:
           vtxo.exit_delta = static_cast<double>(rust_vtxo.exit_delta);
           vtxo.anchor_point = std::string(rust_vtxo.anchor_point.data(), rust_vtxo.anchor_point.length());
           vtxo.point = std::string(rust_vtxo.point.data(), rust_vtxo.point.length());
+          vtxo.state = std::string(rust_vtxo.state.data(), rust_vtxo.state.length());
           vtxos.push_back(vtxo);
         }
         return vtxos;
@@ -644,6 +646,7 @@ public:
           vtxo.exit_delta = static_cast<double>(rust_vtxo.exit_delta);
           vtxo.anchor_point = std::string(rust_vtxo.anchor_point.data(), rust_vtxo.anchor_point.length());
           vtxo.point = std::string(rust_vtxo.point.data(), rust_vtxo.point.length());
+          vtxo.state = std::string(rust_vtxo.state.data(), rust_vtxo.state.length());
           vtxos.push_back(vtxo);
         }
         result.vtxos = vtxos;

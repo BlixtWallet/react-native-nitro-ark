@@ -825,6 +825,7 @@ struct BarkVtxo final {
   ::std::uint16_t exit_delta CXX_DEFAULT_VALUE(0);
   ::rust::String anchor_point;
   ::rust::String point;
+  ::rust::String state;
 
   using IsRelocatable = ::std::true_type;
 };
