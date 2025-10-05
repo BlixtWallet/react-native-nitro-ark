@@ -426,15 +426,13 @@ pub(crate) fn lightning_receives(
 
     let receives = receives
         .into_iter()
-        .map(|receive| {
-            ffi::LightningReceive {
-                payment_hash: receive.payment_hash.to_string(),
-                payment_preimage: receive.payment_preimage.to_string(),
-                invoice: receive.invoice.to_string(),
-                preimage_revealed_at: receive
-                    .preimage_revealed_at
-                    .map_or(std::ptr::null(), |v| Box::into_raw(Box::new(v))),
-            }
+        .map(|receive| ffi::LightningReceive {
+            payment_hash: receive.payment_hash.to_string(),
+            payment_preimage: receive.payment_preimage.to_string(),
+            invoice: receive.invoice.to_string(),
+            preimage_revealed_at: receive
+                .preimage_revealed_at
+                .map_or(std::ptr::null(), |v| Box::into_raw(Box::new(v))),
         })
         .collect();
 
