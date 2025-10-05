@@ -500,6 +500,30 @@ export default function ArkApp() {
     );
   };
 
+  const handleGetFirstExpiringVtxoBlockheight = () => {
+    if (!mnemonic) {
+      setError((prev) => ({ ...prev, walletInfo: 'Mnemonic required' }));
+      return;
+    }
+    runOperation(
+      'getFirstExpiringVtxoBlockheight',
+      () => NitroArk.getFirstExpiringVtxoBlockheight(),
+      'walletInfo'
+    );
+  };
+
+  const handleGetNextRequiredRefreshBlockheight = () => {
+    if (!mnemonic) {
+      setError((prev) => ({ ...prev, walletInfo: 'Mnemonic required' }));
+      return;
+    }
+    runOperation(
+      'getNextRequiredRefreshBlockheight',
+      () => NitroArk.getNextRequiredRefreshBlockheight(),
+      'walletInfo'
+    );
+  };
+
   const handleSendOnchain = () => {
     if (!onchainDestinationAddress || !onchainAmountSat) {
       setError((prev) => ({
@@ -622,6 +646,27 @@ export default function ArkApp() {
     runOperation(
       'sendLightningPayment',
       () => NitroArk.sendLightningPayment(arkDestinationAddress, amountNum),
+      'ark'
+    );
+  };
+
+  const handlePayOffer = () => {
+    if (!arkDestinationAddress) {
+      setError((prev) => ({
+        ...prev,
+        ark: 'Destination (Bolt12 offer) is required.',
+      }));
+      return;
+    }
+    // Amount can be 0 to use offer's amount if specified
+    const amountNum = parseInt(arkAmountSat, 10) || 0;
+    if (isNaN(amountNum) || amountNum < 0) {
+      setError((prev) => ({ ...prev, ark: 'Invalid amount specified.' }));
+      return;
+    }
+    runOperation(
+      'payOffer',
+      () => NitroArk.payOffer(arkDestinationAddress, amountNum),
       'ark'
     );
   };
@@ -1021,6 +1066,14 @@ export default function ArkApp() {
               'Get Expiring VTXOs',
               handleGetExpiringVtxos
             )}
+            {renderOperationButton(
+              'Get First Expiring VTXO Blockheight',
+              handleGetFirstExpiringVtxoBlockheight
+            )}
+            {renderOperationButton(
+              'Get Next Required Refresh Blockheight',
+              handleGetNextRequiredRefreshBlockheight
+            )}
           </View>
         </View>
 
@@ -1100,6 +1153,7 @@ export default function ArkApp() {
               'Send Lightning Payment',
               handleSendLightningPayment
             )}
+            {renderOperationButton('Pay Bolt12 Offer', handlePayOffer)}
             {renderOperationButton('Send to LN Address', handleSendLnaddr)}
             {renderOperationButton(
               'Send Round Onchain',
