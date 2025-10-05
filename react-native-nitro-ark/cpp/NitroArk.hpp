@@ -16,6 +16,8 @@ inline PaymentTypes convertPaymentType(bark_cxx::PaymentTypes type) {
   switch (type) {
     case bark_cxx::PaymentTypes::Bolt11:
       return PaymentTypes::BOLT11;
+    case bark_cxx::PaymentTypes::Bolt12:
+      return PaymentTypes::BOLT12;
     case bark_cxx::PaymentTypes::Lnurl:
       return PaymentTypes::LNURL;
     case bark_cxx::PaymentTypes::Arkoor:
@@ -509,6 +511,30 @@ public:
 
         LightningPaymentResult result;
         result.bolt11_invoice = std::string(rust_result.bolt11_invoice.data(), rust_result.bolt11_invoice.length());
+        result.preimage = std::string(rust_result.preimage.data(), rust_result.preimage.length());
+        result.payment_type = convertPaymentType(rust_result.payment_type);
+
+        return result;
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<Bolt12PaymentResult>> payOffer(const std::string& bolt12,
+                                                         std::optional<double> amountSat) override {
+    return Promise<Bolt12PaymentResult>::async([bolt12, amountSat]() {
+      try {
+        bark_cxx::Bolt12PaymentResult rust_result;
+        if (amountSat.has_value()) {
+          uint64_t amountSat_val = static_cast<uint64_t>(amountSat.value());
+          rust_result = bark_cxx::pay_offer(bolt12, &amountSat_val);
+        } else {
+          rust_result = bark_cxx::pay_offer(bolt12, nullptr);
+        }
+
+        Bolt12PaymentResult result;
+        result.bolt12_offer = std::string(rust_result.bolt12_offer.data(), rust_result.bolt12_offer.length());
         result.preimage = std::string(rust_result.preimage.data(), rust_result.preimage.length());
         result.payment_type = convertPaymentType(rust_result.payment_type);
 

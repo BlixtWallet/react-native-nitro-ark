@@ -801,6 +801,7 @@ namespace bark_cxx {
   enum class PaymentTypes : ::std::uint8_t;
   struct NewAddressResult;
   struct Bolt11PaymentResult;
+  struct Bolt12PaymentResult;
   struct LnurlPaymentResult;
   struct ArkoorPaymentResult;
   struct OnchainPaymentResult;
@@ -835,9 +836,10 @@ struct BarkVtxo final {
 #define CXXBRIDGE1_ENUM_bark_cxx$PaymentTypes
 enum class PaymentTypes : ::std::uint8_t {
   Bolt11 = 0,
-  Lnurl = 1,
-  Arkoor = 2,
-  Onchain = 3,
+  Bolt12 = 1,
+  Lnurl = 2,
+  Arkoor = 3,
+  Onchain = 4,
 };
 #endif // CXXBRIDGE1_ENUM_bark_cxx$PaymentTypes
 
@@ -862,6 +864,17 @@ struct Bolt11PaymentResult final {
   using IsRelocatable = ::std::true_type;
 };
 #endif // CXXBRIDGE1_STRUCT_bark_cxx$Bolt11PaymentResult
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$Bolt12PaymentResult
+#define CXXBRIDGE1_STRUCT_bark_cxx$Bolt12PaymentResult
+struct Bolt12PaymentResult final {
+  ::rust::String bolt12_offer;
+  ::rust::String preimage;
+  ::bark_cxx::PaymentTypes payment_type;
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$Bolt12PaymentResult
 
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$LnurlPaymentResult
 #define CXXBRIDGE1_STRUCT_bark_cxx$LnurlPaymentResult
@@ -1075,6 +1088,8 @@ void validate_arkoor_address(::rust::Str address);
 ::bark_cxx::ArkoorPaymentResult send_arkoor_payment(::rust::Str destination, ::std::uint64_t amount_sat);
 
 ::bark_cxx::Bolt11PaymentResult send_lightning_payment(::rust::Str destination, ::std::uint64_t const *amount_sat);
+
+::bark_cxx::Bolt12PaymentResult pay_offer(::rust::Str offer, ::std::uint64_t const *amount_sat);
 
 ::bark_cxx::LnurlPaymentResult send_lnaddr(::rust::Str addr, ::std::uint64_t amount_sat, ::rust::Str comment);
 

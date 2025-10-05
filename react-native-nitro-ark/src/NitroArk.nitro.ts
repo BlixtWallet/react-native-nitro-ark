@@ -50,7 +50,7 @@ interface BarkVtxo {
   state: string;
 }
 
-export type PaymentTypes = 'Bolt11' | 'Lnurl' | 'Arkoor' | 'Onchain';
+export type PaymentTypes = 'Bolt11' | 'Bolt12' | 'Lnurl' | 'Arkoor' | 'Onchain';
 
 export interface ArkoorPaymentResult {
   amount_sat: number; // u64
@@ -63,6 +63,12 @@ export interface LightningPaymentResult {
   bolt11_invoice: string;
   preimage: string;
   payment_type: PaymentTypes; // 'Lightning'
+}
+
+export interface Bolt12PaymentResult {
+  bolt12_offer: string;
+  preimage: string;
+  payment_type: PaymentTypes; // 'Bolt12'
 }
 
 export interface LnurlPaymentResult {
@@ -191,6 +197,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
     destination: string,
     amountSat?: number
   ): Promise<LightningPaymentResult>;
+  payOffer(offer: string, amountSat?: number): Promise<Bolt12PaymentResult>;
   sendLnaddr(
     addr: string,
     amountSat: number,

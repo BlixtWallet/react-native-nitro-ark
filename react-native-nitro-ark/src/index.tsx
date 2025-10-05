@@ -6,6 +6,7 @@ import type {
   BarkSendManyOutput,
   ArkoorPaymentResult,
   LightningPaymentResult,
+  Bolt12PaymentResult,
   LnurlPaymentResult,
   OnchainPaymentResult,
   OffchainBalanceResult,
@@ -376,6 +377,19 @@ export function sendLightningPayment(
   amountSat?: number
 ): Promise<LightningPaymentResult> {
   return NitroArkHybridObject.sendLightningPayment(destination, amountSat);
+}
+
+/**
+ * Sends a payment to a Bolt12 offer.
+ * @param offer The Bolt12 offer.
+ * @param amountSat The amount in satoshis to send. Use 0 for invoice amount.
+ * @returns A promise resolving to a Bolt12PaymentResult object
+ */
+export function payOffer(
+  offer: string,
+  amountSat?: number
+): Promise<Bolt12PaymentResult> {
+  return NitroArkHybridObject.payOffer(offer, amountSat);
 }
 
 /**

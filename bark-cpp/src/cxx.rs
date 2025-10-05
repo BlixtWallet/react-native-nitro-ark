@@ -1,6 +1,6 @@
 use crate::cxx::ffi::{
-    ArkoorPaymentResult, BarkVtxo, Bolt11PaymentResult, LnurlPaymentResult, OnchainPaymentResult,
-    PaymentTypes,
+    ArkoorPaymentResult, BarkVtxo, Bolt11PaymentResult, Bolt12PaymentResult, LnurlPaymentResult,
+    OnchainPaymentResult, PaymentTypes,
 };
 use crate::{utils, TOKIO_RUNTIME};
 use anyhow::{bail, Context, Ok};
@@ -29,6 +29,7 @@ pub(crate) mod ffi {
 
     pub enum PaymentTypes {
         Bolt11,
+        Bolt12,
         Lnurl,
         Arkoor,
         Onchain,
@@ -42,6 +43,12 @@ pub(crate) mod ffi {
 
     pub struct Bolt11PaymentResult {
         bolt11_invoice: String,
+        preimage: String,
+        payment_type: PaymentTypes,
+    }
+
+    pub struct Bolt12PaymentResult {
+        bolt12_offer: String,
         preimage: String,
         payment_type: PaymentTypes,
     }
@@ -186,6 +193,7 @@ pub(crate) mod ffi {
             destination: &str,
             amount_sat: *const u64,
         ) -> Result<Bolt11PaymentResult>;
+        unsafe fn pay_offer(offer: &str, amount_sat: *const u64) -> Result<Bolt12PaymentResult>;
         fn send_lnaddr(addr: &str, amount_sat: u64, comment: &str) -> Result<LnurlPaymentResult>;
         fn send_round_onchain_payment(destination: &str, amount_sat: u64) -> Result<String>;
         fn offboard_specific(vtxo_ids: Vec<String>, destination_address: &str) -> Result<String>;
@@ -476,6 +484,27 @@ pub(crate) fn send_lightning_payment(
         preimage,
         bolt11_invoice: destination.to_string(),
         payment_type: PaymentTypes::Bolt11,
+    })
+}
+
+pub(crate) fn pay_offer(
+    offer: &str,
+    amount_sat: *const u64,
+) -> anyhow::Result<Bolt12PaymentResult> {
+    let amount_opt = match unsafe { amount_sat.as_ref().map(|r| *r) } {
+        Some(amount) => Some(bark::ark::bitcoin::Amount::from_sat(amount)),
+        None => None,
+    };
+
+    let offer = lightning::Offer::from_str(offer).expect("Invalid Bolt 12 offer string");
+
+    let (_, preimage) =
+        crate::TOKIO_RUNTIME.block_on(crate::pay_offer(offer.clone(), amount_opt))?;
+
+    Ok(Bolt12PaymentResult {
+        preimage: preimage.to_lower_hex_string(),
+        bolt12_offer: offer.to_string(),
+        payment_type: PaymentTypes::Bolt12,
     })
 }
 
