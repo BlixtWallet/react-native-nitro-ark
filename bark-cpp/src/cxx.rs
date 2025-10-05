@@ -10,6 +10,7 @@ use bark::ark::lightning;
 use bdk_wallet::bitcoin::{self, network, FeeRate};
 use bip39::Mnemonic;
 use logger::log::{self, info};
+use std::fmt::format;
 use std::path::Path;
 use std::str::FromStr;
 
@@ -514,7 +515,8 @@ pub(crate) fn pay_offer(
         None => None,
     };
 
-    let offer = lightning::Offer::from_str(offer).expect("Invalid Bolt 12 offer string");
+    let offer = lightning::Offer::from_str(offer)
+        .map_err(|err| anyhow::anyhow!("Failed to parse bolt12 offer: {:?}", err))?;
 
     let (_, preimage) =
         crate::TOKIO_RUNTIME.block_on(crate::pay_offer(offer.clone(), amount_opt))?;
