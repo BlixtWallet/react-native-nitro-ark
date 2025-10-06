@@ -133,9 +133,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.99"
+version = "1.0.100"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0674a1ddeecb70197781e945de4b3b8ffb61fa939a5597bcf48503737663100"
+checksum = "a23eb6b1614318a8071c9b2521f36b424b2c83db5eb3a0fead4a6c0809af6e61"
 dependencies = [
  "backtrace",
 ]
@@ -143,7 +143,7 @@ dependencies = [
 [[package]]
 name = "ark-lib"
 version = "0.0.0-alpha"
-source = "git+https://codeberg.org/ark-bitcoin/bark.git?rev=5808b72ef2#5808b72ef231b93bd6734eab9fae3449f34d7b95"
+source = "git+https://codeberg.org/ark-bitcoin/bark.git?rev=f21cff62a2#f21cff62a24e96d62a0d98fac203c1e613c61e65"
 dependencies = [
  "bark-bitcoin-ext",
  "bitcoin",
@@ -249,7 +249,7 @@ dependencies = [
 [[package]]
 name = "bark-bitcoin-ext"
 version = "0.0.0"
-source = "git+https://codeberg.org/ark-bitcoin/bark.git?rev=5808b72ef2#5808b72ef231b93bd6734eab9fae3449f34d7b95"
+source = "git+https://codeberg.org/ark-bitcoin/bark.git?rev=f21cff62a2#f21cff62a24e96d62a0d98fac203c1e613c61e65"
 dependencies = [
  "async-trait",
  "bdk_bitcoind_rpc 0.21.0",
@@ -288,7 +288,7 @@ dependencies = [
 [[package]]
 name = "bark-json"
 version = "0.0.0"
-source = "git+https://codeberg.org/ark-bitcoin/bark.git?rev=5808b72ef2#5808b72ef231b93bd6734eab9fae3449f34d7b95"
+source = "git+https://codeberg.org/ark-bitcoin/bark.git?rev=f21cff62a2#f21cff62a24e96d62a0d98fac203c1e613c61e65"
 dependencies = [
  "ark-lib",
  "bark-bitcoin-ext",
@@ -301,7 +301,7 @@ dependencies = [
 [[package]]
 name = "bark-server-rpc"
 version = "0.0.0-alpha"
-source = "git+https://codeberg.org/ark-bitcoin/bark.git?rev=5808b72ef2#5808b72ef231b93bd6734eab9fae3449f34d7b95"
+source = "git+https://codeberg.org/ark-bitcoin/bark.git?rev=f21cff62a2#f21cff62a24e96d62a0d98fac203c1e613c61e65"
 dependencies = [
  "ark-lib",
  "bitcoin",
@@ -318,7 +318,7 @@ dependencies = [
 [[package]]
 name = "bark-wallet"
 version = "0.0.0-alpha"
-source = "git+https://codeberg.org/ark-bitcoin/bark.git?rev=5808b72ef2#5808b72ef231b93bd6734eab9fae3449f34d7b95"
+source = "git+https://codeberg.org/ark-bitcoin/bark.git?rev=f21cff62a2#f21cff62a24e96d62a0d98fac203c1e613c61e65"
 dependencies = [
  "anyhow",
  "ark-lib",
@@ -721,11 +721,12 @@ dependencies = [
 
 [[package]]
 name = "cxx"
-version = "1.0.169"
+version = "1.0.186"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df881e2764e20d320c9c8ddd8670018b1abaa2557e73811f03d5b2643da671d7"
+checksum = "4e9c4fe7f2f5dc5c62871a1b43992d197da6fa1394656a94276ac2894a90a6fe"
 dependencies = [
  "cc",
+ "cxx-build",
  "cxxbridge-cmd",
  "cxxbridge-flags",
  "cxxbridge-macro",
@@ -735,9 +736,9 @@ dependencies = [
 
 [[package]]
 name = "cxx-build"
-version = "1.0.169"
+version = "1.0.186"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "acef58f684c0c9b7bffc111657c9f1364e4fa47af46fd7f03b71b7a4066ac372"
+checksum = "b5cf2909d37d80633ddd208676fc27c2608a7f035fff69c882421168038b26dd"
 dependencies = [
  "cc",
  "codespan-reporting",
@@ -750,9 +751,9 @@ dependencies = [
 
 [[package]]
 name = "cxxbridge-cmd"
-version = "1.0.169"
+version = "1.0.186"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "669616995d33251cb7215f96820d78a810ee218573246830fb96f29961e1712a"
+checksum = "077f5ee3d3bfd8d27f83208fdaa96ddd50af7f096c77077cc4b94da10bfacefd"
 dependencies = [
  "clap",
  "codespan-reporting",
@@ -764,15 +765,15 @@ dependencies = [
 
 [[package]]
 name = "cxxbridge-flags"
-version = "1.0.169"
+version = "1.0.186"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9aebcb754a24722d34e7f4e021376862179194cc5ec83ded2dd84b9db36be106"
+checksum = "b0108748615125b9f2e915dfafdffcbdabbca9b15102834f6d7e9a768f2f2864"
 
 [[package]]
 name = "cxxbridge-macro"
-version = "1.0.169"
+version = "1.0.186"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3ea9594efbebf2f822925b6368eea741dd2677bb411313e50c2de8ba8c3d3a62"
+checksum = "e6e896681ef9b8dc462cfa6961d61909704bde0984b30bcb4082fe102b478890"
 dependencies = [
  "indexmap",
  "proc-macro2",
@@ -1610,9 +1611,9 @@ dependencies = [
 
 [[package]]
 name = "link-cplusplus"
-version = "1.0.10"
+version = "1.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4a6f6da007f968f9def0d65a05b187e2960183de70c160204ecfccf0ee330212"
+checksum = "7f78c730aaa7d0b9336a299029ea49f9ee53b0ed06e9202e8cb7db9bae7b8c82"
 dependencies = [
  "cc",
 ]
@@ -2363,18 +2364,28 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.219"
+version = "1.0.228"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f0e2c6ed6606019b4e29e69dbaba95b11854410e5347d525002456dbbb786b6"
+checksum = "9a8e94ea7f378bd32cbbd37198a4a91436180c5bb472411e48b5ec2e2124ae9e"
+dependencies = [
+ "serde_core",
+ "serde_derive",
+]
+
+[[package]]
+name = "serde_core"
+version = "1.0.228"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41d385c7d4ca58e59fc732af25c3983b67ac852c1a25000afe1175de458b67ad"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.219"
+version = "1.0.228"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b0276cf7f2c73365f7157c8123c21cd9a50fbbd844757af28ca1f5925fc2a00"
+checksum = "d540f220d3187173da220f885ab66608367b6574e925011a9353e4badda91d79"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2392,14 +2403,15 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.143"
+version = "1.0.145"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d401abef1d108fbd9cbaebc3e46611f4b1021f714a0597a71f41ee463f5f4a5a"
+checksum = "402a6f66d8c709116cf22f558eab210f5a50187f702eb4d7e5ef38d9a7f1c79c"
 dependencies = [
  "itoa",
  "memchr",
  "ryu",
  "serde",
+ "serde_core",
 ]
 
 [[package]]
@@ -2590,9 +2602,9 @@ dependencies = [
 
 [[package]]
 name = "tempfile"
-version = "3.21.0"
+version = "3.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15b61f8f20e3a6f7e0649d825294eaf317edce30f82cf6026e7e4cb9222a7d1e"
+checksum = "2d31c77bdf42a745371d260a26ca7163f1e0924b64afa0b688e61b5a9fa02f16"
 dependencies = [
  "fastrand",
  "getrandom 0.3.3",
