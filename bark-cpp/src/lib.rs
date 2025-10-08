@@ -18,6 +18,7 @@ use bark::ark::Vtxo;
 use bark::ark::VtxoId;
 use bark::lightning_invoice::Bolt11Invoice;
 use bark::lnurllib::lightning_address::LightningAddress;
+use bark::movement::Movement;
 use bark::onchain::OnchainWallet;
 use bark::persist::models::LightningReceive;
 use bark::persist::BarkPersister;
@@ -460,7 +461,12 @@ pub async fn sync() -> anyhow::Result<()> {
         .await
 }
 
-pub async fn get_vtxos() -> anyhow::Result<Vec<WalletVtxo>> {
+pub async fn movements(pagination: Pagination) -> anyhow::Result<Vec<Movement>> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager.with_context(|ctx| Ok(ctx.wallet.movements(pagination)?))
+}
+
+pub async fn vtxos() -> anyhow::Result<Vec<WalletVtxo>> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager.with_context(|ctx| Ok(ctx.wallet.vtxos()?))
 }

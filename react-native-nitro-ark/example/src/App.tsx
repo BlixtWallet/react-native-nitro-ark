@@ -501,7 +501,7 @@ export default function ArkApp() {
       setError((prev) => ({ ...prev, walletInfo: 'Mnemonic required' }));
       return;
     }
-    runOperation('getVtxos', () => NitroArk.getVtxos(), 'walletInfo');
+    runOperation('vtxos', () => NitroArk.vtxos(), 'walletInfo');
   };
 
   const handleGetExpiringVtxos = () => {
@@ -538,6 +538,14 @@ export default function ArkApp() {
       () => NitroArk.getNextRequiredRefreshBlockheight(),
       'walletInfo'
     );
+  };
+
+  const handleGetMovements = () => {
+    if (!mnemonic) {
+      setError((prev) => ({ ...prev, walletInfo: 'Mnemonic required' }));
+      return;
+    }
+    runOperation('movements', () => NitroArk.movements(0, 10), 'walletInfo');
   };
 
   const handleSendOnchain = () => {
@@ -1085,11 +1093,12 @@ export default function ArkApp() {
               handleNewAddress
             )}
             {renderOperationButton('Get Onchain UTXOs', handleGetOnchainUtxos)}
-            {renderOperationButton('Get VTXOs', handleGetVtxos)}
+            {renderOperationButton('VTXOs', handleGetVtxos)}
             {renderOperationButton(
               'Get Expiring VTXOs',
               handleGetExpiringVtxos
             )}
+            {renderOperationButton('Get Movements', handleGetMovements)}
             {renderOperationButton(
               'Get First Expiring VTXO Blockheight',
               handleGetFirstExpiringVtxoBlockheight

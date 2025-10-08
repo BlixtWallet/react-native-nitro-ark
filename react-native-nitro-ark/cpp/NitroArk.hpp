@@ -29,7 +29,28 @@ inline PaymentTypes convertPaymentType(bark_cxx::PaymentTypes type) {
   }
 }
 
+// Helper function to convert rust vtxos vector to C++ vector
+inline std::vector<BarkVtxo> convertRustVtxosToVector(const rust::Vec<bark_cxx::BarkVtxo>& rust_vtxos) {
+  std::vector<BarkVtxo> vtxos;
+  vtxos.reserve(rust_vtxos.size());
+
+  for (const auto& vtxo_rs : rust_vtxos) {
+    BarkVtxo vtxo;
+    vtxo.amount = static_cast<double>(vtxo_rs.amount);
+    vtxo.expiry_height = static_cast<double>(vtxo_rs.expiry_height);
+    vtxo.server_pubkey = std::string(vtxo_rs.server_pubkey.data(), vtxo_rs.server_pubkey.length());
+    vtxo.exit_delta = static_cast<double>(vtxo_rs.exit_delta);
+    vtxo.anchor_point = std::string(vtxo_rs.anchor_point.data(), vtxo_rs.anchor_point.length());
+    vtxo.point = std::string(vtxo_rs.point.data(), vtxo_rs.point.length());
+    vtxo.state = std::string(vtxo_rs.state.data(), vtxo_rs.state.length());
+    vtxos.push_back(std::move(vtxo));
+  }
+
+  return vtxos;
+}
+
 class NitroArk : public HybridNitroArkSpec {
+
 private:
   // Helper function to create ConfigOpts from BarkConfigOpts
   static bark_cxx::ConfigOpts createConfigOpts(const std::optional<BarkConfigOpts>& config) {
@@ -339,23 +360,52 @@ public:
     });
   }
 
-  std::shared_ptr<Promise<std::vector<BarkVtxo>>> getVtxos() override {
+  std::shared_ptr<Promise<std::vector<BarkMovement>>> movements(double pageIndex, double pageSize) override {
+    return Promise<std::vector<BarkMovement>>::async([pageIndex, pageSize]() {
+      try {
+        rust::Vec<bark_cxx::BarkMovement> movements_rs =
+            bark_cxx::movements(static_cast<uint16_t>(pageIndex), static_cast<uint16_t>(pageSize));
+
+        std::vector<BarkMovement> movements;
+        movements.reserve(movements_rs.size());
+
+        for (const auto& movement_rs : movements_rs) {
+          BarkMovement movement;
+          movement.id = static_cast<double>(movement_rs.id);
+          movement.kind = std::string(movement_rs.kind.data(), movement_rs.kind.length());
+          movement.fees = static_cast<double>(movement_rs.fees);
+          movement.created_at = std::string(movement_rs.created_at.data(), movement_rs.created_at.length());
+
+          // Convert spends
+          movement.spends = convertRustVtxosToVector(movement_rs.spends);
+
+          // Convert receives
+          movement.receives = convertRustVtxosToVector(movement_rs.receives);
+
+          // Convert recipients
+          movement.recipients.reserve(movement_rs.recipients.size());
+          for (const auto& recipient_rs : movement_rs.recipients) {
+            BarkMovementRecipient recipient;
+            recipient.recipient = std::string(recipient_rs.recipient.data(), recipient_rs.recipient.length());
+            recipient.amount_sat = static_cast<double>(recipient_rs.amount_sat);
+            movement.recipients.push_back(std::move(recipient));
+          }
+
+          movements.push_back(std::move(movement));
+        }
+
+        return movements;
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<std::vector<BarkVtxo>>> vtxos() override {
     return Promise<std::vector<BarkVtxo>>::async([]() {
       try {
-        rust::Vec<bark_cxx::BarkVtxo> rust_vtxos = bark_cxx::get_vtxos();
-        std::vector<BarkVtxo> vtxos;
-        for (const auto& rust_vtxo : rust_vtxos) {
-          BarkVtxo vtxo;
-          vtxo.amount = static_cast<double>(rust_vtxo.amount);
-          vtxo.expiry_height = static_cast<double>(rust_vtxo.expiry_height);
-          vtxo.server_pubkey = std::string(rust_vtxo.server_pubkey.data(), rust_vtxo.server_pubkey.length());
-          vtxo.exit_delta = static_cast<double>(rust_vtxo.exit_delta);
-          vtxo.anchor_point = std::string(rust_vtxo.anchor_point.data(), rust_vtxo.anchor_point.length());
-          vtxo.point = std::string(rust_vtxo.point.data(), rust_vtxo.point.length());
-          vtxo.state = std::string(rust_vtxo.state.data(), rust_vtxo.state.length());
-          vtxos.push_back(vtxo);
-        }
-        return vtxos;
+        rust::Vec<bark_cxx::BarkVtxo> rust_vtxos = bark_cxx::vtxos();
+        return convertRustVtxosToVector(rust_vtxos);
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
@@ -366,19 +416,7 @@ public:
     return Promise<std::vector<BarkVtxo>>::async([threshold]() {
       try {
         rust::Vec<bark_cxx::BarkVtxo> rust_vtxos = bark_cxx::get_expiring_vtxos(static_cast<uint32_t>(threshold));
-        std::vector<BarkVtxo> vtxos;
-        for (const auto& rust_vtxo : rust_vtxos) {
-          BarkVtxo vtxo;
-          vtxo.amount = static_cast<double>(rust_vtxo.amount);
-          vtxo.expiry_height = static_cast<double>(rust_vtxo.expiry_height);
-          vtxo.server_pubkey = std::string(rust_vtxo.server_pubkey.data(), rust_vtxo.server_pubkey.length());
-          vtxo.exit_delta = static_cast<double>(rust_vtxo.exit_delta);
-          vtxo.anchor_point = std::string(rust_vtxo.anchor_point.data(), rust_vtxo.anchor_point.length());
-          vtxo.point = std::string(rust_vtxo.point.data(), rust_vtxo.point.length());
-          vtxo.state = std::string(rust_vtxo.state.data(), rust_vtxo.state.length());
-          vtxos.push_back(vtxo);
-        }
-        return vtxos;
+        return convertRustVtxosToVector(rust_vtxos);
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
@@ -750,19 +788,7 @@ public:
             std::string(rust_result.destination_pubkey.data(), rust_result.destination_pubkey.length());
         result.payment_type = convertPaymentType(rust_result.payment_type);
 
-        std::vector<BarkVtxo> vtxos;
-        for (const auto& rust_vtxo : rust_result.vtxos) {
-          BarkVtxo vtxo;
-          vtxo.amount = static_cast<double>(rust_vtxo.amount);
-          vtxo.expiry_height = static_cast<double>(rust_vtxo.expiry_height);
-          vtxo.server_pubkey = std::string(rust_vtxo.server_pubkey.data(), rust_vtxo.server_pubkey.length());
-          vtxo.exit_delta = static_cast<double>(rust_vtxo.exit_delta);
-          vtxo.anchor_point = std::string(rust_vtxo.anchor_point.data(), rust_vtxo.anchor_point.length());
-          vtxo.point = std::string(rust_vtxo.point.data(), rust_vtxo.point.length());
-          vtxo.state = std::string(rust_vtxo.state.data(), rust_vtxo.state.length());
-          vtxos.push_back(vtxo);
-        }
-        result.vtxos = vtxos;
+        result.vtxos = convertRustVtxosToVector(rust_result.vtxos);
 
         return result;
       } catch (const rust::Error& e) {
