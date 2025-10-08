@@ -5,16 +5,32 @@ import type {
   BarkArkInfo,
   BarkSendManyOutput,
   ArkoorPaymentResult,
-  LightningPaymentResult,
+  Bolt11PaymentResult,
+  Bolt12PaymentResult,
   LnurlPaymentResult,
   OnchainPaymentResult,
-  BarkVtxo,
   OffchainBalanceResult,
   OnchainBalanceResult,
   NewAddressResult,
   KeyPairResult,
   LightningReceive,
 } from './NitroArk.nitro';
+
+export type BarkVtxo = {
+  amount: number; // u64
+  expiry_height: number; // u32
+  server_pubkey: string;
+  exit_delta: number; // u16
+  anchor_point: string;
+  point: string;
+  state:
+    | 'Spendable'
+    | 'Spent'
+    | 'UnregisteredBoard'
+    | 'PendingLightningSend'
+    | 'PendingLightningRecv'
+    | 'Unknown';
+};
 
 // Create the hybrid object instance
 export const NitroArkHybridObject =
@@ -74,11 +90,27 @@ export function isWalletLoaded(): Promise<boolean> {
 }
 
 /**
+ * Registers all confirmed boards.
+ * @returns A promise that resolves on success.
+ */
+export function registerAllConfirmedBoards(): Promise<void> {
+  return NitroArkHybridObject.registerAllConfirmedBoards();
+}
+
+/**
  * Runs wallet maintenance tasks.
  * @returns A promise that resolves on success.
  */
 export function maintenance(): Promise<void> {
   return NitroArkHybridObject.maintenance();
+}
+
+/**
+ * Runs wallet maintenance tasks with onchain data.
+ * @returns A promise that resolves on success.
+ */
+export function maintenanceWithOnchain(): Promise<void> {
+  return NitroArkHybridObject.maintenanceWithOnchain();
 }
 
 /**
@@ -229,7 +261,25 @@ export function verifyMessage(
  * @returns A promise resolving BarkVtxo[] array.
  */
 export function getVtxos(): Promise<BarkVtxo[]> {
-  return NitroArkHybridObject.getVtxos();
+  return NitroArkHybridObject.getVtxos() as Promise<BarkVtxo[]>;
+}
+
+/**
+ * Gets the first expiring VTXO blockheight for the loaded wallet.
+ * @returns A promise resolving to the first expiring VTXO blockheight.
+ */
+export function getFirstExpiringVtxoBlockheight(): Promise<number | undefined> {
+  return NitroArkHybridObject.getFirstExpiringVtxoBlockheight();
+}
+
+/**
+ * Gets the next required refresh blockheight for the loaded wallet for the first expiring VTXO.
+ * @returns A promise resolving to the next required refresh blockheight.
+ */
+export function getNextRequiredRefreshBlockheight(): Promise<
+  number | undefined
+> {
+  return NitroArkHybridObject.getNextRequiredRefreshBlockheight();
 }
 
 /**
@@ -239,7 +289,9 @@ export function getVtxos(): Promise<BarkVtxo[]> {
  */
 
 export function getExpiringVtxos(threshold: number): Promise<BarkVtxo[]> {
-  return NitroArkHybridObject.getExpiringVtxos(threshold);
+  return NitroArkHybridObject.getExpiringVtxos(threshold) as Promise<
+    BarkVtxo[]
+  >;
 }
 
 // --- Onchain Operations ---
@@ -330,14 +382,26 @@ export function bolt11Invoice(amountMsat: number): Promise<string> {
 
 /**
  * Gets the status of a Lightning receive.
- * @param payment The payment hash of the Lightning receive.
+ * @param paymentHash The payment hash of the Lightning receive.
  * @returns A promise resolving to the Lightning receive status.
  */
-
 export function lightningReceiveStatus(
-  payment: string
+  paymentHash: string
 ): Promise<LightningReceive | undefined> {
-  return NitroArkHybridObject.lightningReceiveStatus(payment);
+  return NitroArkHybridObject.lightningReceiveStatus(paymentHash);
+}
+
+/**
+ * Gets a page of Lightning receives.
+ * @param pageSize The number of items to retrieve.
+ * @param pageIndex The index of the page to retrieve.
+ * @returns A promise resolving to an array of Lightning receives.
+ */
+export function lightningReceives(
+  pageSize: number,
+  pageIndex: number
+): Promise<LightningReceive[]> {
+  return NitroArkHybridObject.lightningReceives(pageSize, pageIndex);
 }
 
 /**
@@ -353,13 +417,26 @@ export function finishLightningReceive(bolt11: string): Promise<void> {
  * Sends a Lightning payment.
  * @param destination The Lightning invoice.
  * @param amountSat The amount in satoshis to send. Use 0 for invoice amount.
- * @returns A promise resolving to a LightningPaymentResult object
+ * @returns A promise resolving to a Bolt11PaymentResult object
  */
 export function sendLightningPayment(
   destination: string,
   amountSat?: number
-): Promise<LightningPaymentResult> {
+): Promise<Bolt11PaymentResult> {
   return NitroArkHybridObject.sendLightningPayment(destination, amountSat);
+}
+
+/**
+ * Sends a payment to a Bolt12 offer.
+ * @param offer The Bolt12 offer.
+ * @param amountSat The amount in satoshis to send. Use 0 for invoice amount.
+ * @returns A promise resolving to a Bolt12PaymentResult object
+ */
+export function payOffer(
+  offer: string,
+  amountSat?: number
+): Promise<Bolt12PaymentResult> {
+  return NitroArkHybridObject.payOffer(offer, amountSat);
 }
 
 /**
@@ -465,7 +542,7 @@ export type {
   BarkArkInfo,
   BarkSendManyOutput,
   ArkoorPaymentResult,
-  LightningPaymentResult,
+  Bolt11PaymentResult,
   LnurlPaymentResult,
   OnchainPaymentResult,
   PaymentTypes,

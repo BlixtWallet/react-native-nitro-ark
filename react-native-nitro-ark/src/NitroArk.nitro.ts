@@ -40,16 +40,17 @@ export interface BarkSendManyOutput {
   amountSat: number; // uint64_t -> number
 }
 
-export interface BarkVtxo {
+interface BarkVtxo {
   amount: number; // u64
   expiry_height: number; // u32
   server_pubkey: string;
   exit_delta: number; // u16
   anchor_point: string;
   point: string;
+  state: string;
 }
 
-export type PaymentTypes = 'Bolt11' | 'Lnurl' | 'Arkoor' | 'Onchain';
+export type PaymentTypes = 'Bolt11' | 'Bolt12' | 'Lnurl' | 'Arkoor' | 'Onchain';
 
 export interface ArkoorPaymentResult {
   amount_sat: number; // u64
@@ -58,10 +59,16 @@ export interface ArkoorPaymentResult {
   payment_type: PaymentTypes; // 'Arkoor'
 }
 
-export interface LightningPaymentResult {
+export interface Bolt11PaymentResult {
   bolt11_invoice: string;
   preimage: string;
   payment_type: PaymentTypes; // 'Lightning'
+}
+
+export interface Bolt12PaymentResult {
+  bolt12_offer: string;
+  preimage: string;
+  payment_type: PaymentTypes; // 'Bolt12'
 }
 
 export interface LnurlPaymentResult {
@@ -123,7 +130,9 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   loadWallet(datadir: string, config: BarkCreateOpts): Promise<void>;
   isWalletLoaded(): Promise<boolean>;
   closeWallet(): Promise<void>;
+  registerAllConfirmedBoards(): Promise<void>;
   maintenance(): Promise<void>;
+  maintenanceWithOnchain(): Promise<void>;
   maintenanceRefresh(): Promise<void>;
   sync(): Promise<void>;
   syncExits(): Promise<void>;
@@ -153,6 +162,8 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
     publicKey: string
   ): Promise<boolean>;
   getVtxos(): Promise<BarkVtxo[]>;
+  getFirstExpiringVtxoBlockheight(): Promise<number | undefined>;
+  getNextRequiredRefreshBlockheight(): Promise<number | undefined>;
   getExpiringVtxos(threshold: number): Promise<BarkVtxo[]>;
 
   // --- Onchain Operations ---
@@ -189,7 +200,8 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   sendLightningPayment(
     destination: string,
     amountSat?: number
-  ): Promise<LightningPaymentResult>;
+  ): Promise<Bolt11PaymentResult>;
+  payOffer(offer: string, amountSat?: number): Promise<Bolt12PaymentResult>;
   sendLnaddr(
     addr: string,
     amountSat: number,
@@ -203,8 +215,12 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   // --- Lightning Invoicing ---
   bolt11Invoice(amountMsat: number): Promise<string>; // Returns invoice string
   lightningReceiveStatus(
-    payment: string
+    paymentHash: string
   ): Promise<LightningReceive | undefined>;
+  lightningReceives(
+    pageSize: number,
+    pageIndex: number
+  ): Promise<LightningReceive[]>;
   finishLightningReceive(bolt11: string): Promise<void>; // Throws on error
 
   // --- Offboarding / Exiting ---

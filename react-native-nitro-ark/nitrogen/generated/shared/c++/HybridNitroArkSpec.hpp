@@ -33,8 +33,10 @@ namespace margelo::nitro::nitroark { struct OnchainPaymentResult; }
 namespace margelo::nitro::nitroark { struct BarkSendManyOutput; }
 // Forward declaration of `ArkoorPaymentResult` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct ArkoorPaymentResult; }
-// Forward declaration of `LightningPaymentResult` to properly resolve imports.
-namespace margelo::nitro::nitroark { struct LightningPaymentResult; }
+// Forward declaration of `Bolt11PaymentResult` to properly resolve imports.
+namespace margelo::nitro::nitroark { struct Bolt11PaymentResult; }
+// Forward declaration of `Bolt12PaymentResult` to properly resolve imports.
+namespace margelo::nitro::nitroark { struct Bolt12PaymentResult; }
 // Forward declaration of `LnurlPaymentResult` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct LnurlPaymentResult; }
 // Forward declaration of `LightningReceive` to properly resolve imports.
@@ -49,12 +51,13 @@ namespace margelo::nitro::nitroark { struct LightningReceive; }
 #include "NewAddressResult.hpp"
 #include "BarkVtxo.hpp"
 #include <vector>
+#include <optional>
 #include "OnchainBalanceResult.hpp"
 #include "OnchainPaymentResult.hpp"
-#include <optional>
 #include "BarkSendManyOutput.hpp"
 #include "ArkoorPaymentResult.hpp"
-#include "LightningPaymentResult.hpp"
+#include "Bolt11PaymentResult.hpp"
+#include "Bolt12PaymentResult.hpp"
 #include "LnurlPaymentResult.hpp"
 #include "LightningReceive.hpp"
 
@@ -94,7 +97,9 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<void>> loadWallet(const std::string& datadir, const BarkCreateOpts& config) = 0;
       virtual std::shared_ptr<Promise<bool>> isWalletLoaded() = 0;
       virtual std::shared_ptr<Promise<void>> closeWallet() = 0;
+      virtual std::shared_ptr<Promise<void>> registerAllConfirmedBoards() = 0;
       virtual std::shared_ptr<Promise<void>> maintenance() = 0;
+      virtual std::shared_ptr<Promise<void>> maintenanceWithOnchain() = 0;
       virtual std::shared_ptr<Promise<void>> maintenanceRefresh() = 0;
       virtual std::shared_ptr<Promise<void>> sync() = 0;
       virtual std::shared_ptr<Promise<void>> syncExits() = 0;
@@ -109,6 +114,8 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<KeyPairResult>> deriveKeypairFromMnemonic(const std::string& mnemonic, const std::string& network, double index) = 0;
       virtual std::shared_ptr<Promise<bool>> verifyMessage(const std::string& message, const std::string& signature, const std::string& publicKey) = 0;
       virtual std::shared_ptr<Promise<std::vector<BarkVtxo>>> getVtxos() = 0;
+      virtual std::shared_ptr<Promise<std::optional<double>>> getFirstExpiringVtxoBlockheight() = 0;
+      virtual std::shared_ptr<Promise<std::optional<double>>> getNextRequiredRefreshBlockheight() = 0;
       virtual std::shared_ptr<Promise<std::vector<BarkVtxo>>> getExpiringVtxos(double threshold) = 0;
       virtual std::shared_ptr<Promise<OnchainBalanceResult>> onchainBalance() = 0;
       virtual std::shared_ptr<Promise<void>> onchainSync() = 0;
@@ -122,11 +129,13 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<std::string>> boardAll() = 0;
       virtual std::shared_ptr<Promise<void>> validateArkoorAddress(const std::string& address) = 0;
       virtual std::shared_ptr<Promise<ArkoorPaymentResult>> sendArkoorPayment(const std::string& destination, double amountSat) = 0;
-      virtual std::shared_ptr<Promise<LightningPaymentResult>> sendLightningPayment(const std::string& destination, std::optional<double> amountSat) = 0;
+      virtual std::shared_ptr<Promise<Bolt11PaymentResult>> sendLightningPayment(const std::string& destination, std::optional<double> amountSat) = 0;
+      virtual std::shared_ptr<Promise<Bolt12PaymentResult>> payOffer(const std::string& offer, std::optional<double> amountSat) = 0;
       virtual std::shared_ptr<Promise<LnurlPaymentResult>> sendLnaddr(const std::string& addr, double amountSat, const std::string& comment) = 0;
       virtual std::shared_ptr<Promise<std::string>> sendRoundOnchainPayment(const std::string& destination, double amountSat) = 0;
       virtual std::shared_ptr<Promise<std::string>> bolt11Invoice(double amountMsat) = 0;
-      virtual std::shared_ptr<Promise<std::optional<LightningReceive>>> lightningReceiveStatus(const std::string& payment) = 0;
+      virtual std::shared_ptr<Promise<std::optional<LightningReceive>>> lightningReceiveStatus(const std::string& paymentHash) = 0;
+      virtual std::shared_ptr<Promise<std::vector<LightningReceive>>> lightningReceives(double pageSize, double pageIndex) = 0;
       virtual std::shared_ptr<Promise<void>> finishLightningReceive(const std::string& bolt11) = 0;
       virtual std::shared_ptr<Promise<std::string>> offboardSpecific(const std::vector<std::string>& vtxoIds, const std::string& destinationAddress) = 0;
       virtual std::shared_ptr<Promise<std::string>> offboardAll(const std::string& destinationAddress) = 0;

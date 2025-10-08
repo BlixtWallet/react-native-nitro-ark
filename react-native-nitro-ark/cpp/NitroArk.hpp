@@ -16,6 +16,8 @@ inline PaymentTypes convertPaymentType(bark_cxx::PaymentTypes type) {
   switch (type) {
     case bark_cxx::PaymentTypes::Bolt11:
       return PaymentTypes::BOLT11;
+    case bark_cxx::PaymentTypes::Bolt12:
+      return PaymentTypes::BOLT12;
     case bark_cxx::PaymentTypes::Lnurl:
       return PaymentTypes::LNURL;
     case bark_cxx::PaymentTypes::Arkoor:
@@ -131,10 +133,30 @@ public:
     return Promise<bool>::async([]() { return bark_cxx::is_wallet_loaded(); });
   }
 
+  std::shared_ptr<Promise<void>> registerAllConfirmedBoards() override {
+    return Promise<void>::async([]() {
+      try {
+        bark_cxx::register_all_confirmed_boards();
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   std::shared_ptr<Promise<void>> maintenance() override {
     return Promise<void>::async([]() {
       try {
         bark_cxx::maintenance();
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<void>> maintenanceWithOnchain() override {
+    return Promise<void>::async([]() {
+      try {
+        bark_cxx::maintenance_with_onchain();
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
@@ -330,6 +352,7 @@ public:
           vtxo.exit_delta = static_cast<double>(rust_vtxo.exit_delta);
           vtxo.anchor_point = std::string(rust_vtxo.anchor_point.data(), rust_vtxo.anchor_point.length());
           vtxo.point = std::string(rust_vtxo.point.data(), rust_vtxo.point.length());
+          vtxo.state = std::string(rust_vtxo.state.data(), rust_vtxo.state.length());
           vtxos.push_back(vtxo);
         }
         return vtxos;
@@ -352,9 +375,42 @@ public:
           vtxo.exit_delta = static_cast<double>(rust_vtxo.exit_delta);
           vtxo.anchor_point = std::string(rust_vtxo.anchor_point.data(), rust_vtxo.anchor_point.length());
           vtxo.point = std::string(rust_vtxo.point.data(), rust_vtxo.point.length());
+          vtxo.state = std::string(rust_vtxo.state.data(), rust_vtxo.state.length());
           vtxos.push_back(vtxo);
         }
         return vtxos;
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<std::optional<double>>> getFirstExpiringVtxoBlockheight() override {
+    return Promise<std::optional<double>>::async([]() {
+      try {
+        const uint32_t* result_ptr = bark_cxx::get_first_expiring_vtxo_blockheight();
+        if (result_ptr == nullptr) {
+          return std::optional<double>(std::nullopt);
+        }
+        double value = static_cast<double>(*result_ptr);
+        delete result_ptr; // Free the heap-allocated memory from Rust
+        return std::optional<double>(value);
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<std::optional<double>>> getNextRequiredRefreshBlockheight() override {
+    return Promise<std::optional<double>>::async([]() {
+      try {
+        const uint32_t* result_ptr = bark_cxx::get_next_required_refresh_blockheight();
+        if (result_ptr == nullptr) {
+          return std::optional<double>(std::nullopt);
+        }
+        double value = static_cast<double>(*result_ptr);
+        delete result_ptr; // Free the heap-allocated memory from Rust
+        return std::optional<double>(value);
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
@@ -493,9 +549,9 @@ public:
 
   // --- Lightning Operations ---
 
-  std::shared_ptr<Promise<LightningPaymentResult>> sendLightningPayment(const std::string& destination,
-                                                                        std::optional<double> amountSat) override {
-    return Promise<LightningPaymentResult>::async([destination, amountSat]() {
+  std::shared_ptr<Promise<Bolt11PaymentResult>> sendLightningPayment(const std::string& destination,
+                                                                     std::optional<double> amountSat) override {
+    return Promise<Bolt11PaymentResult>::async([destination, amountSat]() {
       try {
         bark_cxx::Bolt11PaymentResult rust_result;
         if (amountSat.has_value()) {
@@ -505,8 +561,32 @@ public:
           rust_result = bark_cxx::send_lightning_payment(destination, nullptr);
         }
 
-        LightningPaymentResult result;
+        Bolt11PaymentResult result;
         result.bolt11_invoice = std::string(rust_result.bolt11_invoice.data(), rust_result.bolt11_invoice.length());
+        result.preimage = std::string(rust_result.preimage.data(), rust_result.preimage.length());
+        result.payment_type = convertPaymentType(rust_result.payment_type);
+
+        return result;
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<Bolt12PaymentResult>> payOffer(const std::string& bolt12,
+                                                         std::optional<double> amountSat) override {
+    return Promise<Bolt12PaymentResult>::async([bolt12, amountSat]() {
+      try {
+        bark_cxx::Bolt12PaymentResult rust_result;
+        if (amountSat.has_value()) {
+          uint64_t amountSat_val = static_cast<uint64_t>(amountSat.value());
+          rust_result = bark_cxx::pay_offer(bolt12, &amountSat_val);
+        } else {
+          rust_result = bark_cxx::pay_offer(bolt12, nullptr);
+        }
+
+        Bolt12PaymentResult result;
+        result.bolt12_offer = std::string(rust_result.bolt12_offer.data(), rust_result.bolt12_offer.length());
         result.preimage = std::string(rust_result.preimage.data(), rust_result.preimage.length());
         result.payment_type = convertPaymentType(rust_result.payment_type);
 
@@ -559,10 +639,10 @@ public:
   }
 
   std::shared_ptr<Promise<std::optional<LightningReceive>>>
-  lightningReceiveStatus(const std::string& payment) override {
-    return Promise<std::optional<LightningReceive>>::async([payment]() {
+  lightningReceiveStatus(const std::string& paymentHash) override {
+    return Promise<std::optional<LightningReceive>>::async([paymentHash]() {
       try {
-        const bark_cxx::LightningReceive* status_ptr = bark_cxx::lightning_receive_status(payment);
+        const bark_cxx::LightningReceive* status_ptr = bark_cxx::lightning_receive_status(paymentHash);
 
         if (status_ptr == nullptr) {
           return std::optional<LightningReceive>();
@@ -577,11 +657,46 @@ public:
 
         if (status->preimage_revealed_at != nullptr) {
           result.preimage_revealed_at = static_cast<double>(*status->preimage_revealed_at);
+          delete status->preimage_revealed_at; // Free the heap-allocated memory from Rust
         } else {
           result.preimage_revealed_at = std::nullopt;
         }
 
         return std::optional<LightningReceive>(result);
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<std::vector<LightningReceive>>> lightningReceives(double pageSize,
+                                                                            double pageIndex) override {
+    return Promise<std::vector<LightningReceive>>::async([pageSize, pageIndex]() {
+      try {
+        rust::Vec<bark_cxx::LightningReceive> receives_rs =
+            bark_cxx::lightning_receives(static_cast<uint16_t>(pageIndex), static_cast<uint16_t>(pageSize));
+
+        std::vector<LightningReceive> receives;
+        receives.reserve(receives_rs.size());
+
+        for (const auto& receive_rs : receives_rs) {
+          LightningReceive receive;
+          receive.payment_hash = std::string(receive_rs.payment_hash.data(), receive_rs.payment_hash.length());
+          receive.payment_preimage =
+              std::string(receive_rs.payment_preimage.data(), receive_rs.payment_preimage.length());
+          receive.invoice = std::string(receive_rs.invoice.data(), receive_rs.invoice.length());
+
+          if (receive_rs.preimage_revealed_at != nullptr) {
+            receive.preimage_revealed_at = static_cast<double>(*receive_rs.preimage_revealed_at);
+            delete receive_rs.preimage_revealed_at;
+          } else {
+            receive.preimage_revealed_at = std::nullopt;
+          }
+
+          receives.push_back(std::move(receive));
+        }
+
+        return receives;
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
@@ -644,6 +759,7 @@ public:
           vtxo.exit_delta = static_cast<double>(rust_vtxo.exit_delta);
           vtxo.anchor_point = std::string(rust_vtxo.anchor_point.data(), rust_vtxo.anchor_point.length());
           vtxo.point = std::string(rust_vtxo.point.data(), rust_vtxo.point.length());
+          vtxo.state = std::string(rust_vtxo.state.data(), rust_vtxo.state.length());
           vtxos.push_back(vtxo);
         }
         result.vtxos = vtxos;

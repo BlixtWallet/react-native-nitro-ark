@@ -30,9 +30,10 @@ namespace margelo::nitro::nitroark {
    */
   enum class PaymentTypes {
     BOLT11      SWIFT_NAME(bolt11) = 0,
-    LNURL      SWIFT_NAME(lnurl) = 1,
-    ARKOOR      SWIFT_NAME(arkoor) = 2,
-    ONCHAIN      SWIFT_NAME(onchain) = 3,
+    BOLT12      SWIFT_NAME(bolt12) = 1,
+    LNURL      SWIFT_NAME(lnurl) = 2,
+    ARKOOR      SWIFT_NAME(arkoor) = 3,
+    ONCHAIN      SWIFT_NAME(onchain) = 4,
   } CLOSED_ENUM;
 
 } // namespace margelo::nitro::nitroark
@@ -46,6 +47,7 @@ namespace margelo::nitro {
       std::string unionValue = JSIConverter<std::string>::fromJSI(runtime, arg);
       switch (hashString(unionValue.c_str(), unionValue.size())) {
         case hashString("Bolt11"): return margelo::nitro::nitroark::PaymentTypes::BOLT11;
+        case hashString("Bolt12"): return margelo::nitro::nitroark::PaymentTypes::BOLT12;
         case hashString("Lnurl"): return margelo::nitro::nitroark::PaymentTypes::LNURL;
         case hashString("Arkoor"): return margelo::nitro::nitroark::PaymentTypes::ARKOOR;
         case hashString("Onchain"): return margelo::nitro::nitroark::PaymentTypes::ONCHAIN;
@@ -56,6 +58,7 @@ namespace margelo::nitro {
     static inline jsi::Value toJSI(jsi::Runtime& runtime, margelo::nitro::nitroark::PaymentTypes arg) {
       switch (arg) {
         case margelo::nitro::nitroark::PaymentTypes::BOLT11: return JSIConverter<std::string>::toJSI(runtime, "Bolt11");
+        case margelo::nitro::nitroark::PaymentTypes::BOLT12: return JSIConverter<std::string>::toJSI(runtime, "Bolt12");
         case margelo::nitro::nitroark::PaymentTypes::LNURL: return JSIConverter<std::string>::toJSI(runtime, "Lnurl");
         case margelo::nitro::nitroark::PaymentTypes::ARKOOR: return JSIConverter<std::string>::toJSI(runtime, "Arkoor");
         case margelo::nitro::nitroark::PaymentTypes::ONCHAIN: return JSIConverter<std::string>::toJSI(runtime, "Onchain");
@@ -71,6 +74,7 @@ namespace margelo::nitro {
       std::string unionValue = JSIConverter<std::string>::fromJSI(runtime, value);
       switch (hashString(unionValue.c_str(), unionValue.size())) {
         case hashString("Bolt11"):
+        case hashString("Bolt12"):
         case hashString("Lnurl"):
         case hashString("Arkoor"):
         case hashString("Onchain"):

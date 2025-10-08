@@ -201,33 +201,33 @@ export default function ArkApp() {
       return;
     }
 
-    // const opts: NitroArk.BarkCreateOpts = {
-    //   mnemonic: mnemonic,
-    //   regtest: true,
-    //   signet: false,
-    //   bitcoin: false,
-    //   config: {
-    //     bitcoind: 'http://localhost:18443',
-    //     ark: 'http://localhost:3535',
-    //     bitcoind_user: 'second',
-    //     bitcoind_pass: 'ark',
-    //     vtxo_refresh_expiry_threshold: 288,
-    //     fallback_fee_rate: 10000,
-    //   },
-    // };
-
     const opts: NitroArk.BarkCreateOpts = {
       mnemonic: mnemonic,
-      regtest: false,
-      signet: true,
+      regtest: true,
+      signet: false,
       bitcoin: false,
       config: {
-        esplora: 'esplora.signet.2nd.dev',
-        ark: 'ark.signet.2nd.dev',
+        bitcoind: 'http://localhost:18443',
+        ark: 'http://localhost:3535',
+        bitcoind_user: 'second',
+        bitcoind_pass: 'ark',
         vtxo_refresh_expiry_threshold: 288,
-        fallback_fee_rate: 100000,
+        fallback_fee_rate: 10000,
       },
     };
+
+    // const opts: NitroArk.BarkCreateOpts = {
+    //   mnemonic: mnemonic,
+    //   regtest: false,
+    //   signet: true,
+    //   bitcoin: false,
+    //   config: {
+    //     esplora: 'esplora.signet.2nd.dev',
+    //     ark: 'ark.signet.2nd.dev',
+    //     vtxo_refresh_expiry_threshold: 288,
+    //     fallback_fee_rate: 100000,
+    //   },
+    // };
 
     runOperation(
       'createWallet',
@@ -251,33 +251,33 @@ export default function ArkApp() {
       return;
     }
 
-    // const opts: NitroArk.BarkCreateOpts = {
-    //   mnemonic: mnemonic,
-    //   regtest: true,
-    //   signet: false,
-    //   bitcoin: false,
-    //   config: {
-    //     bitcoind: 'http://localhost:18443',
-    //     ark: 'http://localhost:3535',
-    //     bitcoind_user: 'second',
-    //     bitcoind_pass: 'ark',
-    //     vtxo_refresh_expiry_threshold: 288,
-    //     fallback_fee_rate: 10000,
-    //   },
-    // };
-
     const opts: NitroArk.BarkCreateOpts = {
       mnemonic: mnemonic,
-      regtest: false,
-      signet: true,
+      regtest: true,
+      signet: false,
       bitcoin: false,
       config: {
-        esplora: 'esplora.signet.2nd.dev',
-        ark: 'ark.signet.2nd.dev',
+        bitcoind: 'http://localhost:18443',
+        ark: 'http://localhost:3535',
+        bitcoind_user: 'second',
+        bitcoind_pass: 'ark',
         vtxo_refresh_expiry_threshold: 288,
-        fallback_fee_rate: 100000,
+        fallback_fee_rate: 10000,
       },
     };
+
+    // const opts: NitroArk.BarkCreateOpts = {
+    //   mnemonic: mnemonic,
+    //   regtest: false,
+    //   signet: true,
+    //   bitcoin: false,
+    //   config: {
+    //     esplora: 'esplora.signet.2nd.dev',
+    //     ark: 'ark.signet.2nd.dev',
+    //     vtxo_refresh_expiry_threshold: 288,
+    //     fallback_fee_rate: 100000,
+    //   },
+    // };
 
     runOperation(
       'loadWallet',
@@ -312,6 +312,22 @@ export default function ArkApp() {
     runOperation(
       'maintenanceRefresh',
       () => NitroArk.maintenanceRefresh(),
+      'management'
+    );
+  };
+
+  const handleRegisterAllConfirmedBoards = () => {
+    runOperation(
+      'registerAllConfirmedBoards',
+      () => NitroArk.registerAllConfirmedBoards(),
+      'management'
+    );
+  };
+
+  const handleMaintenanceWithOnchain = () => {
+    runOperation(
+      'maintenanceWithOnchain',
+      () => NitroArk.maintenanceWithOnchain(),
       'management'
     );
   };
@@ -500,6 +516,30 @@ export default function ArkApp() {
     );
   };
 
+  const handleGetFirstExpiringVtxoBlockheight = () => {
+    if (!mnemonic) {
+      setError((prev) => ({ ...prev, walletInfo: 'Mnemonic required' }));
+      return;
+    }
+    runOperation(
+      'getFirstExpiringVtxoBlockheight',
+      () => NitroArk.getFirstExpiringVtxoBlockheight(),
+      'walletInfo'
+    );
+  };
+
+  const handleGetNextRequiredRefreshBlockheight = () => {
+    if (!mnemonic) {
+      setError((prev) => ({ ...prev, walletInfo: 'Mnemonic required' }));
+      return;
+    }
+    runOperation(
+      'getNextRequiredRefreshBlockheight',
+      () => NitroArk.getNextRequiredRefreshBlockheight(),
+      'walletInfo'
+    );
+  };
+
   const handleSendOnchain = () => {
     if (!onchainDestinationAddress || !onchainAmountSat) {
       setError((prev) => ({
@@ -622,6 +662,27 @@ export default function ArkApp() {
     runOperation(
       'sendLightningPayment',
       () => NitroArk.sendLightningPayment(arkDestinationAddress, amountNum),
+      'ark'
+    );
+  };
+
+  const handlePayOffer = () => {
+    if (!arkDestinationAddress) {
+      setError((prev) => ({
+        ...prev,
+        ark: 'Destination (Bolt12 offer) is required.',
+      }));
+      return;
+    }
+    // Amount can be 0 to use offer's amount if specified
+    const amountNum = parseInt(arkAmountSat, 10) || 0;
+    if (isNaN(amountNum) || amountNum < 0) {
+      setError((prev) => ({ ...prev, ark: 'Invalid amount specified.' }));
+      return;
+    }
+    runOperation(
+      'payOffer',
+      () => NitroArk.payOffer(arkDestinationAddress, amountNum),
       'ark'
     );
   };
@@ -938,6 +999,14 @@ export default function ArkApp() {
               'Maintenance Refresh',
               handleMaintenanceRefresh
             )}
+            {renderOperationButton(
+              'Register All Confirmed Boards',
+              handleRegisterAllConfirmedBoards
+            )}
+            {renderOperationButton(
+              'Maintenance With Onchain',
+              handleMaintenanceWithOnchain
+            )}
             {renderOperationButton('Sync', handleSync)}
             {renderOperationButton('Onchain Sync', handleOnchainSync)}
             {renderOperationButton('Sync Exits', handleSyncExits)}
@@ -1021,6 +1090,14 @@ export default function ArkApp() {
               'Get Expiring VTXOs',
               handleGetExpiringVtxos
             )}
+            {renderOperationButton(
+              'Get First Expiring VTXO Blockheight',
+              handleGetFirstExpiringVtxoBlockheight
+            )}
+            {renderOperationButton(
+              'Get Next Required Refresh Blockheight',
+              handleGetNextRequiredRefreshBlockheight
+            )}
           </View>
         </View>
 
@@ -1100,6 +1177,7 @@ export default function ArkApp() {
               'Send Lightning Payment',
               handleSendLightningPayment
             )}
+            {renderOperationButton('Pay Bolt12 Offer', handlePayOffer)}
             {renderOperationButton('Send to LN Address', handleSendLnaddr)}
             {renderOperationButton(
               'Send Round Onchain',

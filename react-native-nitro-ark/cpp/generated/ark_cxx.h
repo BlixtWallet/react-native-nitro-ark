@@ -18,6 +18,11 @@
 #include <ranges>
 #endif
 
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdollar-in-identifier-extension"
+#endif // __clang__
+
 namespace rust {
 inline namespace cxxbridge1 {
 // #include "rust/cxx.h"
@@ -801,6 +806,7 @@ namespace bark_cxx {
   enum class PaymentTypes : ::std::uint8_t;
   struct NewAddressResult;
   struct Bolt11PaymentResult;
+  struct Bolt12PaymentResult;
   struct LnurlPaymentResult;
   struct ArkoorPaymentResult;
   struct OnchainPaymentResult;
@@ -825,6 +831,7 @@ struct BarkVtxo final {
   ::std::uint16_t exit_delta CXX_DEFAULT_VALUE(0);
   ::rust::String anchor_point;
   ::rust::String point;
+  ::rust::String state;
 
   using IsRelocatable = ::std::true_type;
 };
@@ -834,9 +841,10 @@ struct BarkVtxo final {
 #define CXXBRIDGE1_ENUM_bark_cxx$PaymentTypes
 enum class PaymentTypes : ::std::uint8_t {
   Bolt11 = 0,
-  Lnurl = 1,
-  Arkoor = 2,
-  Onchain = 3,
+  Bolt12 = 1,
+  Lnurl = 2,
+  Arkoor = 3,
+  Onchain = 4,
 };
 #endif // CXXBRIDGE1_ENUM_bark_cxx$PaymentTypes
 
@@ -861,6 +869,17 @@ struct Bolt11PaymentResult final {
   using IsRelocatable = ::std::true_type;
 };
 #endif // CXXBRIDGE1_STRUCT_bark_cxx$Bolt11PaymentResult
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$Bolt12PaymentResult
+#define CXXBRIDGE1_STRUCT_bark_cxx$Bolt12PaymentResult
+struct Bolt12PaymentResult final {
+  ::rust::String bolt12_offer;
+  ::rust::String preimage;
+  ::bark_cxx::PaymentTypes payment_type;
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$Bolt12PaymentResult
 
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$LnurlPaymentResult
 #define CXXBRIDGE1_STRUCT_bark_cxx$LnurlPaymentResult
@@ -1049,11 +1068,21 @@ bool verify_message(::rust::Str message, ::rust::Str signature, ::rust::Str publ
 
 ::rust::Vec<::bark_cxx::BarkVtxo> get_expiring_vtxos(::std::uint32_t threshold);
 
+::std::uint32_t const *get_first_expiring_vtxo_blockheight();
+
+::std::uint32_t const *get_next_required_refresh_blockheight();
+
 ::rust::String bolt11_invoice(::std::uint64_t amount_msat);
 
-::bark_cxx::LightningReceive const *lightning_receive_status(::rust::String payment);
+::bark_cxx::LightningReceive const *lightning_receive_status(::rust::String payment_hash);
+
+::rust::Vec<::bark_cxx::LightningReceive> lightning_receives(::std::uint16_t page_index, ::std::uint16_t page_size);
+
+void register_all_confirmed_boards();
 
 void maintenance();
+
+void maintenance_with_onchain();
 
 void maintenance_refresh();
 
@@ -1074,6 +1103,8 @@ void validate_arkoor_address(::rust::Str address);
 ::bark_cxx::ArkoorPaymentResult send_arkoor_payment(::rust::Str destination, ::std::uint64_t amount_sat);
 
 ::bark_cxx::Bolt11PaymentResult send_lightning_payment(::rust::Str destination, ::std::uint64_t const *amount_sat);
+
+::bark_cxx::Bolt12PaymentResult pay_offer(::rust::Str offer, ::std::uint64_t const *amount_sat);
 
 ::bark_cxx::LnurlPaymentResult send_lnaddr(::rust::Str addr, ::std::uint64_t amount_sat, ::rust::Str comment);
 
@@ -1103,3 +1134,7 @@ void onchain_sync();
 
 ::rust::String onchain_send_many(::rust::Vec<::bark_cxx::SendManyOutput> outputs, ::std::uint64_t const *fee_rate);
 } // namespace bark_cxx
+
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif // __clang__

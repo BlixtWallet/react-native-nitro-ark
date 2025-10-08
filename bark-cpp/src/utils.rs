@@ -4,12 +4,13 @@ use anyhow::{self, bail, Context};
 use bark::{
     ark::{
         bitcoin::{secp256k1::PublicKey, FeeRate, Network},
-        VtxoId,
+        Vtxo, VtxoId,
     },
     lightning_invoice::Bolt11Invoice,
     lnurllib::lightning_address::LightningAddress,
     onchain::OnchainWallet,
-    Config, SqliteClient, Wallet as BarkWallet,
+    vtxo_state::VtxoState,
+    Config, SqliteClient, Wallet as BarkWallet, WalletVtxo,
 };
 
 use bitcoin_ext::FeeRateExt;
@@ -231,4 +232,53 @@ pub fn ffi_config_to_config(opts: ffi::CreateOpts) -> anyhow::Result<CreateOpts>
     };
 
     Ok(create_opts)
+}
+
+pub fn wallet_vtxo_to_bark_vtxo(wallet_vtxo: WalletVtxo) -> crate::cxx::ffi::BarkVtxo {
+    let state_name = match &wallet_vtxo.state {
+        VtxoState::Spendable => "Spendable",
+        VtxoState::Spent => "Spent",
+        VtxoState::UnregisteredBoard => "UnregisteredBoard",
+        VtxoState::PendingLightningSend { .. } => "PendingLightningSend",
+        VtxoState::PendingLightningRecv { .. } => "PendingLightningRecv",
+    }
+    .to_string();
+
+    crate::cxx::ffi::BarkVtxo {
+        amount: wallet_vtxo.vtxo.amount().to_sat(),
+        expiry_height: wallet_vtxo.vtxo.expiry_height(),
+        server_pubkey: wallet_vtxo.vtxo.server_pubkey().to_string(),
+        exit_delta: wallet_vtxo.vtxo.exit_delta(),
+        anchor_point: format!(
+            "{}:{}",
+            wallet_vtxo.vtxo.chain_anchor().txid.to_string(),
+            wallet_vtxo.vtxo.chain_anchor().vout.to_string()
+        ),
+        point: format!(
+            "{}:{}",
+            wallet_vtxo.vtxo.point().txid.to_string(),
+            wallet_vtxo.vtxo.point().vout.to_string()
+        ),
+        state: state_name,
+    }
+}
+
+pub fn vtxo_to_bark_vtxo(vtxo: &Vtxo) -> crate::cxx::ffi::BarkVtxo {
+    crate::cxx::ffi::BarkVtxo {
+        amount: vtxo.amount().to_sat(),
+        expiry_height: vtxo.expiry_height(),
+        server_pubkey: vtxo.server_pubkey().to_string(),
+        exit_delta: vtxo.exit_delta(),
+        anchor_point: format!(
+            "{}:{}",
+            vtxo.chain_anchor().txid.to_string(),
+            vtxo.chain_anchor().vout.to_string()
+        ),
+        point: format!(
+            "{}:{}",
+            vtxo.point().txid.to_string(),
+            vtxo.point().vout.to_string()
+        ),
+        state: "unknown".to_string(),
+    }
 }

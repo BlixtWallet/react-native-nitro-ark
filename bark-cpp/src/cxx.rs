@@ -1,6 +1,6 @@
 use crate::cxx::ffi::{
-    ArkoorPaymentResult, BarkVtxo, Bolt11PaymentResult, LnurlPaymentResult, OnchainPaymentResult,
-    PaymentTypes,
+    ArkoorPaymentResult, BarkVtxo, Bolt11PaymentResult, Bolt12PaymentResult, LnurlPaymentResult,
+    OnchainPaymentResult, PaymentTypes,
 };
 use crate::{utils, TOKIO_RUNTIME};
 use anyhow::{bail, Context, Ok};
@@ -24,10 +24,12 @@ pub(crate) mod ffi {
         exit_delta: u16,
         anchor_point: String,
         point: String,
+        state: String,
     }
 
     pub enum PaymentTypes {
         Bolt11,
+        Bolt12,
         Lnurl,
         Arkoor,
         Onchain,
@@ -41,6 +43,12 @@ pub(crate) mod ffi {
 
     pub struct Bolt11PaymentResult {
         bolt11_invoice: String,
+        preimage: String,
+        payment_type: PaymentTypes,
+    }
+
+    pub struct Bolt12PaymentResult {
+        bolt12_offer: String,
         preimage: String,
         payment_type: PaymentTypes,
     }
@@ -169,9 +177,14 @@ pub(crate) mod ffi {
         fn verify_message(message: &str, signature: &str, public_key: &str) -> Result<bool>;
         fn get_vtxos() -> Result<Vec<BarkVtxo>>;
         fn get_expiring_vtxos(threshold: u32) -> Result<Vec<BarkVtxo>>;
+        fn get_first_expiring_vtxo_blockheight() -> Result<*const u32>;
+        fn get_next_required_refresh_blockheight() -> Result<*const u32>;
         fn bolt11_invoice(amount_msat: u64) -> Result<String>;
-        fn lightning_receive_status(payment: String) -> Result<*const LightningReceive>;
+        fn lightning_receive_status(payment_hash: String) -> Result<*const LightningReceive>;
+        fn lightning_receives(page_index: u16, page_size: u16) -> Result<Vec<LightningReceive>>;
+        fn register_all_confirmed_boards() -> Result<()>;
         fn maintenance() -> Result<()>;
+        fn maintenance_with_onchain() -> Result<()>;
         fn maintenance_refresh() -> Result<()>;
         fn sync() -> Result<()>;
         fn sync_past_rounds() -> Result<()>;
@@ -185,6 +198,7 @@ pub(crate) mod ffi {
             destination: &str,
             amount_sat: *const u64,
         ) -> Result<Bolt11PaymentResult>;
+        unsafe fn pay_offer(offer: &str, amount_sat: *const u64) -> Result<Bolt12PaymentResult>;
         fn send_lnaddr(addr: &str, amount_sat: u64, comment: &str) -> Result<LnurlPaymentResult>;
         fn send_round_onchain_payment(destination: &str, amount_sat: u64) -> Result<String>;
         fn offboard_specific(vtxo_ids: Vec<String>, destination_address: &str) -> Result<String>;
@@ -345,50 +359,35 @@ pub(crate) fn verify_message(
 
 pub(crate) fn get_vtxos() -> anyhow::Result<Vec<BarkVtxo>> {
     let vtxos = crate::TOKIO_RUNTIME.block_on(crate::get_vtxos())?;
-
     Ok(vtxos
         .into_iter()
-        .map(|vtxo| BarkVtxo {
-            amount: vtxo.amount().to_sat(),
-            expiry_height: vtxo.expiry_height(),
-            server_pubkey: vtxo.server_pubkey().to_string(),
-            exit_delta: vtxo.exit_delta(),
-            anchor_point: format!(
-                "{}:{}",
-                vtxo.chain_anchor().txid.to_string(),
-                vtxo.chain_anchor().vout.to_string()
-            ),
-            point: format!(
-                "{}:{}",
-                vtxo.point().txid.to_string(),
-                vtxo.point().vout.to_string()
-            ),
-        })
+        .map(utils::wallet_vtxo_to_bark_vtxo)
         .collect())
 }
 
 pub(crate) fn get_expiring_vtxos(threshold: u32) -> anyhow::Result<Vec<BarkVtxo>> {
     let expiring_vtxos = crate::TOKIO_RUNTIME.block_on(crate::get_expiring_vtxos(threshold))?;
-
     Ok(expiring_vtxos
         .into_iter()
-        .map(|vtxo| BarkVtxo {
-            amount: vtxo.amount().to_sat(),
-            expiry_height: vtxo.expiry_height(),
-            server_pubkey: vtxo.server_pubkey().to_string(),
-            exit_delta: vtxo.exit_delta(),
-            anchor_point: format!(
-                "{}:{}",
-                vtxo.chain_anchor().txid.to_string(),
-                vtxo.chain_anchor().vout.to_string()
-            ),
-            point: format!(
-                "{}:{}",
-                vtxo.point().txid.to_string(),
-                vtxo.point().vout.to_string()
-            ),
-        })
+        .map(utils::wallet_vtxo_to_bark_vtxo)
         .collect())
+}
+
+pub(crate) fn get_first_expiring_vtxo_blockheight() -> anyhow::Result<*const u32> {
+    let blockheight = crate::TOKIO_RUNTIME.block_on(crate::get_first_expiring_vtxo_blockheight())?;
+    match blockheight {
+        Some(height) => Ok(Box::into_raw(Box::new(height))),
+        None => Ok(std::ptr::null()),
+    }
+}
+
+pub(crate) fn get_next_required_refresh_blockheight() -> anyhow::Result<*const u32> {
+    let blockheight =
+        crate::TOKIO_RUNTIME.block_on(crate::get_next_required_refresh_blockheight())?;
+    match blockheight {
+        Some(height) => Ok(Box::into_raw(Box::new(height))),
+        None => Ok(std::ptr::null()),
+    }
 }
 
 pub(crate) fn bolt11_invoice(amount_msat: u64) -> anyhow::Result<String> {
@@ -396,10 +395,10 @@ pub(crate) fn bolt11_invoice(amount_msat: u64) -> anyhow::Result<String> {
 }
 
 pub(crate) fn lightning_receive_status(
-    payment: String,
+    payment_hash: String,
 ) -> anyhow::Result<*const ffi::LightningReceive> {
-    let payment = bark::ark::lightning::PaymentHash::from_str(&payment)
-        .with_context(|| format!("Invalid payment hash format: '{}'", payment))?;
+    let payment = bark::ark::lightning::PaymentHash::from_str(&payment_hash)
+        .with_context(|| format!("Invalid payment hash format: '{}'", payment_hash))?;
     let status = crate::TOKIO_RUNTIME.block_on(crate::lightning_receive_status(payment))?;
 
     if status.is_none() {
@@ -413,14 +412,45 @@ pub(crate) fn lightning_receive_status(
         invoice: status.invoice.to_string(),
         preimage_revealed_at: status
             .preimage_revealed_at
-            .as_ref()
-            .map_or(std::ptr::null(), |v| v as *const u64),
+            .map_or(std::ptr::null(), |v| Box::into_raw(Box::new(v))),
     });
     Ok(Box::into_raw(status))
 }
 
+pub(crate) fn lightning_receives(
+    page_index: u16,
+    page_size: u16,
+) -> anyhow::Result<Vec<ffi::LightningReceive>> {
+    let receives = crate::TOKIO_RUNTIME.block_on(crate::lightning_receives(bark::Pagination {
+        page_index,
+        page_size,
+    }))?;
+
+    let receives = receives
+        .into_iter()
+        .map(|receive| ffi::LightningReceive {
+            payment_hash: receive.payment_hash.to_string(),
+            payment_preimage: receive.payment_preimage.to_string(),
+            invoice: receive.invoice.to_string(),
+            preimage_revealed_at: receive
+                .preimage_revealed_at
+                .map_or(std::ptr::null(), |v| Box::into_raw(Box::new(v))),
+        })
+        .collect();
+
+    Ok(receives)
+}
+
+pub(crate) fn register_all_confirmed_boards() -> anyhow::Result<()> {
+    crate::TOKIO_RUNTIME.block_on(crate::register_all_confirmed_boards())
+}
+
 pub(crate) fn maintenance() -> anyhow::Result<()> {
     crate::TOKIO_RUNTIME.block_on(crate::maintenance())
+}
+
+pub(crate) fn maintenance_with_onchain() -> anyhow::Result<()> {
+    crate::TOKIO_RUNTIME.block_on(crate::maintenance_with_onchain())
 }
 
 pub(crate) fn maintenance_refresh() -> anyhow::Result<()> {
@@ -481,25 +511,7 @@ pub(crate) fn send_arkoor_payment(
     let oor_result = crate::TOKIO_RUNTIME.block_on(crate::send_arkoor_payment(dest, amount))?;
 
     Ok(ArkoorPaymentResult {
-        vtxos: oor_result
-            .iter()
-            .map(|vtxo| BarkVtxo {
-                amount: vtxo.amount().to_sat(),
-                expiry_height: vtxo.expiry_height(),
-                server_pubkey: vtxo.server_pubkey().to_string(),
-                exit_delta: vtxo.exit_delta(),
-                anchor_point: format!(
-                    "{}:{}",
-                    vtxo.chain_anchor().txid.to_string(),
-                    vtxo.chain_anchor().vout.to_string()
-                ),
-                point: format!(
-                    "{}:{}",
-                    vtxo.point().txid.to_string(),
-                    vtxo.point().vout.to_string()
-                ),
-            })
-            .collect(),
+        vtxos: oor_result.iter().map(utils::vtxo_to_bark_vtxo).collect(),
         destination_pubkey: destination.to_string(),
         amount_sat,
         payment_type: PaymentTypes::Arkoor,
@@ -525,6 +537,28 @@ pub(crate) fn send_lightning_payment(
         preimage,
         bolt11_invoice: destination.to_string(),
         payment_type: PaymentTypes::Bolt11,
+    })
+}
+
+pub(crate) fn pay_offer(
+    offer: &str,
+    amount_sat: *const u64,
+) -> anyhow::Result<Bolt12PaymentResult> {
+    let amount_opt = match unsafe { amount_sat.as_ref().map(|r| *r) } {
+        Some(amount) => Some(bark::ark::bitcoin::Amount::from_sat(amount)),
+        None => None,
+    };
+
+    let offer = lightning::Offer::from_str(offer)
+        .map_err(|err| anyhow::anyhow!("Failed to parse bolt12 offer: {:?}", err))?;
+
+    let (_, preimage) =
+        crate::TOKIO_RUNTIME.block_on(crate::pay_offer(offer.clone(), amount_opt))?;
+
+    Ok(Bolt12PaymentResult {
+        preimage: preimage.to_lower_hex_string(),
+        bolt12_offer: offer.to_string(),
+        payment_type: PaymentTypes::Bolt12,
     })
 }
 
@@ -699,14 +733,7 @@ pub(crate) fn onchain_utxos() -> anyhow::Result<String> {
                 "confirmation_height": local.confirmation_height.map_or(0, |_h| 0),
             }),
             bark::onchain::Utxo::Exit(exit) => serde_json::json!({
-                "vtxo": BarkVtxo {
-                    amount: exit.vtxo.amount().to_sat(),
-                    anchor_point: format!("{}:{}", exit.vtxo.chain_anchor().txid, exit.vtxo.chain_anchor().vout),
-                    exit_delta: exit.vtxo.exit_delta(),
-                    server_pubkey: exit.vtxo.server_pubkey().to_string(),
-                    expiry_height: exit.vtxo.expiry_height(),
-                    point: format!("{}:{}", exit.vtxo.point().txid.to_string(), exit.vtxo.point().vout.to_string()),
-                },
+                "vtxo": utils::vtxo_to_bark_vtxo(&exit.vtxo),
                 "height": exit.height
             }),
         })
