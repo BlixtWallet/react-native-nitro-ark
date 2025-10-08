@@ -8,6 +8,7 @@ use bark::{
     },
     lightning_invoice::Bolt11Invoice,
     lnurllib::lightning_address::LightningAddress,
+    movement::Movement,
     onchain::OnchainWallet,
     vtxo_state::VtxoState,
     Config, SqliteClient, Wallet as BarkWallet, WalletVtxo,
@@ -280,5 +281,38 @@ pub fn vtxo_to_bark_vtxo(vtxo: &Vtxo) -> crate::cxx::ffi::BarkVtxo {
             vtxo.point().vout.to_string()
         ),
         state: "unknown".to_string(),
+    }
+}
+
+pub fn movement_to_bark_movement(movement: &Movement) -> crate::cxx::ffi::BarkMovement {
+    let spends: Vec<crate::cxx::ffi::BarkVtxo> = movement
+        .spends
+        .iter()
+        .map(|vtxo| vtxo_to_bark_vtxo(vtxo))
+        .collect();
+
+    let receives: Vec<crate::cxx::ffi::BarkVtxo> = movement
+        .receives
+        .iter()
+        .map(|vtxo| vtxo_to_bark_vtxo(vtxo))
+        .collect();
+
+    let recipients: Vec<crate::cxx::ffi::BarkMovementRecipient> = movement
+        .recipients
+        .iter()
+        .map(|r| crate::cxx::ffi::BarkMovementRecipient {
+            recipient: r.recipient.clone(),
+            amount_sat: r.amount.to_sat(),
+        })
+        .collect();
+
+    crate::cxx::ffi::BarkMovement {
+        id: movement.id,
+        kind: movement.kind.as_str().to_string(),
+        fees: movement.fees.to_sat(),
+        spends,
+        receives,
+        recipients,
+        created_at: movement.created_at.clone(),
     }
 }

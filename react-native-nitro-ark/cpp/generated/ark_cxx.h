@@ -819,6 +819,8 @@ namespace bark_cxx {
   struct OffchainBalance;
   struct OnChainBalance;
   struct KeyPairResult;
+  struct BarkMovementRecipient;
+  struct BarkMovement;
 }
 
 namespace bark_cxx {
@@ -1038,6 +1040,31 @@ struct KeyPairResult final {
 };
 #endif // CXXBRIDGE1_STRUCT_bark_cxx$KeyPairResult
 
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$BarkMovementRecipient
+#define CXXBRIDGE1_STRUCT_bark_cxx$BarkMovementRecipient
+struct BarkMovementRecipient final {
+  ::rust::String recipient;
+  ::std::uint64_t amount_sat CXX_DEFAULT_VALUE(0);
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$BarkMovementRecipient
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$BarkMovement
+#define CXXBRIDGE1_STRUCT_bark_cxx$BarkMovement
+struct BarkMovement final {
+  ::std::uint32_t id CXX_DEFAULT_VALUE(0);
+  ::rust::String kind;
+  ::std::uint64_t fees CXX_DEFAULT_VALUE(0);
+  ::rust::Vec<::bark_cxx::BarkVtxo> spends;
+  ::rust::Vec<::bark_cxx::BarkVtxo> receives;
+  ::rust::Vec<::bark_cxx::BarkMovementRecipient> recipients;
+  ::rust::String created_at;
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$BarkMovement
+
 void init_logger() noexcept;
 
 ::rust::String create_mnemonic();
@@ -1064,7 +1091,9 @@ void close_wallet();
 
 bool verify_message(::rust::Str message, ::rust::Str signature, ::rust::Str public_key);
 
-::rust::Vec<::bark_cxx::BarkVtxo> get_vtxos();
+::rust::Vec<::bark_cxx::BarkMovement> movements(::std::uint16_t page_index, ::std::uint16_t page_size);
+
+::rust::Vec<::bark_cxx::BarkVtxo> vtxos();
 
 ::rust::Vec<::bark_cxx::BarkVtxo> get_expiring_vtxos(::std::uint32_t threshold);
 

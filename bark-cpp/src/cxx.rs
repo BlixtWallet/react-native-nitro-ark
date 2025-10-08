@@ -1,12 +1,13 @@
 use crate::cxx::ffi::{
-    ArkoorPaymentResult, BarkVtxo, Bolt11PaymentResult, Bolt12PaymentResult, LnurlPaymentResult,
-    OnchainPaymentResult, PaymentTypes,
+    ArkoorPaymentResult, BarkMovement, BarkVtxo, Bolt11PaymentResult, Bolt12PaymentResult,
+    LnurlPaymentResult, OnchainPaymentResult, PaymentTypes,
 };
 use crate::{utils, TOKIO_RUNTIME};
 use anyhow::{bail, Context, Ok};
 use bark::ark::bitcoin::hex::DisplayHex;
 use bark::ark::bitcoin::{address, Address};
 use bark::ark::lightning;
+use bark::Pagination;
 use bdk_wallet::bitcoin::{self, network, FeeRate};
 use bip39::Mnemonic;
 use logger::log::{self, info};
@@ -152,6 +153,21 @@ pub(crate) mod ffi {
         pub secret_key: String,
     }
 
+    pub struct BarkMovementRecipient {
+        pub recipient: String,
+        pub amount_sat: u64,
+    }
+
+    pub struct BarkMovement {
+        pub id: u32,
+        pub kind: String,
+        pub fees: u64,
+        pub spends: Vec<BarkVtxo>,
+        pub receives: Vec<BarkVtxo>,
+        pub recipients: Vec<BarkMovementRecipient>,
+        pub created_at: String,
+    }
+
     extern "Rust" {
         fn init_logger();
         fn create_mnemonic() -> Result<String>;
@@ -175,7 +191,8 @@ pub(crate) mod ffi {
             index: u32,
         ) -> Result<KeyPairResult>;
         fn verify_message(message: &str, signature: &str, public_key: &str) -> Result<bool>;
-        fn get_vtxos() -> Result<Vec<BarkVtxo>>;
+        fn movements(page_index: u16, page_size: u16) -> Result<Vec<BarkMovement>>;
+        fn vtxos() -> Result<Vec<BarkVtxo>>;
         fn get_expiring_vtxos(threshold: u32) -> Result<Vec<BarkVtxo>>;
         fn get_first_expiring_vtxo_blockheight() -> Result<*const u32>;
         fn get_next_required_refresh_blockheight() -> Result<*const u32>;
@@ -357,8 +374,20 @@ pub(crate) fn verify_message(
     crate::TOKIO_RUNTIME.block_on(crate::verify_message(message, signature, &public_key))
 }
 
-pub(crate) fn get_vtxos() -> anyhow::Result<Vec<BarkVtxo>> {
-    let vtxos = crate::TOKIO_RUNTIME.block_on(crate::get_vtxos())?;
+pub(crate) fn movements(page_index: u16, page_size: u16) -> anyhow::Result<Vec<BarkMovement>> {
+    let movements = crate::TOKIO_RUNTIME.block_on(crate::movements(Pagination {
+        page_index,
+        page_size,
+    }))?;
+
+    Ok(movements
+        .iter()
+        .map(|m| utils::movement_to_bark_movement(m))
+        .collect())
+}
+
+pub(crate) fn vtxos() -> anyhow::Result<Vec<BarkVtxo>> {
+    let vtxos = crate::TOKIO_RUNTIME.block_on(crate::vtxos())?;
     Ok(vtxos
         .into_iter()
         .map(utils::wallet_vtxo_to_bark_vtxo)

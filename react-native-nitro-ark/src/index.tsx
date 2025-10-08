@@ -14,6 +14,7 @@ import type {
   NewAddressResult,
   KeyPairResult,
   LightningReceive,
+  BarkMovement,
 } from './NitroArk.nitro';
 
 export type BarkVtxo = {
@@ -98,7 +99,8 @@ export function registerAllConfirmedBoards(): Promise<void> {
 }
 
 /**
- * Runs wallet maintenance tasks.
+ * Runs wallet maintenance tasks for offchain.
+ * This includes refreshing vtxos that need to be refreshed.
  * @returns A promise that resolves on success.
  */
 export function maintenance(): Promise<void> {
@@ -106,7 +108,8 @@ export function maintenance(): Promise<void> {
 }
 
 /**
- * Runs wallet maintenance tasks with onchain data.
+ * Runs wallet maintenance tasks for both offchain and onchain.
+ * This includes refreshing vtxos that need to be refreshed.
  * @returns A promise that resolves on success.
  */
 export function maintenanceWithOnchain(): Promise<void> {
@@ -256,12 +259,25 @@ export function verifyMessage(
 }
 
 /**
+ * Gets a paginated list of wallet movements (balance changes).
+ * @param pageIndex The index of the page to retrieve (0-based).
+ * @param pageSize The number of movements per page.
+ * @returns A promise resolving to an array of BarkMovement objects.
+ */
+export function movements(
+  pageIndex: number,
+  pageSize: number
+): Promise<BarkMovement[]> {
+  return NitroArkHybridObject.movements(pageIndex, pageSize);
+}
+
+/**
  * Gets the list of VTXOs as a JSON string for the loaded wallet.
  * @param no_sync If true, skips synchronization with the blockchain. Defaults to false.
  * @returns A promise resolving BarkVtxo[] array.
  */
-export function getVtxos(): Promise<BarkVtxo[]> {
-  return NitroArkHybridObject.getVtxos() as Promise<BarkVtxo[]>;
+export function vtxos(): Promise<BarkVtxo[]> {
+  return NitroArkHybridObject.vtxos() as Promise<BarkVtxo[]>;
 }
 
 /**
@@ -551,4 +567,6 @@ export type {
   NewAddressResult,
   KeyPairResult,
   LightningReceive,
+  BarkMovement,
+  BarkMovementRecipient,
 } from './NitroArk.nitro';

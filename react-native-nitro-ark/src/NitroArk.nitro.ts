@@ -121,6 +121,21 @@ export interface LightningReceive {
   preimage_revealed_at?: number;
 }
 
+export interface BarkMovementRecipient {
+  recipient: string;
+  amount_sat: number;
+}
+
+export interface BarkMovement {
+  id: number;
+  kind: string;
+  fees: number;
+  spends: BarkVtxo[];
+  receives: BarkVtxo[];
+  recipients: BarkMovementRecipient[];
+  created_at: string;
+}
+
 // --- Nitro Module Interface ---
 
 export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
@@ -161,7 +176,8 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
     signature: string,
     publicKey: string
   ): Promise<boolean>;
-  getVtxos(): Promise<BarkVtxo[]>;
+  movements(pageIndex: number, pageSize: number): Promise<BarkMovement[]>;
+  vtxos(): Promise<BarkVtxo[]>;
   getFirstExpiringVtxoBlockheight(): Promise<number | undefined>;
   getNextRequiredRefreshBlockheight(): Promise<number | undefined>;
   getExpiringVtxos(threshold: number): Promise<BarkVtxo[]>;
