@@ -14,7 +14,6 @@ import type {
   NewAddressResult,
   KeyPairResult,
   LightningReceive,
-  BarkMovement,
 } from './NitroArk.nitro';
 
 export type BarkVtxo = {
@@ -31,6 +30,30 @@ export type BarkVtxo = {
     | 'PendingLightningSend'
     | 'PendingLightningRecv'
     | 'Unknown';
+};
+
+export interface BarkMovementRecipient {
+  recipient: string;
+  amount_sat: number;
+}
+
+export type BarkMovement = {
+  id: number;
+  kind:
+    | 'onboard'
+    | 'round'
+    | 'offboard'
+    | 'arkoor-send'
+    | 'arkoor-receive'
+    | 'lightning-send'
+    | 'lightning-send-revocation'
+    | 'lightning-receive'
+    | 'exit';
+  fees: number;
+  spends: BarkVtxo[];
+  receives: BarkVtxo[];
+  recipients: BarkMovementRecipient[];
+  created_at: string;
 };
 
 // Create the hybrid object instance
@@ -268,7 +291,9 @@ export function movements(
   pageIndex: number,
   pageSize: number
 ): Promise<BarkMovement[]> {
-  return NitroArkHybridObject.movements(pageIndex, pageSize);
+  return NitroArkHybridObject.movements(pageIndex, pageSize) as Promise<
+    BarkMovement[]
+  >;
 }
 
 /**
@@ -567,6 +592,4 @@ export type {
   NewAddressResult,
   KeyPairResult,
   LightningReceive,
-  BarkMovement,
-  BarkMovementRecipient,
 } from './NitroArk.nitro';
