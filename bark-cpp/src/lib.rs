@@ -397,14 +397,41 @@ pub async fn finish_lightning_receive(bolt11: Bolt11Invoice) -> anyhow::Result<(
         .await
 }
 
+pub async fn register_all_confirmed_boards() -> anyhow::Result<()> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async {
+            let _ = ctx
+                .wallet
+                .register_all_confirmed_boards(&mut ctx.onchain_wallet)
+                .await
+                .context("Failed to register all confirmed boards")?;
+            Ok(())
+        })
+        .await
+}
+
 pub async fn maintenance() -> anyhow::Result<()> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
             ctx.wallet
-                .maintenance(&mut ctx.onchain_wallet)
+                .maintenance()
                 .await
                 .context("Failed to perform wallet maintenance")?;
+            Ok(())
+        })
+        .await
+}
+
+pub async fn maintenance_with_onchain() -> anyhow::Result<()> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async {
+            ctx.wallet
+                .maintenance_with_onchain(&mut ctx.onchain_wallet)
+                .await
+                .context("Failed to perform wallet maintenance with onchain")?;
             Ok(())
         })
         .await

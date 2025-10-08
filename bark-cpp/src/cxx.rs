@@ -182,7 +182,9 @@ pub(crate) mod ffi {
         fn bolt11_invoice(amount_msat: u64) -> Result<String>;
         fn lightning_receive_status(payment_hash: String) -> Result<*const LightningReceive>;
         fn lightning_receives(page_index: u16, page_size: u16) -> Result<Vec<LightningReceive>>;
+        fn register_all_confirmed_boards() -> Result<()>;
         fn maintenance() -> Result<()>;
+        fn maintenance_with_onchain() -> Result<()>;
         fn maintenance_refresh() -> Result<()>;
         fn sync() -> Result<()>;
         fn sync_past_rounds() -> Result<()>;
@@ -439,8 +441,16 @@ pub(crate) fn lightning_receives(
     Ok(receives)
 }
 
+pub(crate) fn register_all_confirmed_boards() -> anyhow::Result<()> {
+    crate::TOKIO_RUNTIME.block_on(crate::register_all_confirmed_boards())
+}
+
 pub(crate) fn maintenance() -> anyhow::Result<()> {
     crate::TOKIO_RUNTIME.block_on(crate::maintenance())
+}
+
+pub(crate) fn maintenance_with_onchain() -> anyhow::Result<()> {
+    crate::TOKIO_RUNTIME.block_on(crate::maintenance_with_onchain())
 }
 
 pub(crate) fn maintenance_refresh() -> anyhow::Result<()> {

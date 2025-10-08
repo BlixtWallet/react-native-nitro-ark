@@ -142,8 +142,8 @@ dependencies = [
 
 [[package]]
 name = "ark-lib"
-version = "0.0.0-alpha"
-source = "git+https://codeberg.org/ark-bitcoin/bark.git?rev=f21cff62a2#f21cff62a24e96d62a0d98fac203c1e613c61e65"
+version = "0.1.0-beta.1"
+source = "git+https://codeberg.org/ark-bitcoin/bark.git?tag=bark-0.1.0-beta.1#4ad30849be75e154408e3dacf2116669a1ebd318"
 dependencies = [
  "bark-bitcoin-ext",
  "bitcoin",
@@ -248,11 +248,11 @@ dependencies = [
 
 [[package]]
 name = "bark-bitcoin-ext"
-version = "0.0.0"
-source = "git+https://codeberg.org/ark-bitcoin/bark.git?rev=f21cff62a2#f21cff62a24e96d62a0d98fac203c1e613c61e65"
+version = "0.1.0-beta.1"
+source = "git+https://codeberg.org/ark-bitcoin/bark.git?tag=bark-0.1.0-beta.1#4ad30849be75e154408e3dacf2116669a1ebd318"
 dependencies = [
  "async-trait",
- "bdk_bitcoind_rpc 0.21.0",
+ "bdk_bitcoind_rpc 0.22.0",
  "bdk_esplora",
  "bdk_wallet",
  "bitcoin",
@@ -287,8 +287,8 @@ dependencies = [
 
 [[package]]
 name = "bark-json"
-version = "0.0.0"
-source = "git+https://codeberg.org/ark-bitcoin/bark.git?rev=f21cff62a2#f21cff62a24e96d62a0d98fac203c1e613c61e65"
+version = "0.1.0-beta.1"
+source = "git+https://codeberg.org/ark-bitcoin/bark.git?tag=bark-0.1.0-beta.1#4ad30849be75e154408e3dacf2116669a1ebd318"
 dependencies = [
  "ark-lib",
  "bark-bitcoin-ext",
@@ -300,8 +300,8 @@ dependencies = [
 
 [[package]]
 name = "bark-server-rpc"
-version = "0.0.0-alpha"
-source = "git+https://codeberg.org/ark-bitcoin/bark.git?rev=f21cff62a2#f21cff62a24e96d62a0d98fac203c1e613c61e65"
+version = "0.1.0-beta.1"
+source = "git+https://codeberg.org/ark-bitcoin/bark.git?tag=bark-0.1.0-beta.1#4ad30849be75e154408e3dacf2116669a1ebd318"
 dependencies = [
  "ark-lib",
  "bitcoin",
@@ -317,8 +317,8 @@ dependencies = [
 
 [[package]]
 name = "bark-wallet"
-version = "0.0.0-alpha"
-source = "git+https://codeberg.org/ark-bitcoin/bark.git?rev=f21cff62a2#f21cff62a24e96d62a0d98fac203c1e613c61e65"
+version = "0.1.0-beta.1"
+source = "git+https://codeberg.org/ark-bitcoin/bark.git?tag=bark-0.1.0-beta.1#4ad30849be75e154408e3dacf2116669a1ebd318"
 dependencies = [
  "anyhow",
  "ark-lib",

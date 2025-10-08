@@ -19,7 +19,9 @@ namespace margelo::nitro::nitroark {
       prototype.registerHybridMethod("loadWallet", &HybridNitroArkSpec::loadWallet);
       prototype.registerHybridMethod("isWalletLoaded", &HybridNitroArkSpec::isWalletLoaded);
       prototype.registerHybridMethod("closeWallet", &HybridNitroArkSpec::closeWallet);
+      prototype.registerHybridMethod("registerAllConfirmedBoards", &HybridNitroArkSpec::registerAllConfirmedBoards);
       prototype.registerHybridMethod("maintenance", &HybridNitroArkSpec::maintenance);
+      prototype.registerHybridMethod("maintenanceWithOnchain", &HybridNitroArkSpec::maintenanceWithOnchain);
       prototype.registerHybridMethod("maintenanceRefresh", &HybridNitroArkSpec::maintenanceRefresh);
       prototype.registerHybridMethod("sync", &HybridNitroArkSpec::sync);
       prototype.registerHybridMethod("syncExits", &HybridNitroArkSpec::syncExits);

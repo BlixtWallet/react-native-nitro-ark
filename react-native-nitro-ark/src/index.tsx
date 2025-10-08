@@ -90,11 +90,27 @@ export function isWalletLoaded(): Promise<boolean> {
 }
 
 /**
+ * Registers all confirmed boards.
+ * @returns A promise that resolves on success.
+ */
+export function registerAllConfirmedBoards(): Promise<void> {
+  return NitroArkHybridObject.registerAllConfirmedBoards();
+}
+
+/**
  * Runs wallet maintenance tasks.
  * @returns A promise that resolves on success.
  */
 export function maintenance(): Promise<void> {
   return NitroArkHybridObject.maintenance();
+}
+
+/**
+ * Runs wallet maintenance tasks with onchain data.
+ * @returns A promise that resolves on success.
+ */
+export function maintenanceWithOnchain(): Promise<void> {
+  return NitroArkHybridObject.maintenanceWithOnchain();
 }
 
 /**

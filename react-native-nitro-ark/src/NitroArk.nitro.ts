@@ -130,7 +130,9 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   loadWallet(datadir: string, config: BarkCreateOpts): Promise<void>;
   isWalletLoaded(): Promise<boolean>;
   closeWallet(): Promise<void>;
+  registerAllConfirmedBoards(): Promise<void>;
   maintenance(): Promise<void>;
+  maintenanceWithOnchain(): Promise<void>;
   maintenanceRefresh(): Promise<void>;
   sync(): Promise<void>;
   syncExits(): Promise<void>;

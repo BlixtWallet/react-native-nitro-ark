@@ -133,10 +133,30 @@ public:
     return Promise<bool>::async([]() { return bark_cxx::is_wallet_loaded(); });
   }
 
+  std::shared_ptr<Promise<void>> registerAllConfirmedBoards() override {
+    return Promise<void>::async([]() {
+      try {
+        bark_cxx::register_all_confirmed_boards();
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   std::shared_ptr<Promise<void>> maintenance() override {
     return Promise<void>::async([]() {
       try {
         bark_cxx::maintenance();
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<void>> maintenanceWithOnchain() override {
+    return Promise<void>::async([]() {
+      try {
+        bark_cxx::maintenance_with_onchain();
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }

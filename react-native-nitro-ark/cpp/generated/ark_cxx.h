@@ -18,6 +18,11 @@
 #include <ranges>
 #endif
 
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdollar-in-identifier-extension"
+#endif // __clang__
+
 namespace rust {
 inline namespace cxxbridge1 {
 // #include "rust/cxx.h"
@@ -1073,7 +1078,11 @@ bool verify_message(::rust::Str message, ::rust::Str signature, ::rust::Str publ
 
 ::rust::Vec<::bark_cxx::LightningReceive> lightning_receives(::std::uint16_t page_index, ::std::uint16_t page_size);
 
+void register_all_confirmed_boards();
+
 void maintenance();
+
+void maintenance_with_onchain();
 
 void maintenance_refresh();
 
@@ -1125,3 +1134,7 @@ void onchain_sync();
 
 ::rust::String onchain_send_many(::rust::Vec<::bark_cxx::SendManyOutput> outputs, ::std::uint64_t const *fee_rate);
 } // namespace bark_cxx
+
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif // __clang__
