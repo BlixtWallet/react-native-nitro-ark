@@ -35,11 +35,11 @@ namespace margelo::nitro::nitroark {
       prototype.registerHybridMethod("signMesssageWithMnemonic", &HybridNitroArkSpec::signMesssageWithMnemonic);
       prototype.registerHybridMethod("deriveKeypairFromMnemonic", &HybridNitroArkSpec::deriveKeypairFromMnemonic);
       prototype.registerHybridMethod("verifyMessage", &HybridNitroArkSpec::verifyMessage);
+      prototype.registerHybridMethod("movements", &HybridNitroArkSpec::movements);
       prototype.registerHybridMethod("vtxos", &HybridNitroArkSpec::vtxos);
       prototype.registerHybridMethod("getFirstExpiringVtxoBlockheight", &HybridNitroArkSpec::getFirstExpiringVtxoBlockheight);
       prototype.registerHybridMethod("getNextRequiredRefreshBlockheight", &HybridNitroArkSpec::getNextRequiredRefreshBlockheight);
       prototype.registerHybridMethod("getExpiringVtxos", &HybridNitroArkSpec::getExpiringVtxos);
-      prototype.registerHybridMethod("movements", &HybridNitroArkSpec::movements);
       prototype.registerHybridMethod("onchainBalance", &HybridNitroArkSpec::onchainBalance);
       prototype.registerHybridMethod("onchainSync", &HybridNitroArkSpec::onchainSync);
       prototype.registerHybridMethod("onchainListUnspent", &HybridNitroArkSpec::onchainListUnspent);

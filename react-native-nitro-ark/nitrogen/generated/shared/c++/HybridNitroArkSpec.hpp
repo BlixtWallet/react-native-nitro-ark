@@ -23,10 +23,10 @@ namespace margelo::nitro::nitroark { struct OffchainBalanceResult; }
 namespace margelo::nitro::nitroark { struct KeyPairResult; }
 // Forward declaration of `NewAddressResult` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct NewAddressResult; }
-// Forward declaration of `BarkVtxo` to properly resolve imports.
-namespace margelo::nitro::nitroark { struct BarkVtxo; }
 // Forward declaration of `BarkMovement` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct BarkMovement; }
+// Forward declaration of `BarkVtxo` to properly resolve imports.
+namespace margelo::nitro::nitroark { struct BarkVtxo; }
 // Forward declaration of `OnchainBalanceResult` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct OnchainBalanceResult; }
 // Forward declaration of `OnchainPaymentResult` to properly resolve imports.
@@ -51,10 +51,10 @@ namespace margelo::nitro::nitroark { struct LightningReceive; }
 #include "OffchainBalanceResult.hpp"
 #include "KeyPairResult.hpp"
 #include "NewAddressResult.hpp"
-#include "BarkVtxo.hpp"
-#include <vector>
-#include <optional>
 #include "BarkMovement.hpp"
+#include <vector>
+#include "BarkVtxo.hpp"
+#include <optional>
 #include "OnchainBalanceResult.hpp"
 #include "OnchainPaymentResult.hpp"
 #include "BarkSendManyOutput.hpp"
@@ -116,11 +116,11 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<std::string>> signMesssageWithMnemonic(const std::string& message, const std::string& mnemonic, const std::string& network, double index) = 0;
       virtual std::shared_ptr<Promise<KeyPairResult>> deriveKeypairFromMnemonic(const std::string& mnemonic, const std::string& network, double index) = 0;
       virtual std::shared_ptr<Promise<bool>> verifyMessage(const std::string& message, const std::string& signature, const std::string& publicKey) = 0;
+      virtual std::shared_ptr<Promise<std::vector<BarkMovement>>> movements(double pageIndex, double pageSize) = 0;
       virtual std::shared_ptr<Promise<std::vector<BarkVtxo>>> vtxos() = 0;
       virtual std::shared_ptr<Promise<std::optional<double>>> getFirstExpiringVtxoBlockheight() = 0;
       virtual std::shared_ptr<Promise<std::optional<double>>> getNextRequiredRefreshBlockheight() = 0;
       virtual std::shared_ptr<Promise<std::vector<BarkVtxo>>> getExpiringVtxos(double threshold) = 0;
-      virtual std::shared_ptr<Promise<std::vector<BarkMovement>>> movements(double pageIndex, double pageSize) = 0;
       virtual std::shared_ptr<Promise<OnchainBalanceResult>> onchainBalance() = 0;
       virtual std::shared_ptr<Promise<void>> onchainSync() = 0;
       virtual std::shared_ptr<Promise<std::string>> onchainListUnspent() = 0;
