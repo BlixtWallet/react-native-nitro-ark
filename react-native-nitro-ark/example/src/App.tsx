@@ -807,7 +807,7 @@ export default function ArkApp() {
     );
   };
 
-  const handleClaimPayment = () => {
+  const handlefinishLightningReceive = () => {
     if (!mnemonic) {
       setError((prev) => ({ ...prev, lightning: 'Mnemonic required' }));
       return;
@@ -1230,7 +1230,10 @@ export default function ArkApp() {
             />
           </View>
           <View style={styles.buttonGrid}>
-            {renderOperationButton('Claim Payment', handleClaimPayment)}
+            {renderOperationButton(
+              'Finish Lightning Receive',
+              handlefinishLightningReceive
+            )}
           </View>
           <View style={styles.inputContainer}>
             <Text style={styles.inputLabel}>Payment Hash:</Text>
