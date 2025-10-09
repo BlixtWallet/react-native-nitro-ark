@@ -135,6 +135,8 @@ pub(crate) mod ffi {
         pub pending_in_round: u64,
         /// Coins that are in the process of unilaterally exiting the Ark.
         pub pending_exit: u64,
+        /// Coins that are pending sufficient confirmations from board transactions.
+        pub pending_board: u64,
     }
 
     pub struct OnChainBalance {
@@ -278,6 +280,7 @@ pub(crate) fn offchain_balance() -> anyhow::Result<ffi::OffchainBalance> {
         pending_lightning_send: balance.pending_lightning_send.to_sat(),
         pending_in_round: balance.pending_in_round.to_sat(),
         pending_exit: balance.pending_exit.to_sat(),
+        pending_board: balance.pending_board.to_sat(),
     })
 }
 

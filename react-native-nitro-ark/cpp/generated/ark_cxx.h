@@ -1009,6 +1009,8 @@ struct OffchainBalance final {
   ::std::uint64_t pending_in_round CXX_DEFAULT_VALUE(0);
   // Coins that are in the process of unilaterally exiting the Ark.
   ::std::uint64_t pending_exit CXX_DEFAULT_VALUE(0);
+  // Coins that are pending sufficient confirmations from board transactions.
+  ::std::uint64_t pending_board CXX_DEFAULT_VALUE(0);
 
   using IsRelocatable = ::std::true_type;
 };

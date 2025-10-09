@@ -33,10 +33,11 @@ namespace margelo::nitro::nitroark {
     double pending_lightning_send     SWIFT_PRIVATE;
     double pending_in_round     SWIFT_PRIVATE;
     double pending_exit     SWIFT_PRIVATE;
+    double pending_board     SWIFT_PRIVATE;
 
   public:
     OffchainBalanceResult() = default;
-    explicit OffchainBalanceResult(double spendable, double pending_lightning_send, double pending_in_round, double pending_exit): spendable(spendable), pending_lightning_send(pending_lightning_send), pending_in_round(pending_in_round), pending_exit(pending_exit) {}
+    explicit OffchainBalanceResult(double spendable, double pending_lightning_send, double pending_in_round, double pending_exit, double pending_board): spendable(spendable), pending_lightning_send(pending_lightning_send), pending_in_round(pending_in_round), pending_exit(pending_exit), pending_board(pending_board) {}
   };
 
 } // namespace margelo::nitro::nitroark
@@ -52,7 +53,8 @@ namespace margelo::nitro {
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "spendable")),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "pending_lightning_send")),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "pending_in_round")),
-        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "pending_exit"))
+        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "pending_exit")),
+        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "pending_board"))
       );
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroark::OffchainBalanceResult& arg) {
@@ -61,6 +63,7 @@ namespace margelo::nitro {
       obj.setProperty(runtime, "pending_lightning_send", JSIConverter<double>::toJSI(runtime, arg.pending_lightning_send));
       obj.setProperty(runtime, "pending_in_round", JSIConverter<double>::toJSI(runtime, arg.pending_in_round));
       obj.setProperty(runtime, "pending_exit", JSIConverter<double>::toJSI(runtime, arg.pending_exit));
+      obj.setProperty(runtime, "pending_board", JSIConverter<double>::toJSI(runtime, arg.pending_board));
       return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -72,6 +75,7 @@ namespace margelo::nitro {
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "pending_lightning_send"))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "pending_in_round"))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "pending_exit"))) return false;
+      if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "pending_board"))) return false;
       return true;
     }
   };

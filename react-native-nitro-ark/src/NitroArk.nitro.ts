@@ -90,6 +90,7 @@ export interface OffchainBalanceResult {
   pending_lightning_send: number; // u64
   pending_in_round: number; // u64
   pending_exit: number; // u64
+  pending_board: number; // u64
 }
 
 export interface OnchainBalanceResult {
