@@ -141,6 +141,7 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<std::optional<LightningReceive>>> lightningReceiveStatus(const std::string& paymentHash) = 0;
       virtual std::shared_ptr<Promise<std::vector<LightningReceive>>> lightningReceives(double pageSize, double pageIndex) = 0;
       virtual std::shared_ptr<Promise<void>> finishLightningReceive(const std::string& bolt11) = 0;
+      virtual std::shared_ptr<Promise<void>> claimAllOpenInvoices() = 0;
       virtual std::shared_ptr<Promise<std::string>> offboardSpecific(const std::vector<std::string>& vtxoIds, const std::string& destinationAddress) = 0;
       virtual std::shared_ptr<Promise<std::string>> offboardAll(const std::string& destinationAddress) = 0;
 

@@ -677,6 +677,16 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<void>> claimAllOpenInvoices() override {
+    return Promise<void>::async([]() {
+      try {
+        bark_cxx::claim_all_open_invoices();
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   std::shared_ptr<Promise<std::optional<LightningReceive>>>
   lightningReceiveStatus(const std::string& paymentHash) override {
     return Promise<std::optional<LightningReceive>>::async([paymentHash]() {

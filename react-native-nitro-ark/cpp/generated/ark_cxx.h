@@ -1147,6 +1147,8 @@ void validate_arkoor_address(::rust::Str address);
 
 void finish_lightning_receive(::rust::String bolt11);
 
+void claim_all_open_invoices();
+
 void sync_exits();
 
 ::bark_cxx::OnChainBalance onchain_balance();

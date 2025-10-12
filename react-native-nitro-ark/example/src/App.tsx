@@ -840,6 +840,24 @@ export default function ArkApp() {
     );
   };
 
+  const handleClaimAllOpenInvoices = () => {
+    if (!mnemonic) {
+      setError((prev) => ({ ...prev, lightning: 'Mnemonic required' }));
+      return;
+    }
+    runOperation(
+      'claimAllOpenInvoices',
+      () => NitroArk.claimAllOpenInvoices(),
+      'lightning',
+      () => {
+        setResults((prev) => ({
+          ...prev,
+          lightning: 'Successfully claimed all open invoices!',
+        }));
+      }
+    );
+  };
+
   const handleLightningReceiveStatus = () => {
     if (!paymentHash) {
       setError((prev) => ({
@@ -1258,6 +1276,13 @@ export default function ArkApp() {
             {renderOperationButton(
               'Get Lightning Receive Status',
               handleLightningReceiveStatus
+            )}
+          </View>
+
+          <View style={styles.buttonGrid}>
+            {renderOperationButton(
+              'Claim All Open Invoices',
+              handleClaimAllOpenInvoices
             )}
           </View>
         </View>

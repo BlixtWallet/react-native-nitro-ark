@@ -455,6 +455,14 @@ export function finishLightningReceive(bolt11: string): Promise<void> {
 }
 
 /**
+ * Claims all open Lightning invoices.
+ * @returns A promise that resolves on success or rejects on error.
+ */
+export function claimAllOpenInvoices(): Promise<void> {
+  return NitroArkHybridObject.claimAllOpenInvoices();
+}
+
+/**
  * Sends a Lightning payment.
  * @param destination The Lightning invoice.
  * @param amountSat The amount in satoshis to send. Use 0 for invoice amount.

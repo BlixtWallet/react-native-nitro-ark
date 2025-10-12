@@ -223,6 +223,7 @@ pub(crate) mod ffi {
         fn offboard_specific(vtxo_ids: Vec<String>, destination_address: &str) -> Result<String>;
         fn offboard_all(destination_address: &str) -> Result<String>;
         fn finish_lightning_receive(bolt11: String) -> Result<()>;
+        fn claim_all_open_invoices() -> Result<()>;
         fn sync_exits() -> Result<()>;
 
         // Onchain methods
@@ -720,6 +721,11 @@ pub(crate) fn offboard_all(destination_address: &str) -> anyhow::Result<String> 
 pub(crate) fn finish_lightning_receive(bolt11: String) -> anyhow::Result<()> {
     let invoice = bolt11.parse()?;
     TOKIO_RUNTIME.block_on(crate::finish_lightning_receive(invoice))
+}
+
+pub(crate) fn claim_all_open_invoices() -> anyhow::Result<()> {
+    let _ = crate::TOKIO_RUNTIME.block_on(crate::claim_all_open_invoices())?;
+    Ok(())
 }
 
 pub(crate) fn sync_exits() -> anyhow::Result<()> {

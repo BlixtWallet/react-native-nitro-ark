@@ -398,6 +398,20 @@ pub async fn finish_lightning_receive(bolt11: Bolt11Invoice) -> anyhow::Result<(
         .await
 }
 
+pub async fn claim_all_open_invoices() -> anyhow::Result<()> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async {
+            let _ = ctx
+                .wallet
+                .claim_all_open_invoices()
+                .await
+                .context("Failed to claim all open invoices")?;
+            Ok(())
+        })
+        .await
+}
+
 pub async fn register_all_confirmed_boards() -> anyhow::Result<()> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
