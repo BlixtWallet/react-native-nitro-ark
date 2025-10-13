@@ -59,8 +59,8 @@ namespace margelo::nitro::nitroark {
       prototype.registerHybridMethod("bolt11Invoice", &HybridNitroArkSpec::bolt11Invoice);
       prototype.registerHybridMethod("lightningReceiveStatus", &HybridNitroArkSpec::lightningReceiveStatus);
       prototype.registerHybridMethod("lightningReceives", &HybridNitroArkSpec::lightningReceives);
-      prototype.registerHybridMethod("finishLightningReceive", &HybridNitroArkSpec::finishLightningReceive);
-      prototype.registerHybridMethod("claimAllOpenInvoices", &HybridNitroArkSpec::claimAllOpenInvoices);
+      prototype.registerHybridMethod("checkAndClaimLnReceive", &HybridNitroArkSpec::checkAndClaimLnReceive);
+      prototype.registerHybridMethod("checkAndClaimAllOpenLnReceives", &HybridNitroArkSpec::checkAndClaimAllOpenLnReceives);
       prototype.registerHybridMethod("offboardSpecific", &HybridNitroArkSpec::offboardSpecific);
       prototype.registerHybridMethod("offboardAll", &HybridNitroArkSpec::offboardAll);
     });

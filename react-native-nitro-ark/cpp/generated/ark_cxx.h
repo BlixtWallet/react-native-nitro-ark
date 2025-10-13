@@ -1093,7 +1093,7 @@ void close_wallet();
 
 bool verify_message(::rust::Str message, ::rust::Str signature, ::rust::Str public_key);
 
-::rust::Vec<::bark_cxx::BarkMovement> movements(::std::uint16_t page_index, ::std::uint16_t page_size);
+::rust::Vec<::bark_cxx::BarkMovement> movements();
 
 ::rust::Vec<::bark_cxx::BarkVtxo> vtxos();
 
@@ -1107,7 +1107,7 @@ bool verify_message(::rust::Str message, ::rust::Str signature, ::rust::Str publ
 
 ::bark_cxx::LightningReceive const *lightning_receive_status(::rust::String payment_hash);
 
-::rust::Vec<::bark_cxx::LightningReceive> lightning_receives(::std::uint16_t page_index, ::std::uint16_t page_size);
+::rust::Vec<::bark_cxx::LightningReceive> lightning_receives();
 
 void register_all_confirmed_boards();
 
@@ -1145,9 +1145,9 @@ void validate_arkoor_address(::rust::Str address);
 
 ::rust::String offboard_all(::rust::Str destination_address);
 
-void finish_lightning_receive(::rust::String bolt11);
+void check_and_claim_ln_receive(::rust::String payment_hash, bool wait);
 
-void claim_all_open_invoices();
+void check_and_claim_all_open_ln_receives(bool wait);
 
 void sync_exits();
 

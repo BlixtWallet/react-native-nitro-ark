@@ -545,7 +545,7 @@ export default function ArkApp() {
       setError((prev) => ({ ...prev, walletInfo: 'Mnemonic required' }));
       return;
     }
-    runOperation('movements', () => NitroArk.movements(0, 10), 'walletInfo');
+    runOperation('movements', () => NitroArk.movements(), 'walletInfo');
   };
 
   const handleSendOnchain = () => {
@@ -815,7 +815,7 @@ export default function ArkApp() {
     );
   };
 
-  const handlefinishLightningReceive = () => {
+  const handlecheckAndClaimLnReceive = () => {
     if (!mnemonic) {
       setError((prev) => ({ ...prev, lightning: 'Mnemonic required' }));
       return;
@@ -828,8 +828,8 @@ export default function ArkApp() {
       return;
     }
     runOperation(
-      'finishLightningReceive',
-      () => NitroArk.finishLightningReceive(invoiceToClaim),
+      'checkAndClaimLnReceive',
+      () => NitroArk.checkAndClaimLnReceive(paymentHash, false),
       'lightning',
       () => {
         setResults((prev) => ({
@@ -840,14 +840,14 @@ export default function ArkApp() {
     );
   };
 
-  const handleClaimAllOpenInvoices = () => {
+  const handleCheckAndClaimAllOpenLnReceives = () => {
     if (!mnemonic) {
       setError((prev) => ({ ...prev, lightning: 'Mnemonic required' }));
       return;
     }
     runOperation(
-      'claimAllOpenInvoices',
-      () => NitroArk.claimAllOpenInvoices(),
+      'checkAndClaimAllOpenLnReceives',
+      () => NitroArk.checkAndClaimAllOpenLnReceives(false),
       'lightning',
       () => {
         setResults((prev) => ({
@@ -1258,8 +1258,8 @@ export default function ArkApp() {
           </View>
           <View style={styles.buttonGrid}>
             {renderOperationButton(
-              'Finish Lightning Receive',
-              handlefinishLightningReceive
+              'Check & Claim LN Receive',
+              handlecheckAndClaimLnReceive
             )}
           </View>
           <View style={styles.inputContainer}>
@@ -1281,8 +1281,8 @@ export default function ArkApp() {
 
           <View style={styles.buttonGrid}>
             {renderOperationButton(
-              'Claim All Open Invoices',
-              handleClaimAllOpenInvoices
+              'Check and Claim All Open Ln Receives',
+              handleCheckAndClaimAllOpenLnReceives
             )}
           </View>
         </View>

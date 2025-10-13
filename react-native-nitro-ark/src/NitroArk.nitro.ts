@@ -177,7 +177,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
     signature: string,
     publicKey: string
   ): Promise<boolean>;
-  movements(pageIndex: number, pageSize: number): Promise<BarkMovement[]>;
+  movements(): Promise<BarkMovement[]>;
   vtxos(): Promise<BarkVtxo[]>;
   getFirstExpiringVtxoBlockheight(): Promise<number | undefined>;
   getNextRequiredRefreshBlockheight(): Promise<number | undefined>;
@@ -234,12 +234,9 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   lightningReceiveStatus(
     paymentHash: string
   ): Promise<LightningReceive | undefined>;
-  lightningReceives(
-    pageSize: number,
-    pageIndex: number
-  ): Promise<LightningReceive[]>;
-  finishLightningReceive(bolt11: string): Promise<void>; // Throws on error
-  claimAllOpenInvoices(): Promise<void>; // Throws on error
+  lightningReceives(): Promise<LightningReceive[]>;
+  checkAndClaimLnReceive(paymentHash: string, wait: boolean): Promise<void>; // Throws on error
+  checkAndClaimAllOpenLnReceives(wait: boolean): Promise<void>; // Throws on error
 
   // --- Offboarding / Exiting ---
   offboardSpecific(

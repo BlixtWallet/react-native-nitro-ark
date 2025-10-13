@@ -46,9 +46,7 @@ impl ConfigOpts {
         if let Some(v) = self.bitcoind_pass {
             cfg.bitcoind_pass = if v == "" { None } else { Some(v) };
         }
-        if let Some(v) = self.vtxo_refresh_expiry_threshold {
-            cfg.vtxo_refresh_expiry_threshold = v;
-        }
+        cfg.vtxo_refresh_expiry_threshold = self.vtxo_refresh_expiry_threshold;
         cfg.fallback_fee_rate = self
             .fallback_fee_rate
             .map(|f| FeeRate::from_sat_per_kvb_ceil(f));
@@ -94,7 +92,7 @@ pub struct ConfigOpts {
     pub bitcoind_cookie: Option<String>,
     pub bitcoind_user: Option<String>,
     pub bitcoind_pass: Option<String>,
-    pub vtxo_refresh_expiry_threshold: Option<u32>,
+    pub vtxo_refresh_expiry_threshold: u32,
     pub fallback_fee_rate: Option<u64>,
 }
 
@@ -195,13 +193,45 @@ pub fn merge_config_opts(opts: CreateOpts) -> anyhow::Result<(Config, Network)> 
         _ => bail!("A network must be specified. Use either --signet, --regtest or --bitcoin"),
     };
 
+    let fallback_fee_rate = match opts.config.fallback_fee_rate {
+        Some(rate) => {
+            if let Some(rate) = FeeRate::from_sat_per_vb(rate) {
+                Some(rate)
+            } else {
+                None
+            }
+        }
+        None => None,
+    };
+
     let mut config = Config {
         server_address: opts
             .config
             .ark
             .clone()
             .context("Ark server address missing, use --ark")?,
-        ..Default::default()
+        esplora_address: match net {
+            Network::Bitcoin | Network::Signet => opts.config.esplora.clone().and_then(|v| {
+                if v.is_empty() {
+                    None
+                } else {
+                    https_default_scheme(v).ok()
+                }
+            }),
+            _ => None,
+        },
+        bitcoind_address: None,
+        bitcoind_cookiefile: None,
+        bitcoind_user: match net {
+            Network::Regtest => opts.config.bitcoind_user.clone(),
+            _ => None,
+        },
+        bitcoind_pass: match net {
+            Network::Regtest => opts.config.bitcoind_pass.clone(),
+            _ => None,
+        },
+        vtxo_refresh_expiry_threshold: opts.config.vtxo_refresh_expiry_threshold,
+        fallback_fee_rate,
     };
     opts.config
         .clone()
@@ -219,7 +249,7 @@ pub fn ffi_config_to_config(opts: ffi::CreateOpts) -> anyhow::Result<CreateOpts>
         bitcoind_cookie: Some(opts.config.bitcoind_cookie),
         bitcoind_user: Some(opts.config.bitcoind_user),
         bitcoind_pass: Some(opts.config.bitcoind_pass),
-        vtxo_refresh_expiry_threshold: Some(opts.config.vtxo_refresh_expiry_threshold),
+        vtxo_refresh_expiry_threshold: opts.config.vtxo_refresh_expiry_threshold,
         fallback_fee_rate: Some(opts.config.fallback_fee_rate),
     };
 

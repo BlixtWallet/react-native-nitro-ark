@@ -116,7 +116,7 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<std::string>> signMesssageWithMnemonic(const std::string& message, const std::string& mnemonic, const std::string& network, double index) = 0;
       virtual std::shared_ptr<Promise<KeyPairResult>> deriveKeypairFromMnemonic(const std::string& mnemonic, const std::string& network, double index) = 0;
       virtual std::shared_ptr<Promise<bool>> verifyMessage(const std::string& message, const std::string& signature, const std::string& publicKey) = 0;
-      virtual std::shared_ptr<Promise<std::vector<BarkMovement>>> movements(double pageIndex, double pageSize) = 0;
+      virtual std::shared_ptr<Promise<std::vector<BarkMovement>>> movements() = 0;
       virtual std::shared_ptr<Promise<std::vector<BarkVtxo>>> vtxos() = 0;
       virtual std::shared_ptr<Promise<std::optional<double>>> getFirstExpiringVtxoBlockheight() = 0;
       virtual std::shared_ptr<Promise<std::optional<double>>> getNextRequiredRefreshBlockheight() = 0;
@@ -139,9 +139,9 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<std::string>> sendRoundOnchainPayment(const std::string& destination, double amountSat) = 0;
       virtual std::shared_ptr<Promise<std::string>> bolt11Invoice(double amountMsat) = 0;
       virtual std::shared_ptr<Promise<std::optional<LightningReceive>>> lightningReceiveStatus(const std::string& paymentHash) = 0;
-      virtual std::shared_ptr<Promise<std::vector<LightningReceive>>> lightningReceives(double pageSize, double pageIndex) = 0;
-      virtual std::shared_ptr<Promise<void>> finishLightningReceive(const std::string& bolt11) = 0;
-      virtual std::shared_ptr<Promise<void>> claimAllOpenInvoices() = 0;
+      virtual std::shared_ptr<Promise<std::vector<LightningReceive>>> lightningReceives() = 0;
+      virtual std::shared_ptr<Promise<void>> checkAndClaimLnReceive(const std::string& paymentHash, bool wait) = 0;
+      virtual std::shared_ptr<Promise<void>> checkAndClaimAllOpenLnReceives(bool wait) = 0;
       virtual std::shared_ptr<Promise<std::string>> offboardSpecific(const std::vector<std::string>& vtxoIds, const std::string& destinationAddress) = 0;
       virtual std::shared_ptr<Promise<std::string>> offboardAll(const std::string& destinationAddress) = 0;
 
