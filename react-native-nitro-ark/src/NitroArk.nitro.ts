@@ -50,6 +50,12 @@ interface BarkVtxo {
   state: string;
 }
 
+export interface Bolt11Invoice {
+  payment_request: string;
+  payment_secret: string;
+  payment_hash: string;
+}
+
 export type PaymentTypes = 'Bolt11' | 'Bolt12' | 'Lnurl' | 'Arkoor' | 'Onchain';
 
 export interface ArkoorPaymentResult {
@@ -177,7 +183,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
     signature: string,
     publicKey: string
   ): Promise<boolean>;
-  movements(pageIndex: number, pageSize: number): Promise<BarkMovement[]>;
+  movements(): Promise<BarkMovement[]>;
   vtxos(): Promise<BarkVtxo[]>;
   getFirstExpiringVtxoBlockheight(): Promise<number | undefined>;
   getNextRequiredRefreshBlockheight(): Promise<number | undefined>;
@@ -230,16 +236,13 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   ): Promise<string>; // Returns JSON status
 
   // --- Lightning Invoicing ---
-  bolt11Invoice(amountMsat: number): Promise<string>; // Returns invoice string
+  bolt11Invoice(amountMsat: number): Promise<Bolt11Invoice>;
   lightningReceiveStatus(
     paymentHash: string
   ): Promise<LightningReceive | undefined>;
-  lightningReceives(
-    pageSize: number,
-    pageIndex: number
-  ): Promise<LightningReceive[]>;
-  finishLightningReceive(bolt11: string): Promise<void>; // Throws on error
-  claimAllOpenInvoices(): Promise<void>; // Throws on error
+  lightningReceives(): Promise<LightningReceive[]>;
+  checkAndClaimLnReceive(paymentHash: string, wait: boolean): Promise<void>; // Throws on error
+  checkAndClaimAllOpenLnReceives(wait: boolean): Promise<void>; // Throws on error
 
   // --- Offboarding / Exiting ---
   offboardSpecific(

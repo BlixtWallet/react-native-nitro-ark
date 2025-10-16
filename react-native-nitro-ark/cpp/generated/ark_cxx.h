@@ -805,6 +805,7 @@ namespace bark_cxx {
   struct BarkVtxo;
   enum class PaymentTypes : ::std::uint8_t;
   struct NewAddressResult;
+  struct Bolt11Invoice;
   struct Bolt11PaymentResult;
   struct Bolt12PaymentResult;
   struct LnurlPaymentResult;
@@ -860,6 +861,17 @@ struct NewAddressResult final {
   using IsRelocatable = ::std::true_type;
 };
 #endif // CXXBRIDGE1_STRUCT_bark_cxx$NewAddressResult
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$Bolt11Invoice
+#define CXXBRIDGE1_STRUCT_bark_cxx$Bolt11Invoice
+struct Bolt11Invoice final {
+  ::rust::String bolt11_invoice;
+  ::rust::String payment_secret;
+  ::rust::String payment_hash;
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$Bolt11Invoice
 
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$Bolt11PaymentResult
 #define CXXBRIDGE1_STRUCT_bark_cxx$Bolt11PaymentResult
@@ -1093,7 +1105,7 @@ void close_wallet();
 
 bool verify_message(::rust::Str message, ::rust::Str signature, ::rust::Str public_key);
 
-::rust::Vec<::bark_cxx::BarkMovement> movements(::std::uint16_t page_index, ::std::uint16_t page_size);
+::rust::Vec<::bark_cxx::BarkMovement> movements();
 
 ::rust::Vec<::bark_cxx::BarkVtxo> vtxos();
 
@@ -1103,11 +1115,11 @@ bool verify_message(::rust::Str message, ::rust::Str signature, ::rust::Str publ
 
 ::std::uint32_t const *get_next_required_refresh_blockheight();
 
-::rust::String bolt11_invoice(::std::uint64_t amount_msat);
+::bark_cxx::Bolt11Invoice bolt11_invoice(::std::uint64_t amount_msat);
 
 ::bark_cxx::LightningReceive const *lightning_receive_status(::rust::String payment_hash);
 
-::rust::Vec<::bark_cxx::LightningReceive> lightning_receives(::std::uint16_t page_index, ::std::uint16_t page_size);
+::rust::Vec<::bark_cxx::LightningReceive> lightning_receives();
 
 void register_all_confirmed_boards();
 
@@ -1145,9 +1157,9 @@ void validate_arkoor_address(::rust::Str address);
 
 ::rust::String offboard_all(::rust::Str destination_address);
 
-void finish_lightning_receive(::rust::String bolt11);
+void check_and_claim_ln_receive(::rust::String payment_hash, bool wait);
 
-void claim_all_open_invoices();
+void check_and_claim_all_open_ln_receives(bool wait);
 
 void sync_exits();
 

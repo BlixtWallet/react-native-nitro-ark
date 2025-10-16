@@ -186,7 +186,7 @@ fn test_bolt11_invoice_ffi() {
         "Failed to create bolt11 invoice: {:?}",
         invoice_res.err()
     );
-    let invoice_str = invoice_res.unwrap();
+    let invoice_str = invoice_res.unwrap().bolt11_invoice;
     assert!(
         invoice_str.starts_with("lnbcrt1"),
         "Invoice should be for regtest"
@@ -326,7 +326,7 @@ fn test_send_bolt11_payment_ffi() {
     // Here we test sending to a bolt11 invoice.
     let invoice = cxx::bolt11_invoice(10000).unwrap();
     let amount: u64 = 5000;
-    let send_res = cxx::send_lightning_payment(&invoice, &amount as *const u64);
+    let send_res = cxx::send_lightning_payment(&invoice.bolt11_invoice, &amount as *const u64);
     assert!(
         send_res.is_ok(),
         "send_payment (bolt11) failed: {:?}",
@@ -355,7 +355,7 @@ fn test_claim_bolt11_payment_ffi() {
     let invoice = cxx::bolt11_invoice(10000).unwrap();
     // In a real test, you would now pay this invoice from another node.
     // For this unit test, we just check that trying to claim an unpaid invoice fails gracefully.
-    let claim_res = cxx::finish_lightning_receive(invoice);
+    let claim_res = cxx::check_and_claim_ln_receive(invoice.payment_hash, false);
     // Depending on the LDK setup, this might error differently.
     // The key is that it shouldn't panic.
     assert!(claim_res.is_err(), "Claiming an unpaid invoice should fail");

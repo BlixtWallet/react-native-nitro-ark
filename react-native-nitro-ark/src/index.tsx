@@ -3,6 +3,7 @@ import type {
   NitroArk,
   BarkCreateOpts,
   BarkArkInfo,
+  Bolt11Invoice,
   BarkSendManyOutput,
   ArkoorPaymentResult,
   Bolt11PaymentResult,
@@ -283,17 +284,10 @@ export function verifyMessage(
 
 /**
  * Gets a paginated list of wallet movements (balance changes).
- * @param pageIndex The index of the page to retrieve (0-based).
- * @param pageSize The number of movements per page.
  * @returns A promise resolving to an array of BarkMovement objects.
  */
-export function movements(
-  pageIndex: number,
-  pageSize: number
-): Promise<BarkMovement[]> {
-  return NitroArkHybridObject.movements(pageIndex, pageSize) as Promise<
-    BarkMovement[]
-  >;
+export function movements(): Promise<BarkMovement[]> {
+  return NitroArkHybridObject.movements() as Promise<BarkMovement[]>;
 }
 
 /**
@@ -415,9 +409,9 @@ export function onchainSendMany(
 /**
  * Creates a Bolt 11 invoice.
  * @param amountMsat The amount in millisatoshis for the invoice.
- * @returns A promise resolving to the Bolt 11 invoice string.
+ * @returns A promise resolving to Bolt11Invoice object.
  */
-export function bolt11Invoice(amountMsat: number): Promise<string> {
+export function bolt11Invoice(amountMsat: number): Promise<Bolt11Invoice> {
   return NitroArkHybridObject.bolt11Invoice(amountMsat);
 }
 
@@ -433,33 +427,32 @@ export function lightningReceiveStatus(
 }
 
 /**
- * Gets a page of Lightning receives.
- * @param pageSize The number of items to retrieve.
- * @param pageIndex The index of the page to retrieve.
+ * Gets a list of Lightning receives.
  * @returns A promise resolving to an array of Lightning receives.
  */
-export function lightningReceives(
-  pageSize: number,
-  pageIndex: number
-): Promise<LightningReceive[]> {
-  return NitroArkHybridObject.lightningReceives(pageSize, pageIndex);
+export function lightningReceives(): Promise<LightningReceive[]> {
+  return NitroArkHybridObject.lightningReceives();
 }
 
 /**
- * Claims a Lightning payment.
- * @param bolt11 The Lightning invoice string to claim.
+ * Checks and claims a Lightning payment.
+ * @param paymentHash The payment hash of the Lightning payment.
  * @returns A promise that resolves on success or rejects on error.
  */
-export function finishLightningReceive(bolt11: string): Promise<void> {
-  return NitroArkHybridObject.finishLightningReceive(bolt11);
+export function checkAndClaimLnReceive(
+  paymentHash: string,
+  wait: boolean
+): Promise<void> {
+  return NitroArkHybridObject.checkAndClaimLnReceive(paymentHash, wait);
 }
 
 /**
- * Claims all open Lightning invoices.
+ * Checks and claims all open Lightning receives.
+ * @param wait Whether to wait for the claim to complete.
  * @returns A promise that resolves on success or rejects on error.
  */
-export function claimAllOpenInvoices(): Promise<void> {
-  return NitroArkHybridObject.claimAllOpenInvoices();
+export function checkAndClaimAllOpenLnReceives(wait: boolean): Promise<void> {
+  return NitroArkHybridObject.checkAndClaimAllOpenLnReceives(wait);
 }
 
 /**
@@ -589,6 +582,7 @@ export type {
   BarkCreateOpts,
   BarkConfigOpts,
   BarkArkInfo,
+  Bolt11Invoice,
   BarkSendManyOutput,
   ArkoorPaymentResult,
   Bolt11PaymentResult,

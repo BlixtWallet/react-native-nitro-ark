@@ -6,6 +6,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <sys/wait.h>
 #include <vector>
 
 namespace margelo::nitro::nitroark {
@@ -361,11 +362,10 @@ public:
     });
   }
 
-  std::shared_ptr<Promise<std::vector<BarkMovement>>> movements(double pageIndex, double pageSize) override {
-    return Promise<std::vector<BarkMovement>>::async([pageIndex, pageSize]() {
+  std::shared_ptr<Promise<std::vector<BarkMovement>>> movements() override {
+    return Promise<std::vector<BarkMovement>>::async([]() {
       try {
-        rust::Vec<bark_cxx::BarkMovement> movements_rs =
-            bark_cxx::movements(static_cast<uint16_t>(pageIndex), static_cast<uint16_t>(pageSize));
+        rust::Vec<bark_cxx::BarkMovement> movements_rs = bark_cxx::movements();
 
         std::vector<BarkMovement> movements;
         movements.reserve(movements_rs.size());
@@ -656,31 +656,33 @@ public:
     });
   }
 
-  std::shared_ptr<Promise<std::string>> bolt11Invoice(double amountMsat) override {
-    return Promise<std::string>::async([amountMsat]() {
+  std::shared_ptr<Promise<Bolt11Invoice>> bolt11Invoice(double amountMsat) override {
+    return Promise<Bolt11Invoice>::async([amountMsat]() {
       try {
-        rust::String invoice_rs = bark_cxx::bolt11_invoice(static_cast<uint64_t>(amountMsat));
-        return std::string(invoice_rs.data(), invoice_rs.length());
+        bark_cxx::Bolt11Invoice invoice_rs = bark_cxx::bolt11_invoice(static_cast<uint64_t>(amountMsat));
+        return Bolt11Invoice(std::string(invoice_rs.bolt11_invoice.data(), invoice_rs.bolt11_invoice.length()),
+                             std::string(invoice_rs.payment_secret.data(), invoice_rs.payment_secret.length()),
+                             std::string(invoice_rs.payment_hash.data(), invoice_rs.payment_hash.length()));
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
   }
 
-  std::shared_ptr<Promise<void>> finishLightningReceive(const std::string& bolt11) override {
-    return Promise<void>::async([bolt11]() {
+  std::shared_ptr<Promise<void>> checkAndClaimLnReceive(const std::string& paymentHash, bool wait) override {
+    return Promise<void>::async([paymentHash, wait]() {
       try {
-        bark_cxx::finish_lightning_receive(bolt11);
+        bark_cxx::check_and_claim_ln_receive(paymentHash, wait);
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
   }
 
-  std::shared_ptr<Promise<void>> claimAllOpenInvoices() override {
-    return Promise<void>::async([]() {
+  std::shared_ptr<Promise<void>> checkAndClaimAllOpenLnReceives(bool wait) override {
+    return Promise<void>::async([wait]() {
       try {
-        bark_cxx::claim_all_open_invoices();
+        bark_cxx::check_and_claim_all_open_ln_receives(wait);
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
@@ -718,12 +720,10 @@ public:
     });
   }
 
-  std::shared_ptr<Promise<std::vector<LightningReceive>>> lightningReceives(double pageSize,
-                                                                            double pageIndex) override {
-    return Promise<std::vector<LightningReceive>>::async([pageSize, pageIndex]() {
+  std::shared_ptr<Promise<std::vector<LightningReceive>>> lightningReceives() override {
+    return Promise<std::vector<LightningReceive>>::async([]() {
       try {
-        rust::Vec<bark_cxx::LightningReceive> receives_rs =
-            bark_cxx::lightning_receives(static_cast<uint16_t>(pageIndex), static_cast<uint16_t>(pageSize));
+        rust::Vec<bark_cxx::LightningReceive> receives_rs = bark_cxx::lightning_receives();
 
         std::vector<LightningReceive> receives;
         receives.reserve(receives_rs.size());

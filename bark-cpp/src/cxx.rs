@@ -6,8 +6,7 @@ use crate::{utils, TOKIO_RUNTIME};
 use anyhow::{bail, Context, Ok};
 use bark::ark::bitcoin::hex::DisplayHex;
 use bark::ark::bitcoin::{address, Address};
-use bark::ark::lightning;
-use bark::Pagination;
+use bark::ark::lightning::{self, PaymentHash};
 use bdk_wallet::bitcoin::{self, network, FeeRate};
 use bip39::Mnemonic;
 use logger::log::{self, info};
@@ -40,6 +39,12 @@ pub(crate) mod ffi {
         user_pubkey: String,
         ark_id: String,
         address: String,
+    }
+
+    pub struct Bolt11Invoice {
+        bolt11_invoice: String,
+        payment_secret: String,
+        payment_hash: String,
     }
 
     pub struct Bolt11PaymentResult {
@@ -193,14 +198,14 @@ pub(crate) mod ffi {
             index: u32,
         ) -> Result<KeyPairResult>;
         fn verify_message(message: &str, signature: &str, public_key: &str) -> Result<bool>;
-        fn movements(page_index: u16, page_size: u16) -> Result<Vec<BarkMovement>>;
+        fn movements() -> Result<Vec<BarkMovement>>;
         fn vtxos() -> Result<Vec<BarkVtxo>>;
         fn get_expiring_vtxos(threshold: u32) -> Result<Vec<BarkVtxo>>;
         fn get_first_expiring_vtxo_blockheight() -> Result<*const u32>;
         fn get_next_required_refresh_blockheight() -> Result<*const u32>;
-        fn bolt11_invoice(amount_msat: u64) -> Result<String>;
+        fn bolt11_invoice(amount_msat: u64) -> Result<Bolt11Invoice>;
         fn lightning_receive_status(payment_hash: String) -> Result<*const LightningReceive>;
-        fn lightning_receives(page_index: u16, page_size: u16) -> Result<Vec<LightningReceive>>;
+        fn lightning_receives() -> Result<Vec<LightningReceive>>;
         fn register_all_confirmed_boards() -> Result<()>;
         fn maintenance() -> Result<()>;
         fn maintenance_with_onchain() -> Result<()>;
@@ -222,8 +227,8 @@ pub(crate) mod ffi {
         fn send_round_onchain_payment(destination: &str, amount_sat: u64) -> Result<String>;
         fn offboard_specific(vtxo_ids: Vec<String>, destination_address: &str) -> Result<String>;
         fn offboard_all(destination_address: &str) -> Result<String>;
-        fn finish_lightning_receive(bolt11: String) -> Result<()>;
-        fn claim_all_open_invoices() -> Result<()>;
+        fn check_and_claim_ln_receive(payment_hash: String, wait: bool) -> Result<()>;
+        fn check_and_claim_all_open_ln_receives(wait: bool) -> Result<()>;
         fn sync_exits() -> Result<()>;
 
         // Onchain methods
@@ -378,11 +383,8 @@ pub(crate) fn verify_message(
     crate::TOKIO_RUNTIME.block_on(crate::verify_message(message, signature, &public_key))
 }
 
-pub(crate) fn movements(page_index: u16, page_size: u16) -> anyhow::Result<Vec<BarkMovement>> {
-    let movements = crate::TOKIO_RUNTIME.block_on(crate::movements(Pagination {
-        page_index,
-        page_size,
-    }))?;
+pub(crate) fn movements() -> anyhow::Result<Vec<BarkMovement>> {
+    let movements = crate::TOKIO_RUNTIME.block_on(crate::movements())?;
 
     Ok(movements
         .iter()
@@ -423,8 +425,13 @@ pub(crate) fn get_next_required_refresh_blockheight() -> anyhow::Result<*const u
     }
 }
 
-pub(crate) fn bolt11_invoice(amount_msat: u64) -> anyhow::Result<String> {
-    crate::TOKIO_RUNTIME.block_on(crate::bolt11_invoice(amount_msat))
+pub(crate) fn bolt11_invoice(amount_msat: u64) -> anyhow::Result<ffi::Bolt11Invoice> {
+    let invoice = crate::TOKIO_RUNTIME.block_on(crate::bolt11_invoice(amount_msat))?;
+    Ok(ffi::Bolt11Invoice {
+        bolt11_invoice: invoice.to_string(),
+        payment_secret: invoice.payment_secret().to_string(),
+        payment_hash: invoice.payment_hash().to_string(),
+    })
 }
 
 pub(crate) fn lightning_receive_status(
@@ -450,14 +457,8 @@ pub(crate) fn lightning_receive_status(
     Ok(Box::into_raw(status))
 }
 
-pub(crate) fn lightning_receives(
-    page_index: u16,
-    page_size: u16,
-) -> anyhow::Result<Vec<ffi::LightningReceive>> {
-    let receives = crate::TOKIO_RUNTIME.block_on(crate::lightning_receives(bark::Pagination {
-        page_index,
-        page_size,
-    }))?;
+pub(crate) fn lightning_receives() -> anyhow::Result<Vec<ffi::LightningReceive>> {
+    let receives = crate::TOKIO_RUNTIME.block_on(crate::lightning_receives())?;
 
     let receives = receives
         .into_iter()
@@ -718,13 +719,14 @@ pub(crate) fn offboard_all(destination_address: &str) -> anyhow::Result<String> 
     Ok(offboard_all_result.round.to_string())
 }
 
-pub(crate) fn finish_lightning_receive(bolt11: String) -> anyhow::Result<()> {
-    let invoice = bolt11.parse()?;
-    TOKIO_RUNTIME.block_on(crate::finish_lightning_receive(invoice))
+pub(crate) fn check_and_claim_ln_receive(payment_hash: String, wait: bool) -> anyhow::Result<()> {
+    let payment_hash = PaymentHash::from_str(&payment_hash)?;
+
+    TOKIO_RUNTIME.block_on(crate::check_and_claim_ln_receive(payment_hash, wait))
 }
 
-pub(crate) fn claim_all_open_invoices() -> anyhow::Result<()> {
-    let _ = crate::TOKIO_RUNTIME.block_on(crate::claim_all_open_invoices())?;
+pub(crate) fn check_and_claim_all_open_ln_receives(wait: bool) -> anyhow::Result<()> {
+    let _ = crate::TOKIO_RUNTIME.block_on(crate::check_and_claim_all_open_ln_receives(wait))?;
     Ok(())
 }
 

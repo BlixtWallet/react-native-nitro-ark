@@ -24,7 +24,6 @@ use bark::persist::models::LightningReceive;
 use bark::persist::BarkPersister;
 use bark::Config;
 use bark::Offboard;
-use bark::Pagination;
 use bark::SendOnchain;
 use bark::SqliteClient;
 use bark::Wallet;
@@ -346,7 +345,7 @@ pub async fn verify_message(
     Ok(secp.verify_ecdsa(&msg, &signature, &public_key).is_ok())
 }
 
-pub async fn bolt11_invoice(amount: u64) -> anyhow::Result<String> {
+pub async fn bolt11_invoice(amount: u64) -> anyhow::Result<Bolt11Invoice> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
@@ -355,7 +354,7 @@ pub async fn bolt11_invoice(amount: u64) -> anyhow::Result<String> {
                 .bolt11_invoice(Amount::from_sat(amount))
                 .await
                 .context("Failed to create bolt11_invoice")?;
-            Ok(invoice.to_string())
+            Ok(invoice)
         })
         .await
 }
@@ -373,24 +372,27 @@ pub async fn lightning_receive_status(
     })
 }
 
-pub async fn lightning_receives(pagination: Pagination) -> anyhow::Result<Vec<LightningReceive>> {
+pub async fn lightning_receives() -> anyhow::Result<Vec<LightningReceive>> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager.with_context(|ctx| {
         let receives = ctx
             .wallet
-            .lightning_receives(pagination)
+            .lightning_receives()
             .context("Failed to get lightning receives")?;
         Ok(receives)
     })
 }
 
-pub async fn finish_lightning_receive(bolt11: Bolt11Invoice) -> anyhow::Result<()> {
+pub async fn check_and_claim_ln_receive(
+    payment_hash: PaymentHash,
+    wait: bool,
+) -> anyhow::Result<()> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
             let _ = ctx
                 .wallet
-                .finish_lightning_receive(&bolt11)
+                .check_and_claim_ln_receive(payment_hash, wait)
                 .await
                 .context("Failed to claim bolt11 payment")?;
             Ok(())
@@ -398,13 +400,13 @@ pub async fn finish_lightning_receive(bolt11: Bolt11Invoice) -> anyhow::Result<(
         .await
 }
 
-pub async fn claim_all_open_invoices() -> anyhow::Result<()> {
+pub async fn check_and_claim_all_open_ln_receives(wait: bool) -> anyhow::Result<()> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
             let _ = ctx
                 .wallet
-                .claim_all_open_invoices()
+                .check_and_claim_all_open_ln_receives(wait)
                 .await
                 .context("Failed to claim all open invoices")?;
             Ok(())
@@ -475,9 +477,9 @@ pub async fn sync() -> anyhow::Result<()> {
         .await
 }
 
-pub async fn movements(pagination: Pagination) -> anyhow::Result<Vec<Movement>> {
+pub async fn movements() -> anyhow::Result<Vec<Movement>> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager.with_context(|ctx| Ok(ctx.wallet.movements(pagination)?))
+    manager.with_context(|ctx| Ok(ctx.wallet.movements()?))
 }
 
 pub async fn vtxos() -> anyhow::Result<Vec<WalletVtxo>> {
