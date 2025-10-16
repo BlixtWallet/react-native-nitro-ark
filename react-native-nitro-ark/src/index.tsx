@@ -3,6 +3,7 @@ import type {
   NitroArk,
   BarkCreateOpts,
   BarkArkInfo,
+  Bolt11Invoice,
   BarkSendManyOutput,
   ArkoorPaymentResult,
   Bolt11PaymentResult,
@@ -408,9 +409,9 @@ export function onchainSendMany(
 /**
  * Creates a Bolt 11 invoice.
  * @param amountMsat The amount in millisatoshis for the invoice.
- * @returns A promise resolving to the Bolt 11 invoice string.
+ * @returns A promise resolving to Bolt11Invoice object.
  */
-export function bolt11Invoice(amountMsat: number): Promise<string> {
+export function bolt11Invoice(amountMsat: number): Promise<Bolt11Invoice> {
   return NitroArkHybridObject.bolt11Invoice(amountMsat);
 }
 
@@ -581,6 +582,7 @@ export type {
   BarkCreateOpts,
   BarkConfigOpts,
   BarkArkInfo,
+  Bolt11Invoice,
   BarkSendManyOutput,
   ArkoorPaymentResult,
   Bolt11PaymentResult,

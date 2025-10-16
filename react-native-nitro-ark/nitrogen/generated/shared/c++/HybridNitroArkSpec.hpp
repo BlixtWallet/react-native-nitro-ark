@@ -41,6 +41,8 @@ namespace margelo::nitro::nitroark { struct Bolt11PaymentResult; }
 namespace margelo::nitro::nitroark { struct Bolt12PaymentResult; }
 // Forward declaration of `LnurlPaymentResult` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct LnurlPaymentResult; }
+// Forward declaration of `Bolt11Invoice` to properly resolve imports.
+namespace margelo::nitro::nitroark { struct Bolt11Invoice; }
 // Forward declaration of `LightningReceive` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct LightningReceive; }
 
@@ -62,6 +64,7 @@ namespace margelo::nitro::nitroark { struct LightningReceive; }
 #include "Bolt11PaymentResult.hpp"
 #include "Bolt12PaymentResult.hpp"
 #include "LnurlPaymentResult.hpp"
+#include "Bolt11Invoice.hpp"
 #include "LightningReceive.hpp"
 
 namespace margelo::nitro::nitroark {
@@ -137,7 +140,7 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<Bolt12PaymentResult>> payOffer(const std::string& offer, std::optional<double> amountSat) = 0;
       virtual std::shared_ptr<Promise<LnurlPaymentResult>> sendLnaddr(const std::string& addr, double amountSat, const std::string& comment) = 0;
       virtual std::shared_ptr<Promise<std::string>> sendRoundOnchainPayment(const std::string& destination, double amountSat) = 0;
-      virtual std::shared_ptr<Promise<std::string>> bolt11Invoice(double amountMsat) = 0;
+      virtual std::shared_ptr<Promise<Bolt11Invoice>> bolt11Invoice(double amountMsat) = 0;
       virtual std::shared_ptr<Promise<std::optional<LightningReceive>>> lightningReceiveStatus(const std::string& paymentHash) = 0;
       virtual std::shared_ptr<Promise<std::vector<LightningReceive>>> lightningReceives() = 0;
       virtual std::shared_ptr<Promise<void>> checkAndClaimLnReceive(const std::string& paymentHash, bool wait) = 0;

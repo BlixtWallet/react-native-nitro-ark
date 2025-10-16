@@ -50,6 +50,12 @@ interface BarkVtxo {
   state: string;
 }
 
+export interface Bolt11Invoice {
+  payment_request: string;
+  payment_secret: string;
+  payment_hash: string;
+}
+
 export type PaymentTypes = 'Bolt11' | 'Bolt12' | 'Lnurl' | 'Arkoor' | 'Onchain';
 
 export interface ArkoorPaymentResult {
@@ -230,7 +236,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   ): Promise<string>; // Returns JSON status
 
   // --- Lightning Invoicing ---
-  bolt11Invoice(amountMsat: number): Promise<string>; // Returns invoice string
+  bolt11Invoice(amountMsat: number): Promise<Bolt11Invoice>;
   lightningReceiveStatus(
     paymentHash: string
   ): Promise<LightningReceive | undefined>;

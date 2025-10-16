@@ -656,11 +656,13 @@ public:
     });
   }
 
-  std::shared_ptr<Promise<std::string>> bolt11Invoice(double amountMsat) override {
-    return Promise<std::string>::async([amountMsat]() {
+  std::shared_ptr<Promise<Bolt11Invoice>> bolt11Invoice(double amountMsat) override {
+    return Promise<Bolt11Invoice>::async([amountMsat]() {
       try {
-        rust::String invoice_rs = bark_cxx::bolt11_invoice(static_cast<uint64_t>(amountMsat));
-        return std::string(invoice_rs.data(), invoice_rs.length());
+        bark_cxx::Bolt11Invoice invoice_rs = bark_cxx::bolt11_invoice(static_cast<uint64_t>(amountMsat));
+        return Bolt11Invoice(std::string(invoice_rs.bolt11_invoice.data(), invoice_rs.bolt11_invoice.length()),
+                             std::string(invoice_rs.payment_secret.data(), invoice_rs.payment_secret.length()),
+                             std::string(invoice_rs.payment_hash.data(), invoice_rs.payment_hash.length()));
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }

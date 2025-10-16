@@ -808,7 +808,7 @@ export default function ArkApp() {
       (invoice) => {
         setResults((prev) => ({
           ...prev,
-          lightning: `Created Invoice: ${invoice}`,
+          lightning: `Created Invoice: ${JSON.stringify(invoice)}`,
         }));
         setInvoiceToClaim(invoice);
       }
@@ -1246,16 +1246,7 @@ export default function ArkApp() {
           <View style={styles.buttonGrid}>
             {renderOperationButton('Create Invoice', handleCreateInvoice)}
           </View>
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>Invoice to Claim:</Text>
-            <TextInput
-              style={[styles.input, { height: 80 }]}
-              value={invoiceToClaim}
-              onChangeText={setInvoiceToClaim}
-              placeholder="lnbc..."
-              multiline
-            />
-          </View>
+
           <View style={styles.buttonGrid}>
             {renderOperationButton(
               'Check & Claim LN Receive',

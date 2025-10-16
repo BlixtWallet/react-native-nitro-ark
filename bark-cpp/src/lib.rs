@@ -345,7 +345,7 @@ pub async fn verify_message(
     Ok(secp.verify_ecdsa(&msg, &signature, &public_key).is_ok())
 }
 
-pub async fn bolt11_invoice(amount: u64) -> anyhow::Result<String> {
+pub async fn bolt11_invoice(amount: u64) -> anyhow::Result<Bolt11Invoice> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
@@ -354,7 +354,7 @@ pub async fn bolt11_invoice(amount: u64) -> anyhow::Result<String> {
                 .bolt11_invoice(Amount::from_sat(amount))
                 .await
                 .context("Failed to create bolt11_invoice")?;
-            Ok(invoice.to_string())
+            Ok(invoice)
         })
         .await
 }
