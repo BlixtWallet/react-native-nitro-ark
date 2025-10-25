@@ -31,15 +31,18 @@ namespace margelo::nitro::nitroark {
   public:
     std::string network     SWIFT_PRIVATE;
     std::string server_pubkey     SWIFT_PRIVATE;
-    double round_interval_secs     SWIFT_PRIVATE;
+    double round_interval     SWIFT_PRIVATE;
+    double nb_round_nonces     SWIFT_PRIVATE;
     double vtxo_exit_delta     SWIFT_PRIVATE;
     double vtxo_expiry_delta     SWIFT_PRIVATE;
-    double htlc_expiry_delta     SWIFT_PRIVATE;
-    double max_vtxo_amount_sat     SWIFT_PRIVATE;
+    double htlc_send_expiry_delta     SWIFT_PRIVATE;
+    double max_vtxo_amount     SWIFT_PRIVATE;
+    double max_arkoor_depth     SWIFT_PRIVATE;
+    double required_board_confirmations     SWIFT_PRIVATE;
 
   public:
     BarkArkInfo() = default;
-    explicit BarkArkInfo(std::string network, std::string server_pubkey, double round_interval_secs, double vtxo_exit_delta, double vtxo_expiry_delta, double htlc_expiry_delta, double max_vtxo_amount_sat): network(network), server_pubkey(server_pubkey), round_interval_secs(round_interval_secs), vtxo_exit_delta(vtxo_exit_delta), vtxo_expiry_delta(vtxo_expiry_delta), htlc_expiry_delta(htlc_expiry_delta), max_vtxo_amount_sat(max_vtxo_amount_sat) {}
+    explicit BarkArkInfo(std::string network, std::string server_pubkey, double round_interval, double nb_round_nonces, double vtxo_exit_delta, double vtxo_expiry_delta, double htlc_send_expiry_delta, double max_vtxo_amount, double max_arkoor_depth, double required_board_confirmations): network(network), server_pubkey(server_pubkey), round_interval(round_interval), nb_round_nonces(nb_round_nonces), vtxo_exit_delta(vtxo_exit_delta), vtxo_expiry_delta(vtxo_expiry_delta), htlc_send_expiry_delta(htlc_send_expiry_delta), max_vtxo_amount(max_vtxo_amount), max_arkoor_depth(max_arkoor_depth), required_board_confirmations(required_board_confirmations) {}
   };
 
 } // namespace margelo::nitro::nitroark
@@ -54,22 +57,28 @@ namespace margelo::nitro {
       return margelo::nitro::nitroark::BarkArkInfo(
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "network")),
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "server_pubkey")),
-        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "round_interval_secs")),
+        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "round_interval")),
+        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "nb_round_nonces")),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "vtxo_exit_delta")),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "vtxo_expiry_delta")),
-        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "htlc_expiry_delta")),
-        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "max_vtxo_amount_sat"))
+        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "htlc_send_expiry_delta")),
+        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "max_vtxo_amount")),
+        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "max_arkoor_depth")),
+        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "required_board_confirmations"))
       );
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroark::BarkArkInfo& arg) {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, "network", JSIConverter<std::string>::toJSI(runtime, arg.network));
       obj.setProperty(runtime, "server_pubkey", JSIConverter<std::string>::toJSI(runtime, arg.server_pubkey));
-      obj.setProperty(runtime, "round_interval_secs", JSIConverter<double>::toJSI(runtime, arg.round_interval_secs));
+      obj.setProperty(runtime, "round_interval", JSIConverter<double>::toJSI(runtime, arg.round_interval));
+      obj.setProperty(runtime, "nb_round_nonces", JSIConverter<double>::toJSI(runtime, arg.nb_round_nonces));
       obj.setProperty(runtime, "vtxo_exit_delta", JSIConverter<double>::toJSI(runtime, arg.vtxo_exit_delta));
       obj.setProperty(runtime, "vtxo_expiry_delta", JSIConverter<double>::toJSI(runtime, arg.vtxo_expiry_delta));
-      obj.setProperty(runtime, "htlc_expiry_delta", JSIConverter<double>::toJSI(runtime, arg.htlc_expiry_delta));
-      obj.setProperty(runtime, "max_vtxo_amount_sat", JSIConverter<double>::toJSI(runtime, arg.max_vtxo_amount_sat));
+      obj.setProperty(runtime, "htlc_send_expiry_delta", JSIConverter<double>::toJSI(runtime, arg.htlc_send_expiry_delta));
+      obj.setProperty(runtime, "max_vtxo_amount", JSIConverter<double>::toJSI(runtime, arg.max_vtxo_amount));
+      obj.setProperty(runtime, "max_arkoor_depth", JSIConverter<double>::toJSI(runtime, arg.max_arkoor_depth));
+      obj.setProperty(runtime, "required_board_confirmations", JSIConverter<double>::toJSI(runtime, arg.required_board_confirmations));
       return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -79,11 +88,14 @@ namespace margelo::nitro {
       jsi::Object obj = value.getObject(runtime);
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "network"))) return false;
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "server_pubkey"))) return false;
-      if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "round_interval_secs"))) return false;
+      if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "round_interval"))) return false;
+      if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "nb_round_nonces"))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "vtxo_exit_delta"))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "vtxo_expiry_delta"))) return false;
-      if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "htlc_expiry_delta"))) return false;
-      if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "max_vtxo_amount_sat"))) return false;
+      if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "htlc_send_expiry_delta"))) return false;
+      if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "max_vtxo_amount"))) return false;
+      if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "max_arkoor_depth"))) return false;
+      if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "required_board_confirmations"))) return false;
       return true;
     }
   };

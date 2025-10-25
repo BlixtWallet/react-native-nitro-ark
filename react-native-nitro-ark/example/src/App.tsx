@@ -316,10 +316,10 @@ export default function ArkApp() {
     );
   };
 
-  const handleRegisterAllConfirmedBoards = () => {
+  const handleSyncPendingBoards = () => {
     runOperation(
-      'registerAllConfirmedBoards',
-      () => NitroArk.registerAllConfirmedBoards(),
+      'syncPendingBoards',
+      () => NitroArk.syncPendingBoards(),
       'management'
     );
   };
@@ -1026,8 +1026,8 @@ export default function ArkApp() {
               handleMaintenanceRefresh
             )}
             {renderOperationButton(
-              'Register All Confirmed Boards',
-              handleRegisterAllConfirmedBoards
+              'Sync Pending Boards',
+              handleSyncPendingBoards
             )}
             {renderOperationButton(
               'Maintenance With Onchain',
