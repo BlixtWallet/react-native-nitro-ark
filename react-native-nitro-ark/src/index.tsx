@@ -24,13 +24,7 @@ export type BarkVtxo = {
   exit_delta: number; // u16
   anchor_point: string;
   point: string;
-  state:
-    | 'Spendable'
-    | 'Spent'
-    | 'UnregisteredBoard'
-    | 'PendingLightningSend'
-    | 'PendingLightningRecv'
-    | 'Unknown';
+  state: 'Spendable' | 'Spent' | 'Locked';
 };
 
 export interface BarkMovementRecipient {
@@ -115,11 +109,11 @@ export function isWalletLoaded(): Promise<boolean> {
 }
 
 /**
- * Registers all confirmed boards.
+ * Registers all confirmed boards with the server.
  * @returns A promise that resolves on success.
  */
-export function registerAllConfirmedBoards(): Promise<void> {
-  return NitroArkHybridObject.registerAllConfirmedBoards();
+export function syncPendingBoards(): Promise<void> {
+  return NitroArkHybridObject.syncPendingBoards();
 }
 
 /**
@@ -424,14 +418,6 @@ export function lightningReceiveStatus(
   paymentHash: string
 ): Promise<LightningReceive | undefined> {
   return NitroArkHybridObject.lightningReceiveStatus(paymentHash);
-}
-
-/**
- * Gets a list of Lightning receives.
- * @returns A promise resolving to an array of Lightning receives.
- */
-export function lightningReceives(): Promise<LightningReceive[]> {
-  return NitroArkHybridObject.lightningReceives();
 }
 
 /**

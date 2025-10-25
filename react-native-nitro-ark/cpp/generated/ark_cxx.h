@@ -936,11 +936,14 @@ struct OnchainPaymentResult final {
 struct CxxArkInfo final {
   ::rust::String network;
   ::rust::String server_pubkey;
-  ::std::uint64_t round_interval_secs CXX_DEFAULT_VALUE(0);
+  ::std::uint64_t round_interval CXX_DEFAULT_VALUE(0);
+  ::std::uint16_t nb_round_nonces CXX_DEFAULT_VALUE(0);
   ::std::uint16_t vtxo_exit_delta CXX_DEFAULT_VALUE(0);
   ::std::uint16_t vtxo_expiry_delta CXX_DEFAULT_VALUE(0);
-  ::std::uint16_t htlc_expiry_delta CXX_DEFAULT_VALUE(0);
-  ::std::uint64_t max_vtxo_amount_sat CXX_DEFAULT_VALUE(0);
+  ::std::uint16_t htlc_send_expiry_delta CXX_DEFAULT_VALUE(0);
+  ::std::uint64_t max_vtxo_amount CXX_DEFAULT_VALUE(0);
+  ::std::uint16_t max_arkoor_depth CXX_DEFAULT_VALUE(0);
+  ::std::uint8_t required_board_confirmations CXX_DEFAULT_VALUE(0);
 
   using IsRelocatable = ::std::true_type;
 };
@@ -1119,9 +1122,7 @@ bool verify_message(::rust::Str message, ::rust::Str signature, ::rust::Str publ
 
 ::bark_cxx::LightningReceive const *lightning_receive_status(::rust::String payment_hash);
 
-::rust::Vec<::bark_cxx::LightningReceive> lightning_receives();
-
-void register_all_confirmed_boards();
+void sync_pending_boards();
 
 void maintenance();
 

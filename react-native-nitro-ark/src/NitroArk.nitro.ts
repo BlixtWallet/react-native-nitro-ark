@@ -27,11 +27,14 @@ export interface BarkCreateOpts {
 export interface BarkArkInfo {
   network: string;
   server_pubkey: string;
-  round_interval_secs: number; // u64
+  round_interval: number; // u64
+  nb_round_nonces: number; // u64
   vtxo_exit_delta: number; // u16
   vtxo_expiry_delta: number; // u16
-  htlc_expiry_delta: number; // u16
-  max_vtxo_amount_sat: number; // u64
+  htlc_send_expiry_delta: number; // u16
+  max_vtxo_amount: number; // u64
+  max_arkoor_depth: number; // u16
+  required_board_confirmations: number; // u16
 }
 
 // Helper interface for sendManyOnchain
@@ -152,7 +155,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   loadWallet(datadir: string, config: BarkCreateOpts): Promise<void>;
   isWalletLoaded(): Promise<boolean>;
   closeWallet(): Promise<void>;
-  registerAllConfirmedBoards(): Promise<void>;
+  syncPendingBoards(): Promise<void>;
   maintenance(): Promise<void>;
   maintenanceWithOnchain(): Promise<void>;
   maintenanceRefresh(): Promise<void>;
@@ -240,7 +243,6 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   lightningReceiveStatus(
     paymentHash: string
   ): Promise<LightningReceive | undefined>;
-  lightningReceives(): Promise<LightningReceive[]>;
   checkAndClaimLnReceive(paymentHash: string, wait: boolean): Promise<void>; // Throws on error
   checkAndClaimAllOpenLnReceives(wait: boolean): Promise<void>; // Throws on error
 

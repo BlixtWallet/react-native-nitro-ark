@@ -103,7 +103,7 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<void>> loadWallet(const std::string& datadir, const BarkCreateOpts& config) = 0;
       virtual std::shared_ptr<Promise<bool>> isWalletLoaded() = 0;
       virtual std::shared_ptr<Promise<void>> closeWallet() = 0;
-      virtual std::shared_ptr<Promise<void>> registerAllConfirmedBoards() = 0;
+      virtual std::shared_ptr<Promise<void>> syncPendingBoards() = 0;
       virtual std::shared_ptr<Promise<void>> maintenance() = 0;
       virtual std::shared_ptr<Promise<void>> maintenanceWithOnchain() = 0;
       virtual std::shared_ptr<Promise<void>> maintenanceRefresh() = 0;
@@ -142,7 +142,6 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<std::string>> sendRoundOnchainPayment(const std::string& destination, double amountSat) = 0;
       virtual std::shared_ptr<Promise<Bolt11Invoice>> bolt11Invoice(double amountMsat) = 0;
       virtual std::shared_ptr<Promise<std::optional<LightningReceive>>> lightningReceiveStatus(const std::string& paymentHash) = 0;
-      virtual std::shared_ptr<Promise<std::vector<LightningReceive>>> lightningReceives() = 0;
       virtual std::shared_ptr<Promise<void>> checkAndClaimLnReceive(const std::string& paymentHash, bool wait) = 0;
       virtual std::shared_ptr<Promise<void>> checkAndClaimAllOpenLnReceives(bool wait) = 0;
       virtual std::shared_ptr<Promise<std::string>> offboardSpecific(const std::vector<std::string>& vtxoIds, const std::string& destinationAddress) = 0;

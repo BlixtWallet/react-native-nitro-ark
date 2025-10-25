@@ -19,7 +19,7 @@ namespace margelo::nitro::nitroark {
       prototype.registerHybridMethod("loadWallet", &HybridNitroArkSpec::loadWallet);
       prototype.registerHybridMethod("isWalletLoaded", &HybridNitroArkSpec::isWalletLoaded);
       prototype.registerHybridMethod("closeWallet", &HybridNitroArkSpec::closeWallet);
-      prototype.registerHybridMethod("registerAllConfirmedBoards", &HybridNitroArkSpec::registerAllConfirmedBoards);
+      prototype.registerHybridMethod("syncPendingBoards", &HybridNitroArkSpec::syncPendingBoards);
       prototype.registerHybridMethod("maintenance", &HybridNitroArkSpec::maintenance);
       prototype.registerHybridMethod("maintenanceWithOnchain", &HybridNitroArkSpec::maintenanceWithOnchain);
       prototype.registerHybridMethod("maintenanceRefresh", &HybridNitroArkSpec::maintenanceRefresh);
@@ -58,7 +58,6 @@ namespace margelo::nitro::nitroark {
       prototype.registerHybridMethod("sendRoundOnchainPayment", &HybridNitroArkSpec::sendRoundOnchainPayment);
       prototype.registerHybridMethod("bolt11Invoice", &HybridNitroArkSpec::bolt11Invoice);
       prototype.registerHybridMethod("lightningReceiveStatus", &HybridNitroArkSpec::lightningReceiveStatus);
-      prototype.registerHybridMethod("lightningReceives", &HybridNitroArkSpec::lightningReceives);
       prototype.registerHybridMethod("checkAndClaimLnReceive", &HybridNitroArkSpec::checkAndClaimLnReceive);
       prototype.registerHybridMethod("checkAndClaimAllOpenLnReceives", &HybridNitroArkSpec::checkAndClaimAllOpenLnReceives);
       prototype.registerHybridMethod("offboardSpecific", &HybridNitroArkSpec::offboardSpecific);

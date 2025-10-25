@@ -372,17 +372,6 @@ pub async fn lightning_receive_status(
     })
 }
 
-pub async fn lightning_receives() -> anyhow::Result<Vec<LightningReceive>> {
-    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager.with_context(|ctx| {
-        let receives = ctx
-            .wallet
-            .lightning_receives()
-            .context("Failed to get lightning receives")?;
-        Ok(receives)
-    })
-}
-
 pub async fn check_and_claim_ln_receive(
     payment_hash: PaymentHash,
     wait: bool,
@@ -414,15 +403,15 @@ pub async fn check_and_claim_all_open_ln_receives(wait: bool) -> anyhow::Result<
         .await
 }
 
-pub async fn register_all_confirmed_boards() -> anyhow::Result<()> {
+pub async fn sync_pending_boards() -> anyhow::Result<()> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
             let _ = ctx
                 .wallet
-                .register_all_confirmed_boards(&mut ctx.onchain_wallet)
+                .sync_pending_boards()
                 .await
-                .context("Failed to register all confirmed boards")?;
+                .context("Failed to sync pending boards")?;
             Ok(())
         })
         .await
@@ -471,7 +460,7 @@ pub async fn sync() -> anyhow::Result<()> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
-            ctx.wallet.sync().await.context("Failed to sync wallet")?;
+            ctx.wallet.sync().await;
             Ok(())
         })
         .await

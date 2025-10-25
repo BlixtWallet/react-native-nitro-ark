@@ -269,9 +269,7 @@ pub fn wallet_vtxo_to_bark_vtxo(wallet_vtxo: WalletVtxo) -> crate::cxx::ffi::Bar
     let state_name = match &wallet_vtxo.state {
         VtxoState::Spendable => "Spendable",
         VtxoState::Spent => "Spent",
-        VtxoState::UnregisteredBoard => "UnregisteredBoard",
-        VtxoState::PendingLightningSend { .. } => "PendingLightningSend",
-        VtxoState::PendingLightningRecv { .. } => "PendingLightningRecv",
+        VtxoState::Locked => "Locked",
     }
     .to_string();
 

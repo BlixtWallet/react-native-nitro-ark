@@ -155,10 +155,10 @@ public:
     return Promise<bool>::async([]() { return bark_cxx::is_wallet_loaded(); });
   }
 
-  std::shared_ptr<Promise<void>> registerAllConfirmedBoards() override {
+  std::shared_ptr<Promise<void>> syncPendingBoards() override {
     return Promise<void>::async([]() {
       try {
-        bark_cxx::register_all_confirmed_boards();
+        bark_cxx::sync_pending_boards();
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
@@ -234,11 +234,13 @@ public:
         BarkArkInfo info;
         info.network = std::string(rust_info.network.data(), rust_info.network.length());
         info.server_pubkey = std::string(rust_info.server_pubkey.data(), rust_info.server_pubkey.length());
-        info.round_interval_secs = static_cast<double>(rust_info.round_interval_secs);
+        info.round_interval = static_cast<double>(rust_info.round_interval);
+        info.nb_round_nonces = static_cast<double>(rust_info.nb_round_nonces);
         info.vtxo_exit_delta = static_cast<double>(rust_info.vtxo_exit_delta);
         info.vtxo_expiry_delta = static_cast<double>(rust_info.vtxo_expiry_delta);
-        info.htlc_expiry_delta = static_cast<double>(rust_info.htlc_expiry_delta);
-        info.max_vtxo_amount_sat = static_cast<double>(rust_info.max_vtxo_amount_sat);
+        info.htlc_send_expiry_delta = static_cast<double>(rust_info.htlc_send_expiry_delta);
+        info.max_vtxo_amount = static_cast<double>(rust_info.max_vtxo_amount);
+        info.required_board_confirmations = static_cast<double>(rust_info.required_board_confirmations);
         return info;
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
@@ -720,40 +722,7 @@ public:
     });
   }
 
-  std::shared_ptr<Promise<std::vector<LightningReceive>>> lightningReceives() override {
-    return Promise<std::vector<LightningReceive>>::async([]() {
-      try {
-        rust::Vec<bark_cxx::LightningReceive> receives_rs = bark_cxx::lightning_receives();
-
-        std::vector<LightningReceive> receives;
-        receives.reserve(receives_rs.size());
-
-        for (const auto& receive_rs : receives_rs) {
-          LightningReceive receive;
-          receive.payment_hash = std::string(receive_rs.payment_hash.data(), receive_rs.payment_hash.length());
-          receive.payment_preimage =
-              std::string(receive_rs.payment_preimage.data(), receive_rs.payment_preimage.length());
-          receive.invoice = std::string(receive_rs.invoice.data(), receive_rs.invoice.length());
-
-          if (receive_rs.preimage_revealed_at != nullptr) {
-            receive.preimage_revealed_at = static_cast<double>(*receive_rs.preimage_revealed_at);
-            delete receive_rs.preimage_revealed_at;
-          } else {
-            receive.preimage_revealed_at = std::nullopt;
-          }
-
-          receives.push_back(std::move(receive));
-        }
-
-        return receives;
-      } catch (const rust::Error& e) {
-        throw std::runtime_error(e.what());
-      }
-    });
-  }
-
   // --- Ark Operations ---
-
   std::shared_ptr<Promise<std::string>> boardAmount(double amountSat) override {
     return Promise<std::string>::async([amountSat]() {
       try {

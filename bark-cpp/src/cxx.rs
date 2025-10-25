@@ -83,11 +83,14 @@ pub(crate) mod ffi {
     pub struct CxxArkInfo {
         network: String,
         server_pubkey: String,
-        round_interval_secs: u64,
+        round_interval: u64,
+        nb_round_nonces: u16,
         vtxo_exit_delta: u16,
         vtxo_expiry_delta: u16,
-        htlc_expiry_delta: u16,
-        max_vtxo_amount_sat: u64,
+        htlc_send_expiry_delta: u16,
+        max_vtxo_amount: u64,
+        max_arkoor_depth: u16,
+        required_board_confirmations: u8,
     }
 
     pub struct ConfigOpts {
@@ -205,8 +208,7 @@ pub(crate) mod ffi {
         fn get_next_required_refresh_blockheight() -> Result<*const u32>;
         fn bolt11_invoice(amount_msat: u64) -> Result<Bolt11Invoice>;
         fn lightning_receive_status(payment_hash: String) -> Result<*const LightningReceive>;
-        fn lightning_receives() -> Result<Vec<LightningReceive>>;
-        fn register_all_confirmed_boards() -> Result<()>;
+        fn sync_pending_boards() -> Result<()>;
         fn maintenance() -> Result<()>;
         fn maintenance_with_onchain() -> Result<()>;
         fn maintenance_refresh() -> Result<()>;
@@ -271,11 +273,14 @@ pub(crate) fn get_ark_info() -> anyhow::Result<ffi::CxxArkInfo> {
     Ok(ffi::CxxArkInfo {
         network: info.network.to_string(),
         server_pubkey: info.server_pubkey.to_string(),
-        round_interval_secs: info.round_interval.as_secs(),
+        round_interval: info.round_interval.as_secs(),
+        nb_round_nonces: info.nb_round_nonces as u16,
         vtxo_exit_delta: info.vtxo_exit_delta,
         vtxo_expiry_delta: info.vtxo_expiry_delta,
-        htlc_expiry_delta: info.htlc_expiry_delta,
-        max_vtxo_amount_sat: info.max_vtxo_amount.map_or(0, |a| a.to_sat()),
+        htlc_send_expiry_delta: info.htlc_send_expiry_delta,
+        max_vtxo_amount: info.max_vtxo_amount.map_or(0, |a| a.to_sat()),
+        max_arkoor_depth: info.max_arkoor_depth,
+        required_board_confirmations: info.required_board_confirmations as u8,
     })
 }
 
@@ -285,7 +290,7 @@ pub(crate) fn offchain_balance() -> anyhow::Result<ffi::OffchainBalance> {
         spendable: balance.spendable.to_sat(),
         pending_lightning_send: balance.pending_lightning_send.to_sat(),
         pending_in_round: balance.pending_in_round.to_sat(),
-        pending_exit: balance.pending_exit.to_sat(),
+        pending_exit: balance.pending_exit.map_or(0, |a| a.to_sat()),
         pending_board: balance.pending_board.to_sat(),
     })
 }
@@ -457,26 +462,8 @@ pub(crate) fn lightning_receive_status(
     Ok(Box::into_raw(status))
 }
 
-pub(crate) fn lightning_receives() -> anyhow::Result<Vec<ffi::LightningReceive>> {
-    let receives = crate::TOKIO_RUNTIME.block_on(crate::lightning_receives())?;
-
-    let receives = receives
-        .into_iter()
-        .map(|receive| ffi::LightningReceive {
-            payment_hash: receive.payment_hash.to_string(),
-            payment_preimage: receive.payment_preimage.to_string(),
-            invoice: receive.invoice.to_string(),
-            preimage_revealed_at: receive
-                .preimage_revealed_at
-                .map_or(std::ptr::null(), |v| Box::into_raw(Box::new(v))),
-        })
-        .collect();
-
-    Ok(receives)
-}
-
-pub(crate) fn register_all_confirmed_boards() -> anyhow::Result<()> {
-    crate::TOKIO_RUNTIME.block_on(crate::register_all_confirmed_boards())
+pub(crate) fn sync_pending_boards() -> anyhow::Result<()> {
+    crate::TOKIO_RUNTIME.block_on(crate::sync_pending_boards())
 }
 
 pub(crate) fn maintenance() -> anyhow::Result<()> {

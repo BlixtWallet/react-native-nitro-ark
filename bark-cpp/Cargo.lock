@@ -137,7 +137,7 @@ dependencies = [
 [[package]]
 name = "ark-lib"
 version = "0.1.0-beta.1"
-source = "git+https://codeberg.org/ark-bitcoin/bark.git#5abb598c0c7a11349a11f1089fc659af5d58fbd9"
+source = "git+https://gitlab.com/ark-bitcoin/bark.git#e664f823bdb688034f21c4ebb016e3a9f6ffb8de"
 dependencies = [
  "bark-bitcoin-ext",
  "bitcoin",
@@ -241,7 +241,7 @@ dependencies = [
 [[package]]
 name = "bark-bitcoin-ext"
 version = "0.1.0-beta.1"
-source = "git+https://codeberg.org/ark-bitcoin/bark.git#5abb598c0c7a11349a11f1089fc659af5d58fbd9"
+source = "git+https://gitlab.com/ark-bitcoin/bark.git#e664f823bdb688034f21c4ebb016e3a9f6ffb8de"
 dependencies = [
  "async-trait",
  "bdk_bitcoind_rpc 0.22.0",
@@ -280,7 +280,7 @@ dependencies = [
 [[package]]
 name = "bark-json"
 version = "0.1.0-beta.1"
-source = "git+https://codeberg.org/ark-bitcoin/bark.git#5abb598c0c7a11349a11f1089fc659af5d58fbd9"
+source = "git+https://gitlab.com/ark-bitcoin/bark.git#e664f823bdb688034f21c4ebb016e3a9f6ffb8de"
 dependencies = [
  "ark-lib",
  "bark-bitcoin-ext",
@@ -293,7 +293,7 @@ dependencies = [
 [[package]]
 name = "bark-server-rpc"
 version = "0.1.0-beta.1"
-source = "git+https://codeberg.org/ark-bitcoin/bark.git#5abb598c0c7a11349a11f1089fc659af5d58fbd9"
+source = "git+https://gitlab.com/ark-bitcoin/bark.git#e664f823bdb688034f21c4ebb016e3a9f6ffb8de"
 dependencies = [
  "ark-lib",
  "bitcoin",
@@ -310,7 +310,7 @@ dependencies = [
 [[package]]
 name = "bark-wallet"
 version = "0.1.0-beta.1"
-source = "git+https://codeberg.org/ark-bitcoin/bark.git#5abb598c0c7a11349a11f1089fc659af5d58fbd9"
+source = "git+https://gitlab.com/ark-bitcoin/bark.git#e664f823bdb688034f21c4ebb016e3a9f6ffb8de"
 dependencies = [
  "anyhow",
  "ark-lib",
