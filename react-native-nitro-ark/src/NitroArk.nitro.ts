@@ -28,13 +28,13 @@ export interface BarkArkInfo {
   network: string;
   server_pubkey: string;
   round_interval: number; // u64
-  nb_round_nonces: number; // u64
+  nb_round_nonces: number; // u16
   vtxo_exit_delta: number; // u16
   vtxo_expiry_delta: number; // u16
   htlc_send_expiry_delta: number; // u16
   max_vtxo_amount: number; // u64
   max_arkoor_depth: number; // u16
-  required_board_confirmations: number; // u16
+  required_board_confirmations: number; // u8
 }
 
 // Helper interface for sendManyOnchain

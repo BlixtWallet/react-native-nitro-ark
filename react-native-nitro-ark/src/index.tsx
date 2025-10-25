@@ -24,7 +24,7 @@ export type BarkVtxo = {
   exit_delta: number; // u16
   anchor_point: string;
   point: string;
-  state: 'Spendable' | 'Spent' | 'Locked';
+  state: 'Spendable' | 'Spent' | 'Locked' | 'unknown';
 };
 
 export interface BarkMovementRecipient {
