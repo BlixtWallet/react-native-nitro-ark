@@ -37,7 +37,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - NitroModules (0.31.2):
+  - NitroModules (0.31.3):
     - boost
     - DoubleConversion
     - fast_float
@@ -2311,7 +2311,7 @@ PODS:
     - React-perflogger (= 0.81.4)
     - React-utils (= 0.81.4)
     - SocketRocket
-  - RNCAsyncStorage (2.1.2):
+  - RNCAsyncStorage (2.2.0):
     - boost
     - DoubleConversion
     - fast_float
@@ -2339,7 +2339,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - RNFSTurbo (0.3.7):
+  - RNFSTurbo (0.4.1):
     - boost
     - DoubleConversion
     - fast_float
@@ -2615,7 +2615,7 @@ SPEC CHECKSUMS:
   glog: 5683914934d5b6e4240e497e0f4a3b42d1854183
   hermes-engine: 35c763d57c9832d0eef764316ca1c4d043581394
   NitroArk: 87dc6adfa633e826abb5c5e2e98cf97b40a03fd4
-  NitroModules: 5f474732a91ef6a48e7788fb73b355bcb52999ee
+  NitroModules: eece9344ec509515aed59b5405120a15be84e6b9
   RCT-Folly: 59ec0ac1f2f39672a0c6e6cecdd39383b764646f
   RCTDeprecation: c0ed3249a97243002615517dff789bf4666cf585
   RCTRequired: 58719f5124f9267b5f9649c08bf23d9aea845b23
@@ -2679,8 +2679,8 @@ SPEC CHECKSUMS:
   ReactAppDependencyProvider: b20fba6c3d091a393925890009999472c8f94d95
   ReactCodegen: 58dc2eb138a27145826ad7d5568610159dfcadee
   ReactCommon: 00df7b9f859c9d02181844255bb89a8bca544374
-  RNCAsyncStorage: a9e087b68308fd829e66f5e932976f23c4e1005b
-  RNFSTurbo: 79188e2fa3312aa1480f18e3ac7e6d8a4e4388eb
+  RNCAsyncStorage: 302f2fac014fd450046c120567ca364632da682b
+  RNFSTurbo: f2c7d95a42068f9fdedfe9dfae0fe79f2464ae5a
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   Yoga: a3ed390a19db0459bd6839823a6ac6d9c6db198d
 

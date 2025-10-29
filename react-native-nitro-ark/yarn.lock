@@ -2516,14 +2516,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@react-native-async-storage/async-storage@npm:^2.1.2":
-  version: 2.1.2
-  resolution: "@react-native-async-storage/async-storage@npm:2.1.2"
+"@react-native-async-storage/async-storage@npm:^2.2.0":
+  version: 2.2.0
+  resolution: "@react-native-async-storage/async-storage@npm:2.2.0"
   dependencies:
     merge-options: ^3.0.4
   peerDependencies:
     react-native: ^0.0.0-0 || >=0.65 <1.0
-  checksum: a5c4d486e7e64067ab523b980b76cc2de5bf4b86ed410de09f2a95c3410e0c5b5be46c638a74cf5b7ed6dce10031ebac54350b498a2cb17f1a1c59347e671a73
+  checksum: efbb9c801fb7eecfad1568d6a5e9d247db420b8ba8f1789d5b783e679432567a53cf54c7e7b5e6f315276f33d1df297253549e0cefef2e683539df346d2a1f2d
   languageName: node
   linkType: hard
 
@@ -9235,18 +9235,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"nitrogen@npm:^0.31.2":
-  version: 0.31.2
-  resolution: "nitrogen@npm:0.31.2"
+"nitrogen@npm:^0.31.3":
+  version: 0.31.3
+  resolution: "nitrogen@npm:0.31.3"
   dependencies:
     chalk: ^5.3.0
-    react-native-nitro-modules: ^0.31.2
+    react-native-nitro-modules: ^0.31.3
     ts-morph: ^27.0.0
     yargs: ^18.0.0
     zod: ^4.0.5
   bin:
     nitrogen: lib/index.js
-  checksum: e6ce0012f964c22de71905f5e51752a5f900333da3e2eb5fc0e3e0e0c61032f0112b0fcc2668bbb462048682f572871085d2eae816086826f4974ea45b7a9f90
+  checksum: 502be866220912eefbfc87108ae917c5325a37731b821d3da3c8de20d364395b570efa5c1fb89780853d866800a5c7b3ef05a3b17a477c54201622ba83c28b0b
   languageName: node
   linkType: hard
 
@@ -10201,13 +10201,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-fs-turbo@npm:^0.3.7":
-  version: 0.3.7
-  resolution: "react-native-fs-turbo@npm:0.3.7"
+"react-native-fs-turbo@npm:^0.4.1":
+  version: 0.4.1
+  resolution: "react-native-fs-turbo@npm:0.4.1"
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: cc77dfc234ecf6953257674265924352ecd0784a29096e35d8e38e8567c4807162c19fdf09413bab79dbece0697f9d3b00c4b4693e832c5c412620de06ae94e3
+  checksum: 8580c8f1647da2244f5d6bd7e00c74f102be3a47deff089ee44faec1057c28b17602f9c675843024525ca581b357d6eb92ba74c9bfd706a31099ff440284b2e8
   languageName: node
   linkType: hard
 
@@ -10228,7 +10228,7 @@ __metadata:
     "@babel/core": ^7.25.2
     "@babel/preset-env": ^7.25.3
     "@babel/runtime": ^7.25.0
-    "@react-native-async-storage/async-storage": ^2.1.2
+    "@react-native-async-storage/async-storage": ^2.2.0
     "@react-native-community/cli": 20.0.1
     "@react-native-community/cli-platform-android": 20.0.1
     "@react-native-community/cli-platform-ios": 20.0.1
@@ -10240,8 +10240,8 @@ __metadata:
     react: 19.1.0
     react-native: 0.81.4
     react-native-builder-bob: ^0.40.13
-    react-native-fs-turbo: ^0.3.7
-    react-native-nitro-modules: ^0.31.2
+    react-native-fs-turbo: ^0.4.1
+    react-native-nitro-modules: ^0.31.3
   languageName: unknown
   linkType: soft
 
@@ -10264,29 +10264,29 @@ __metadata:
     eslint-config-prettier: ^10.1.1
     eslint-plugin-prettier: ^5.2.3
     jest: ^29.7.0
-    nitrogen: ^0.31.2
+    nitrogen: ^0.31.3
     prettier: ^3.0.3
     react: 19.1.0
     react-native: 0.81.4
     react-native-builder-bob: ^0.40.13
-    react-native-nitro-modules: ^0.31.2
+    react-native-nitro-modules: ^0.31.3
     release-it: ^17.10.0
     turbo: ^1.10.7
     typescript: ^5.2.2
   peerDependencies:
     react: "*"
     react-native: "*"
-    react-native-nitro-modules: ^0.31.2
+    react-native-nitro-modules: ^0.31.3
   languageName: unknown
   linkType: soft
 
-"react-native-nitro-modules@npm:^0.31.2":
-  version: 0.31.2
-  resolution: "react-native-nitro-modules@npm:0.31.2"
+"react-native-nitro-modules@npm:^0.31.3":
+  version: 0.31.3
+  resolution: "react-native-nitro-modules@npm:0.31.3"
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: ea627bad8b5c634e4b808f897758870ee0b43701553edb5b625dfcdc927fd60168afa45c7fc6b18d2a67f31109ec8ff91c3e1b31492b33be592ef83a32785fdb
+  checksum: e7d87edc84a664d0aeb80fa1b01e53befc2ec86bd694ecd5f35bc9c97bdb050029b3396dc411fdd5ce7639e5d8c8c31bc3d7bd0804c640a7c44c963ceea5086a
   languageName: node
   linkType: hard
 
