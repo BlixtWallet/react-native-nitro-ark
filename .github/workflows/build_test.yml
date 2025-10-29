@@ -38,16 +38,16 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       # - name: Install Nix
       #   uses: DeterminateSystems/nix-installer-action@main
-      
+
       # - name: Enable Nix Magic Cache
       #   uses: DeterminateSystems/magic-nix-cache-action@main
-      
+
       - name: Check formatting (bark-cpp)
         run: nix develop .# --command bash -c "unset SDKROOT && cd bark-cpp && cargo fmt -- --check"
-      
+
       - name: Run tests (bark-cpp)
         run: nix develop .# --command bash -c "unset SDKROOT && cd bark-cpp && cargo test"
 
@@ -58,7 +58,7 @@ jobs:
         run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn prepare"
 
   android_build:
-    runs-on: self-hosted
+    runs-on: ubuntu-self-hosted
     needs:
       - check_if_release_commit
       - rust_typescript_checks_and_tests
@@ -66,19 +66,19 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       # - name: Install Nix
       #   uses: DeterminateSystems/nix-installer-action@main
-      
+
       # - name: Enable Nix Magic Cache
       #   uses: DeterminateSystems/magic-nix-cache-action@main
-      
+
       - name: Build bark-cpp for Android
         run: nix develop .# --command bash -c "unset SDKROOT && cd bark-cpp && ./build-android.sh"
-      
+
       - name: Install example app dependencies
         run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install --immutable"
-      
+
       - name: Build example Android app
         run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn example build:android"
 
@@ -91,18 +91,18 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
+
       # - name: Install Nix
       #   uses: DeterminateSystems/nix-installer-action@main
-      
+
       # - name: Enable Nix Magic Cache
       #   uses: DeterminateSystems/magic-nix-cache-action@main
-      
+
       - name: Build bark-cpp for iOS
         run: nix develop .# --command bash -c "unset SDKROOT && cd bark-cpp && ./build-ios.sh"
-      
+
       - name: Install example app dependencies
         run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn install --immutable && yarn ios:prebuild"
-      
+
       - name: Build example iOS app
         run: nix develop .# --command bash -c "cd react-native-nitro-ark && yarn example build:ios:xcode"
