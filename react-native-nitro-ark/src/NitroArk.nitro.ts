@@ -53,6 +53,11 @@ interface BarkVtxo {
   state: string;
 }
 
+export interface BoardResult {
+  funding_txid: string;
+  vtxos: BarkVtxo[];
+}
+
 export interface Bolt11Invoice {
   payment_request: string;
   payment_secret: string;
@@ -216,8 +221,8 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   // Note: feeRate is optional, if not provided, default fee rate will be used
 
   // --- Ark & Lightning Payments ---
-  boardAmount(amountSat: number): Promise<string>; // Returns JSON status
-  boardAll(): Promise<string>; // Returns JSON status
+  boardAmount(amountSat: number): Promise<BoardResult>; // Returns JSON status
+  boardAll(): Promise<BoardResult>; // Returns JSON status
   validateArkoorAddress(address: string): Promise<void>;
   sendArkoorPayment(
     destination: string,

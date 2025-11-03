@@ -804,6 +804,7 @@ std::size_t align_of() {
 namespace bark_cxx {
   struct BarkVtxo;
   enum class PaymentTypes : ::std::uint8_t;
+  struct BoardResult;
   struct NewAddressResult;
   struct Bolt11Invoice;
   struct Bolt11PaymentResult;
@@ -850,6 +851,16 @@ enum class PaymentTypes : ::std::uint8_t {
   Onchain = 4,
 };
 #endif // CXXBRIDGE1_ENUM_bark_cxx$PaymentTypes
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$BoardResult
+#define CXXBRIDGE1_STRUCT_bark_cxx$BoardResult
+struct BoardResult final {
+  ::rust::Vec<::bark_cxx::BarkVtxo> vtxos;
+  ::rust::String funding_txid;
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$BoardResult
 
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$NewAddressResult
 #define CXXBRIDGE1_STRUCT_bark_cxx$NewAddressResult
@@ -1138,9 +1149,9 @@ void create_wallet(::rust::Str datadir, ::bark_cxx::CreateOpts opts);
 
 void load_wallet(::rust::Str datadir, ::bark_cxx::CreateOpts config);
 
-::rust::String board_amount(::std::uint64_t amount_sat);
+::bark_cxx::BoardResult board_amount(::std::uint64_t amount_sat);
 
-::rust::String board_all();
+::bark_cxx::BoardResult board_all();
 
 void validate_arkoor_address(::rust::Str address);
 

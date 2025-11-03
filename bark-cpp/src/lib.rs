@@ -6,6 +6,7 @@ use bark;
 use bark::ark::bitcoin::Address;
 use bark::ark::bitcoin::Amount;
 use bark::ark::bitcoin::Network;
+use bark::Board;
 
 use bark::ark::lightning;
 use bark::ark::lightning::Bolt12Invoice;
@@ -24,7 +25,6 @@ use bark::persist::models::LightningReceive;
 use bark::persist::BarkPersister;
 use bark::Config;
 use bark::Offboard;
-use bark::SendOnchain;
 use bark::SqliteClient;
 use bark::Wallet;
 use bark::WalletVtxo;
@@ -522,36 +522,21 @@ pub async fn get_next_required_refresh_blockheight() -> anyhow::Result<Option<Bl
     })
 }
 
-pub async fn board_amount(amount: Amount) -> anyhow::Result<String> {
+pub async fn board_amount(amount: Amount) -> anyhow::Result<Board> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
-            info!("Attempting to board amount: {}", amount);
-            let board_result = ctx
-                .wallet
+            ctx.wallet
                 .board_amount(&mut ctx.onchain_wallet, amount)
-                .await?;
-
-            let json_string = serde_json::to_string_pretty(&board_result)
-                .context("Failed to serialize board status to JSON")?;
-
-            Ok(json_string)
+                .await
         })
         .await
 }
 
-pub async fn board_all() -> anyhow::Result<String> {
+pub async fn board_all() -> anyhow::Result<Board> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
-        .with_context_async(|ctx| async {
-            info!("Attempting to board all onchain funds...");
-            let board_result = ctx.wallet.board_all(&mut ctx.onchain_wallet).await?;
-
-            let json_string = serde_json::to_string_pretty(&board_result)
-                .context("Failed to serialize board status to JSON")?;
-
-            Ok(json_string)
-        })
+        .with_context_async(|ctx| async { ctx.wallet.board_all(&mut ctx.onchain_wallet).await })
         .await
 }
 
@@ -622,10 +607,7 @@ pub async fn pay_offer(
         .await
 }
 
-pub async fn send_round_onchain_payment(
-    addr: Address,
-    amount: Amount,
-) -> anyhow::Result<SendOnchain> {
+pub async fn send_round_onchain_payment(addr: Address, amount: Amount) -> anyhow::Result<Offboard> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {

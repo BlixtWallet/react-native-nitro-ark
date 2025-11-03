@@ -724,22 +724,28 @@ public:
   }
 
   // --- Ark Operations ---
-  std::shared_ptr<Promise<std::string>> boardAmount(double amountSat) override {
-    return Promise<std::string>::async([amountSat]() {
+  std::shared_ptr<Promise<BoardResult>> boardAmount(double amountSat) override {
+    return Promise<BoardResult>::async([amountSat]() {
       try {
-        rust::String status_rs = bark_cxx::board_amount(static_cast<uint64_t>(amountSat));
-        return std::string(status_rs.data(), status_rs.length());
+        bark_cxx::BoardResult result_rs = bark_cxx::board_amount(static_cast<uint64_t>(amountSat));
+        BoardResult result;
+        result.funding_txid = std::string(result_rs.funding_txid.data(), result_rs.funding_txid.length());
+        result.vtxos = convertRustVtxosToVector(result_rs.vtxos);
+        return result;
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
   }
 
-  std::shared_ptr<Promise<std::string>> boardAll() override {
-    return Promise<std::string>::async([]() {
+  std::shared_ptr<Promise<BoardResult>> boardAll() override {
+    return Promise<BoardResult>::async([]() {
       try {
-        rust::String status_rs = bark_cxx::board_all();
-        return std::string(status_rs.data(), status_rs.length());
+        bark_cxx::BoardResult result_rs = bark_cxx::board_all();
+        BoardResult result;
+        result.funding_txid = std::string(result_rs.funding_txid.data(), result_rs.funding_txid.length());
+        result.vtxos = convertRustVtxosToVector(result_rs.vtxos);
+        return result;
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }

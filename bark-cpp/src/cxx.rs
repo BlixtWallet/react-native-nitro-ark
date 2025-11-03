@@ -35,6 +35,11 @@ pub(crate) mod ffi {
         Onchain,
     }
 
+    pub struct BoardResult {
+        vtxos: Vec<BarkVtxo>,
+        funding_txid: String,
+    }
+
     pub struct NewAddressResult {
         user_pubkey: String,
         ark_id: String,
@@ -216,8 +221,8 @@ pub(crate) mod ffi {
         fn sync_past_rounds() -> Result<()>;
         fn create_wallet(datadir: &str, opts: CreateOpts) -> Result<()>;
         fn load_wallet(datadir: &str, config: CreateOpts) -> Result<()>;
-        fn board_amount(amount_sat: u64) -> Result<String>;
-        fn board_all() -> Result<String>;
+        fn board_amount(amount_sat: u64) -> Result<BoardResult>;
+        fn board_all() -> Result<BoardResult>;
         fn validate_arkoor_address(address: &str) -> Result<()>;
         fn send_arkoor_payment(destination: &str, amount_sat: u64) -> Result<ArkoorPaymentResult>;
         unsafe fn send_lightning_payment(
@@ -507,13 +512,31 @@ pub(crate) fn load_wallet(datadir: &str, config: ffi::CreateOpts) -> anyhow::Res
     crate::TOKIO_RUNTIME.block_on(crate::load_wallet(Path::new(datadir), mnemonic, config))
 }
 
-pub(crate) fn board_amount(amount_sat: u64) -> anyhow::Result<String> {
+pub(crate) fn board_amount(amount_sat: u64) -> anyhow::Result<ffi::BoardResult> {
     let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
-    crate::TOKIO_RUNTIME.block_on(crate::board_amount(amount))
+    let board_result = crate::TOKIO_RUNTIME.block_on(crate::board_amount(amount))?;
+
+    Ok(ffi::BoardResult {
+        vtxos: board_result
+            .vtxos
+            .iter()
+            .map(utils::vtxo_to_bark_vtxo)
+            .collect(),
+        funding_txid: board_result.funding_txid.to_string(),
+    })
 }
 
-pub(crate) fn board_all() -> anyhow::Result<String> {
-    crate::TOKIO_RUNTIME.block_on(crate::board_all())
+pub(crate) fn board_all() -> anyhow::Result<ffi::BoardResult> {
+    let board_result = crate::TOKIO_RUNTIME.block_on(crate::board_all())?;
+
+    Ok(ffi::BoardResult {
+        vtxos: board_result
+            .vtxos
+            .iter()
+            .map(utils::vtxo_to_bark_vtxo)
+            .collect(),
+        funding_txid: board_result.funding_txid.to_string(),
+    })
 }
 
 pub(crate) fn validate_arkoor_address(address: &str) -> anyhow::Result<()> {

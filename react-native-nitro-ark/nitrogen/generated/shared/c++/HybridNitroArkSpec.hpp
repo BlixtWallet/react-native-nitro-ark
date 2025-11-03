@@ -33,6 +33,8 @@ namespace margelo::nitro::nitroark { struct OnchainBalanceResult; }
 namespace margelo::nitro::nitroark { struct OnchainPaymentResult; }
 // Forward declaration of `BarkSendManyOutput` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct BarkSendManyOutput; }
+// Forward declaration of `BoardResult` to properly resolve imports.
+namespace margelo::nitro::nitroark { struct BoardResult; }
 // Forward declaration of `ArkoorPaymentResult` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct ArkoorPaymentResult; }
 // Forward declaration of `Bolt11PaymentResult` to properly resolve imports.
@@ -60,6 +62,7 @@ namespace margelo::nitro::nitroark { struct LightningReceive; }
 #include "OnchainBalanceResult.hpp"
 #include "OnchainPaymentResult.hpp"
 #include "BarkSendManyOutput.hpp"
+#include "BoardResult.hpp"
 #include "ArkoorPaymentResult.hpp"
 #include "Bolt11PaymentResult.hpp"
 #include "Bolt12PaymentResult.hpp"
@@ -132,8 +135,8 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<OnchainPaymentResult>> onchainSend(const std::string& destination, double amountSat, std::optional<double> feeRate) = 0;
       virtual std::shared_ptr<Promise<std::string>> onchainDrain(const std::string& destination, std::optional<double> feeRate) = 0;
       virtual std::shared_ptr<Promise<std::string>> onchainSendMany(const std::vector<BarkSendManyOutput>& outputs, std::optional<double> feeRate) = 0;
-      virtual std::shared_ptr<Promise<std::string>> boardAmount(double amountSat) = 0;
-      virtual std::shared_ptr<Promise<std::string>> boardAll() = 0;
+      virtual std::shared_ptr<Promise<BoardResult>> boardAmount(double amountSat) = 0;
+      virtual std::shared_ptr<Promise<BoardResult>> boardAll() = 0;
       virtual std::shared_ptr<Promise<void>> validateArkoorAddress(const std::string& address) = 0;
       virtual std::shared_ptr<Promise<ArkoorPaymentResult>> sendArkoorPayment(const std::string& destination, double amountSat) = 0;
       virtual std::shared_ptr<Promise<Bolt11PaymentResult>> sendLightningPayment(const std::string& destination, std::optional<double> amountSat) = 0;

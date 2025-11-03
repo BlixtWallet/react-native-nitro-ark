@@ -15,6 +15,7 @@ import type {
   NewAddressResult,
   KeyPairResult,
   LightningReceive,
+  BoardResult,
 } from './NitroArk.nitro';
 
 export type BarkVtxo = {
@@ -487,17 +488,17 @@ export function sendLnaddr(
 /**
  * Boards a specific amount from the onchain wallet into Ark.
  * @param amountSat The amount in satoshis to board.
- * @returns A promise resolving to a JSON status string.
+ * @returns A promise resolving to a BoardResult object
  */
-export function boardAmount(amountSat: number): Promise<string> {
+export function boardAmount(amountSat: number): Promise<BoardResult> {
   return NitroArkHybridObject.boardAmount(amountSat);
 }
 
 /**
  * Boards all available funds from the onchain wallet into Ark.
- * @returns A promise resolving to a JSON status string.
+ * @returns A promise resolving to a BoardResult object.
  */
-export function boardAll(): Promise<string> {
+export function boardAll(): Promise<BoardResult> {
   return NitroArkHybridObject.boardAll();
 }
 
@@ -569,6 +570,7 @@ export type {
   BarkConfigOpts,
   BarkArkInfo,
   Bolt11Invoice,
+  BoardResult,
   BarkSendManyOutput,
   ArkoorPaymentResult,
   Bolt11PaymentResult,

@@ -232,6 +232,9 @@ pub fn merge_config_opts(opts: CreateOpts) -> anyhow::Result<(Config, Network)> 
         },
         vtxo_refresh_expiry_threshold: opts.config.vtxo_refresh_expiry_threshold,
         fallback_fee_rate,
+        htlc_recv_claim_delta: 18,
+        vtxo_exit_margin: 12,
+        deep_round_confirmations: 0,
     };
     opts.config
         .clone()
