@@ -13,6 +13,9 @@ export interface BarkConfigOpts {
   bitcoind_pass?: string;
   vtxo_refresh_expiry_threshold?: number;
   fallback_fee_rate?: number;
+  htlc_recv_claim_delta: number;
+  vtxo_exit_margin: number;
+  deep_round_confirmations: number;
 }
 
 export interface BarkCreateOpts {

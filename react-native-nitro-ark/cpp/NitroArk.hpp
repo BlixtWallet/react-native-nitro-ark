@@ -66,6 +66,9 @@ private:
       config_opts.vtxo_refresh_expiry_threshold =
           static_cast<uint32_t>(config->vtxo_refresh_expiry_threshold.value_or(0));
       config_opts.fallback_fee_rate = static_cast<uint64_t>(config->fallback_fee_rate.value_or(0));
+      config_opts.htlc_recv_claim_delta = static_cast<uint32_t>(config->htlc_recv_claim_delta);
+      config_opts.vtxo_exit_margin = static_cast<uint32_t>(config->vtxo_exit_margin);
+      config_opts.deep_round_confirmations = static_cast<uint32_t>(config->deep_round_confirmations);
     }
     return config_opts;
   }

@@ -94,6 +94,9 @@ pub struct ConfigOpts {
     pub bitcoind_pass: Option<String>,
     pub vtxo_refresh_expiry_threshold: u32,
     pub fallback_fee_rate: Option<u64>,
+    pub htlc_recv_claim_delta: u16,
+    pub vtxo_exit_margin: u16,
+    pub deep_round_confirmations: u16,
 }
 
 #[derive(Debug, Clone)]
@@ -232,9 +235,9 @@ pub fn merge_config_opts(opts: CreateOpts) -> anyhow::Result<(Config, Network)> 
         },
         vtxo_refresh_expiry_threshold: opts.config.vtxo_refresh_expiry_threshold,
         fallback_fee_rate,
-        htlc_recv_claim_delta: 18,
-        vtxo_exit_margin: 12,
-        deep_round_confirmations: 0,
+        htlc_recv_claim_delta: opts.config.htlc_recv_claim_delta,
+        vtxo_exit_margin: opts.config.vtxo_exit_margin,
+        deep_round_confirmations: opts.config.deep_round_confirmations,
     };
     opts.config
         .clone()
@@ -254,6 +257,9 @@ pub fn ffi_config_to_config(opts: ffi::CreateOpts) -> anyhow::Result<CreateOpts>
         bitcoind_pass: Some(opts.config.bitcoind_pass),
         vtxo_refresh_expiry_threshold: opts.config.vtxo_refresh_expiry_threshold,
         fallback_fee_rate: Some(opts.config.fallback_fee_rate),
+        htlc_recv_claim_delta: opts.config.htlc_recv_claim_delta,
+        vtxo_exit_margin: opts.config.vtxo_exit_margin,
+        deep_round_confirmations: opts.config.deep_round_confirmations,
     };
 
     let create_opts = CreateOpts {

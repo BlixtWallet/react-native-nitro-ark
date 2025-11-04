@@ -28,6 +28,9 @@ fn setup_test_wallet_opts() -> (tempfile::TempDir, ffi::CreateOpts) {
         bitcoind_pass: "".to_string(),
         vtxo_refresh_expiry_threshold: 3600,
         fallback_fee_rate: 1,
+        htlc_recv_claim_delta: 18,
+        vtxo_exit_margin: 12,
+        deep_round_confirmations: 0,
     };
 
     let create_opts = ffi::CreateOpts {

@@ -213,6 +213,9 @@ export default function ArkApp() {
         bitcoind_pass: 'ark',
         vtxo_refresh_expiry_threshold: 288,
         fallback_fee_rate: 10000,
+        htlc_recv_claim_delta: 18,
+        vtxo_exit_margin: 12,
+        deep_round_confirmations: 1,
       },
     };
 
@@ -263,6 +266,9 @@ export default function ArkApp() {
         bitcoind_pass: 'ark',
         vtxo_refresh_expiry_threshold: 288,
         fallback_fee_rate: 10000,
+        htlc_recv_claim_delta: 18,
+        vtxo_exit_margin: 12,
+        deep_round_confirmations: 1,
       },
     };
 

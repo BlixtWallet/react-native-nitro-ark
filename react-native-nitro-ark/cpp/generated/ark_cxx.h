@@ -971,6 +971,9 @@ struct ConfigOpts final {
   ::rust::String bitcoind_pass;
   ::std::uint32_t vtxo_refresh_expiry_threshold CXX_DEFAULT_VALUE(0);
   ::std::uint64_t fallback_fee_rate CXX_DEFAULT_VALUE(0);
+  ::std::uint16_t htlc_recv_claim_delta CXX_DEFAULT_VALUE(0);
+  ::std::uint16_t vtxo_exit_margin CXX_DEFAULT_VALUE(0);
+  ::std::uint16_t deep_round_confirmations CXX_DEFAULT_VALUE(0);
 
   using IsRelocatable = ::std::true_type;
 };

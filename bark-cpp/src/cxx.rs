@@ -107,6 +107,9 @@ pub(crate) mod ffi {
         bitcoind_pass: String,
         vtxo_refresh_expiry_threshold: u32,
         fallback_fee_rate: u64,
+        htlc_recv_claim_delta: u16,
+        vtxo_exit_margin: u16,
+        deep_round_confirmations: u16,
     }
 
     pub struct CreateOpts {
