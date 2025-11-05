@@ -818,6 +818,7 @@ namespace bark_cxx {
   struct SendManyOutput;
   enum class RefreshModeType : ::std::uint8_t;
   struct LightningReceive;
+  struct LightningReceiveBalance;
   struct OffchainBalance;
   struct OnChainBalance;
   struct KeyPairResult;
@@ -1027,6 +1028,18 @@ struct LightningReceive final {
 };
 #endif // CXXBRIDGE1_STRUCT_bark_cxx$LightningReceive
 
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$LightningReceiveBalance
+#define CXXBRIDGE1_STRUCT_bark_cxx$LightningReceiveBalance
+struct LightningReceiveBalance final {
+  // Sum of all pending lightning invoices
+  ::std::uint64_t total CXX_DEFAULT_VALUE(0);
+  // Sum of all invoices for which we received the HTLC VTXOs
+  ::std::uint64_t claimable CXX_DEFAULT_VALUE(0);
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$LightningReceiveBalance
+
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$OffchainBalance
 #define CXXBRIDGE1_STRUCT_bark_cxx$OffchainBalance
 struct OffchainBalance final {
@@ -1034,6 +1047,8 @@ struct OffchainBalance final {
   ::std::uint64_t spendable CXX_DEFAULT_VALUE(0);
   // Coins that are in the process of being sent over Lightning.
   ::std::uint64_t pending_lightning_send CXX_DEFAULT_VALUE(0);
+  // Coins that are in the process of being received over Lightning.
+  ::bark_cxx::LightningReceiveBalance pending_lightning_receive;
   // Coins locked in a round.
   ::std::uint64_t pending_in_round CXX_DEFAULT_VALUE(0);
   // Coins that are in the process of unilaterally exiting the Ark.

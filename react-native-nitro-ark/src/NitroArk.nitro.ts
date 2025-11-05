@@ -102,9 +102,17 @@ export interface OnchainPaymentResult {
   payment_type: PaymentTypes; // 'Onchain'
 }
 
+export interface LightningReceiveBalance {
+  /// Sum of all pending lightning invoices
+  total: number;
+  /// Sum of all invoices for which we received the HTLC VTXOs
+  claimable: number;
+}
+
 export interface OffchainBalanceResult {
   spendable: number; // u64
   pending_lightning_send: number; // u64
+  pending_lightning_receive: LightningReceiveBalance;
   pending_in_round: number; // u64
   pending_exit: number; // u64
   pending_board: number; // u64

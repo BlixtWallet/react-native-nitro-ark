@@ -582,4 +582,5 @@ export type {
   NewAddressResult,
   KeyPairResult,
   LightningReceive,
+  LightningReceiveBalance,
 } from './NitroArk.nitro';
