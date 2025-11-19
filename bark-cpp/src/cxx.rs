@@ -454,10 +454,10 @@ pub(crate) fn verify_message(
 pub(crate) fn movements() -> anyhow::Result<Vec<BarkMovement>> {
     let movements = crate::TOKIO_RUNTIME.block_on(crate::movements())?;
 
-    Ok(movements
+    movements
         .iter()
         .map(|m| utils::movement_to_bark_movement(m))
-        .collect())
+        .collect()
 }
 
 pub(crate) fn vtxos() -> anyhow::Result<Vec<BarkVtxo>> {

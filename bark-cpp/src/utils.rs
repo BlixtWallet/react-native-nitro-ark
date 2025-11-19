@@ -322,7 +322,9 @@ pub fn vtxo_to_bark_vtxo(vtxo: &Vtxo) -> crate::cxx::ffi::BarkVtxo {
     }
 }
 
-pub fn movement_to_bark_movement(movement: &Movement) -> crate::cxx::ffi::BarkMovement {
+pub fn movement_to_bark_movement(
+    movement: &Movement,
+) -> anyhow::Result<crate::cxx::ffi::BarkMovement> {
     let sent_to: Vec<crate::cxx::ffi::BarkMovementDestination> = movement
         .sent_to
         .iter()
@@ -341,7 +343,7 @@ pub fn movement_to_bark_movement(movement: &Movement) -> crate::cxx::ffi::BarkMo
         })
         .collect();
 
-    let metadata_json = serde_json::to_string(&movement.metadata).unwrap_or_else(|_| "{}".into());
+    let metadata_json = serde_json::to_string(&movement.metadata)?;
 
     let input_vtxos: Vec<String> = movement.input_vtxos.iter().map(|v| v.to_string()).collect();
     let output_vtxos: Vec<String> = movement
@@ -363,7 +365,7 @@ pub fn movement_to_bark_movement(movement: &Movement) -> crate::cxx::ffi::BarkMo
         .map(|ts| ts.to_rfc3339())
         .unwrap_or_else(|| "".to_string());
 
-    crate::cxx::ffi::BarkMovement {
+    Ok(crate::cxx::ffi::BarkMovement {
         id: movement.id.inner(),
         status: movement.status.as_str().to_string(),
         subsystem_name: movement.subsystem.name.clone(),
@@ -380,7 +382,7 @@ pub fn movement_to_bark_movement(movement: &Movement) -> crate::cxx::ffi::BarkMo
         created_at,
         updated_at,
         completed_at,
-    }
+    })
 }
 
 pub fn round_status_to_ffi(status: RoundStatus) -> crate::cxx::ffi::RoundStatus {
