@@ -678,10 +678,16 @@ public:
     });
   }
 
-  std::shared_ptr<Promise<void>> checkAndClaimLnReceive(const std::string& paymentHash, bool wait) override {
-    return Promise<void>::async([paymentHash, wait]() {
+  std::shared_ptr<Promise<void>> tryClaimLightningReceive(const std::string& paymentHash, bool wait,
+                                                          std::optional<std::string> token) override {
+    return Promise<void>::async([paymentHash, wait, token]() {
       try {
-        bark_cxx::check_and_claim_ln_receive(paymentHash, wait);
+        if (token.has_value()) {
+          rust::String token_rs(token.value());
+          bark_cxx::try_claim_lightning_receive(paymentHash, wait, &token_rs);
+        } else {
+          bark_cxx::try_claim_lightning_receive(paymentHash, wait, nullptr);
+        }
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }

@@ -259,7 +259,11 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   lightningReceiveStatus(
     paymentHash: string
   ): Promise<LightningReceive | undefined>;
-  checkAndClaimLnReceive(paymentHash: string, wait: boolean): Promise<void>; // Throws on error
+  tryClaimLightningReceive(
+    paymentHash: string,
+    wait: boolean,
+    token?: string
+  ): Promise<void>; // Throws on error
   tryClaimAllLightningReceives(wait: boolean): Promise<void>; // Throws on error
 
   // --- Offboarding / Exiting ---

@@ -422,15 +422,18 @@ export function lightningReceiveStatus(
 }
 
 /**
- * Checks and claims a Lightning payment.
+ * Attempts to claim a Lightning payment, optionally using a claim token.
  * @param paymentHash The payment hash of the Lightning payment.
+ * @param wait Whether to wait for the claim to complete.
+ * @param token Optional claim token used when no spendable VTXOs are owned.
  * @returns A promise that resolves on success or rejects on error.
  */
-export function checkAndClaimLnReceive(
+export function tryClaimLightningReceive(
   paymentHash: string,
-  wait: boolean
+  wait: boolean,
+  token?: string
 ): Promise<void> {
-  return NitroArkHybridObject.checkAndClaimLnReceive(paymentHash, wait);
+  return NitroArkHybridObject.tryClaimLightningReceive(paymentHash, wait, token);
 }
 
 /**

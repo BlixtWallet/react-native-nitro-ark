@@ -358,7 +358,8 @@ fn test_claim_bolt11_payment_ffi() {
     let invoice = cxx::bolt11_invoice(10000).unwrap();
     // In a real test, you would now pay this invoice from another node.
     // For this unit test, we just check that trying to claim an unpaid invoice fails gracefully.
-    let claim_res = cxx::check_and_claim_ln_receive(invoice.payment_hash, false);
+    let claim_res =
+        cxx::try_claim_lightning_receive(invoice.payment_hash, false, std::ptr::null());
     // Depending on the LDK setup, this might error differently.
     // The key is that it shouldn't panic.
     assert!(claim_res.is_err(), "Claiming an unpaid invoice should fail");

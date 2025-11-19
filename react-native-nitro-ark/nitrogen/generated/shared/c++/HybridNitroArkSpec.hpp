@@ -145,7 +145,7 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<std::string>> sendRoundOnchainPayment(const std::string& destination, double amountSat) = 0;
       virtual std::shared_ptr<Promise<Bolt11Invoice>> bolt11Invoice(double amountMsat) = 0;
       virtual std::shared_ptr<Promise<std::optional<LightningReceive>>> lightningReceiveStatus(const std::string& paymentHash) = 0;
-      virtual std::shared_ptr<Promise<void>> checkAndClaimLnReceive(const std::string& paymentHash, bool wait) = 0;
+      virtual std::shared_ptr<Promise<void>> tryClaimLightningReceive(const std::string& paymentHash, bool wait, const std::optional<std::string>& token) = 0;
       virtual std::shared_ptr<Promise<void>> tryClaimAllLightningReceives(bool wait) = 0;
       virtual std::shared_ptr<Promise<std::string>> offboardSpecific(const std::vector<std::string>& vtxoIds, const std::string& destinationAddress) = 0;
       virtual std::shared_ptr<Promise<std::string>> offboardAll(const std::string& destinationAddress) = 0;

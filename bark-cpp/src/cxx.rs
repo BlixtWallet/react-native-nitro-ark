@@ -9,6 +9,7 @@ use bark::ark::bitcoin::{address, Address};
 use bark::ark::lightning::{self, PaymentHash};
 use bdk_wallet::bitcoin::{self, network, FeeRate};
 use bip39::Mnemonic;
+use cxx::CxxString;
 use logger::log::{self, info};
 use std::path::Path;
 use std::str::FromStr;
@@ -250,7 +251,8 @@ pub(crate) mod ffi {
         fn send_round_onchain_payment(destination: &str, amount_sat: u64) -> Result<String>;
         fn offboard_specific(vtxo_ids: Vec<String>, destination_address: &str) -> Result<String>;
         fn offboard_all(destination_address: &str) -> Result<String>;
-        fn check_and_claim_ln_receive(payment_hash: String, wait: bool) -> Result<()>;
+        unsafe fn try_claim_lightning_receive(payment_hash: String, wait: bool, token: *const String)
+            -> Result<()>;
         fn try_claim_all_lightning_receives(wait: bool) -> Result<()>;
         fn sync_exits() -> Result<()>;
 
@@ -754,10 +756,15 @@ pub(crate) fn offboard_all(destination_address: &str) -> anyhow::Result<String> 
     Ok(offboard_all_result.round.to_string())
 }
 
-pub(crate) fn check_and_claim_ln_receive(payment_hash: String, wait: bool) -> anyhow::Result<()> {
+pub(crate) fn try_claim_lightning_receive(
+    payment_hash: String,
+    wait: bool,
+    token: *const CxxString,
+) -> anyhow::Result<()> {
     let payment_hash = PaymentHash::from_str(&payment_hash)?;
+    let token_opt = unsafe { token.as_ref().map(|s| s.to_string_lossy().into_owned()) };
 
-    TOKIO_RUNTIME.block_on(crate::check_and_claim_ln_receive(payment_hash, wait))
+    TOKIO_RUNTIME.block_on(crate::try_claim_lightning_receive(payment_hash, wait, token_opt))
 }
 
 pub(crate) fn try_claim_all_lightning_receives(wait: bool) -> anyhow::Result<()> {

@@ -821,7 +821,7 @@ export default function ArkApp() {
     );
   };
 
-  const handlecheckAndClaimLnReceive = () => {
+  const handleTryClaimLightningReceive = () => {
     if (!mnemonic) {
       setError((prev) => ({ ...prev, lightning: 'Mnemonic required' }));
       return;
@@ -834,8 +834,8 @@ export default function ArkApp() {
       return;
     }
     runOperation(
-      'checkAndClaimLnReceive',
-      () => NitroArk.checkAndClaimLnReceive(paymentHash, false),
+      'tryClaimLightningReceive',
+      () => NitroArk.tryClaimLightningReceive(paymentHash, false),
       'lightning',
       () => {
         setResults((prev) => ({
@@ -1255,8 +1255,8 @@ export default function ArkApp() {
 
           <View style={styles.buttonGrid}>
             {renderOperationButton(
-              'Check & Claim LN Receive',
-              handlecheckAndClaimLnReceive
+              'Try Claim Lightning Receive',
+              handleTryClaimLightningReceive
             )}
           </View>
           <View style={styles.inputContainer}>
