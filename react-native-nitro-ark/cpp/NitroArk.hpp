@@ -741,7 +741,7 @@ public:
   }
 
   std::shared_ptr<Promise<void>> tryClaimLightningReceive(const std::string& paymentHash, bool wait,
-                                                          std::optional<std::string> token) override {
+                                                          const std::optional<std::string>& token) override {
     return Promise<void>::async([paymentHash, wait, token]() {
       try {
         if (token.has_value()) {
