@@ -10,6 +10,7 @@ use bark::{
     lnurllib::lightning_address::LightningAddress,
     movement::Movement,
     onchain::OnchainWallet,
+    vtxo::state::VtxoState,
     Config, SqliteClient, Wallet as BarkWallet, WalletVtxo,
 };
 
@@ -277,7 +278,7 @@ pub fn wallet_vtxo_to_bark_vtxo(wallet_vtxo: WalletVtxo) -> crate::cxx::ffi::Bar
     let state_name = match &wallet_vtxo.state {
         VtxoState::Spendable => "Spendable",
         VtxoState::Spent => "Spent",
-        VtxoState::Locked => "Locked",
+        VtxoState::Locked { movement_id: _ } => "Locked",
     }
     .to_string();
 
