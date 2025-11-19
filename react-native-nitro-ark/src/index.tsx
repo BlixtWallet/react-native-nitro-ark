@@ -85,6 +85,10 @@ export function closeWallet(): Promise<void> {
   return NitroArkHybridObject.closeWallet();
 }
 
+export function checkConnection(): Promise<void> {
+  return NitroArkHybridObject.checkConnection();
+}
+
 /**
  * Checks if a wallet is currently loaded.
  * @returns A promise resolving to true if a wallet is loaded, false otherwise.

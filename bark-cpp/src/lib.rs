@@ -292,6 +292,18 @@ pub async fn peak_address(index: u32) -> anyhow::Result<bark::ark::Address> {
     })
 }
 
+pub async fn check_connection() -> anyhow::Result<()> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async {
+            ctx.wallet
+                .check_connection()
+                .await
+                .context("Failed to check connection")
+        })
+        .await
+}
+
 pub async fn sign_message(
     message: &str,
     index: u32,

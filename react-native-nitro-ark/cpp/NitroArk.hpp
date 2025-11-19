@@ -198,6 +198,16 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<void>> checkConnection() override {
+    return Promise<void>::async([]() {
+      try {
+        bark_cxx::check_connection();
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   std::shared_ptr<Promise<bool>> isWalletLoaded() override {
     return Promise<bool>::async([]() { return bark_cxx::is_wallet_loaded(); });
   }

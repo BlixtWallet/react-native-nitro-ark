@@ -248,6 +248,7 @@ pub(crate) mod ffi {
         fn maintenance() -> Result<()>;
         fn maintenance_with_onchain() -> Result<()>;
         fn maintenance_refresh() -> Result<()>;
+        fn check_connection() -> Result<()>;
         fn sync() -> Result<()>;
         fn create_wallet(datadir: &str, opts: CreateOpts) -> Result<()>;
         fn load_wallet(datadir: &str, config: CreateOpts) -> Result<()>;
@@ -538,6 +539,10 @@ pub(crate) fn maintenance_with_onchain() -> anyhow::Result<()> {
 
 pub(crate) fn maintenance_refresh() -> anyhow::Result<()> {
     crate::TOKIO_RUNTIME.block_on(crate::maintenance_refresh())
+}
+
+pub(crate) fn check_connection() -> anyhow::Result<()> {
+    crate::TOKIO_RUNTIME.block_on(crate::check_connection())
 }
 
 pub(crate) fn sync() -> anyhow::Result<()> {

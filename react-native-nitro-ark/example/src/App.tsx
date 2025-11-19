@@ -302,6 +302,20 @@ export default function ArkApp() {
     runOperation('closeWallet', () => NitroArk.closeWallet(), 'management');
   };
 
+  const handleCheckConnection = () => {
+    runOperation(
+      'checkConnection',
+      () => NitroArk.checkConnection(),
+      'management',
+      () => {
+        setResults((prev) => ({
+          ...prev,
+          management: 'Connection OK',
+        }));
+      }
+    );
+  };
+
   const handleIsWalletLoaded = () => {
     runOperation(
       'isWalletLoaded',
@@ -1034,6 +1048,7 @@ export default function ArkApp() {
             {renderOperationButton('Create Wallet', handleCreateWallet)}
             {renderOperationButton('Load Wallet', handleLoadWallet)}
             {renderOperationButton('Close Wallet', handleCloseWallet)}
+            {renderOperationButton('Check Connection', handleCheckConnection)}
             <View style={styles.buttonWrapper}>
               <Button
                 title="Check Wallet Status"

@@ -1185,6 +1185,8 @@ void maintenance_with_onchain();
 
 void maintenance_refresh();
 
+void check_connection();
+
 void sync();
 
 void create_wallet(::rust::Str datadir, ::bark_cxx::CreateOpts opts);
