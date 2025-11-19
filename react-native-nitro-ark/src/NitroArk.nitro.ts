@@ -177,7 +177,6 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   maintenanceRefresh(): Promise<void>;
   sync(): Promise<void>;
   syncExits(): Promise<void>;
-  syncPastRounds(): Promise<void>;
 
   // --- Wallet Info ---
   getArkInfo(): Promise<BarkArkInfo>;
@@ -243,7 +242,10 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
     destination: string,
     amountSat?: number
   ): Promise<Bolt11PaymentResult>;
-  payLightningOffer(offer: string, amountSat?: number): Promise<Bolt12PaymentResult>;
+  payLightningOffer(
+    offer: string,
+    amountSat?: number
+  ): Promise<Bolt12PaymentResult>;
   payLightningAddress(
     addr: string,
     amountSat: number,

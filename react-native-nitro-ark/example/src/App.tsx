@@ -385,14 +385,6 @@ export default function ArkApp() {
     runOperation('syncExits', () => NitroArk.syncExits(), 'management');
   };
 
-  const handleSyncPastRounds = () => {
-    runOperation(
-      'syncPastRounds',
-      () => NitroArk.syncPastRounds(),
-      'management'
-    );
-  };
-
   const handleGetArkInfo = () => {
     runOperation(
       'getArkInfo',
@@ -716,7 +708,12 @@ export default function ArkApp() {
     }
     runOperation(
       'payLightningAddress',
-      () => NitroArk.payLightningAddress(arkDestinationAddress, amountNum, arkComment),
+      () =>
+        NitroArk.payLightningAddress(
+          arkDestinationAddress,
+          amountNum,
+          arkComment
+        ),
       'ark'
     );
   };
@@ -1042,7 +1039,6 @@ export default function ArkApp() {
             {renderOperationButton('Sync', handleSync)}
             {renderOperationButton('Onchain Sync', handleOnchainSync)}
             {renderOperationButton('Sync Exits', handleSyncExits)}
-            {renderOperationButton('Sync Past Rounds', handleSyncPastRounds)}
           </View>
         </View>
 
@@ -1279,7 +1275,7 @@ export default function ArkApp() {
           <View style={styles.buttonGrid}>
             {renderOperationButton(
               'Check and Claim All Open Ln Receives',
-              handleCheckAndClaimAllOpenLnReceives
+              handleTryClaimAllLightningReceives
             )}
           </View>
         </View>

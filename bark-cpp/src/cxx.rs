@@ -230,7 +230,6 @@ pub(crate) mod ffi {
         fn maintenance_with_onchain() -> Result<()>;
         fn maintenance_refresh() -> Result<()>;
         fn sync() -> Result<()>;
-        fn sync_past_rounds() -> Result<()>;
         fn create_wallet(datadir: &str, opts: CreateOpts) -> Result<()>;
         fn load_wallet(datadir: &str, config: CreateOpts) -> Result<()>;
         fn board_amount(amount_sat: u64) -> Result<BoardResult>;
@@ -241,7 +240,10 @@ pub(crate) mod ffi {
             destination: &str,
             amount_sat: *const u64,
         ) -> Result<Bolt11PaymentResult>;
-        unsafe fn pay_lightning_offer(offer: &str, amount_sat: *const u64) -> Result<Bolt12PaymentResult>;
+        unsafe fn pay_lightning_offer(
+            offer: &str,
+            amount_sat: *const u64,
+        ) -> Result<Bolt12PaymentResult>;
         fn pay_lightning_address(
             addr: &str,
             amount_sat: u64,
@@ -250,8 +252,11 @@ pub(crate) mod ffi {
         fn send_round_onchain_payment(destination: &str, amount_sat: u64) -> Result<String>;
         fn offboard_specific(vtxo_ids: Vec<String>, destination_address: &str) -> Result<String>;
         fn offboard_all(destination_address: &str) -> Result<String>;
-        unsafe fn try_claim_lightning_receive(payment_hash: String, wait: bool, token: *const String)
-            -> Result<()>;
+        unsafe fn try_claim_lightning_receive(
+            payment_hash: String,
+            wait: bool,
+            token: *const String,
+        ) -> Result<()>;
         fn try_claim_all_lightning_receives(wait: bool) -> Result<()>;
         fn sync_exits() -> Result<()>;
 
@@ -508,10 +513,6 @@ pub(crate) fn sync() -> anyhow::Result<()> {
     crate::TOKIO_RUNTIME.block_on(crate::sync())
 }
 
-pub(crate) fn sync_past_rounds() -> anyhow::Result<()> {
-    crate::TOKIO_RUNTIME.block_on(crate::sync_past_rounds())
-}
-
 pub(crate) fn create_wallet(datadir: &str, opts: ffi::CreateOpts) -> anyhow::Result<()> {
     let create_opts = utils::ffi_config_to_config(opts)?;
 
@@ -617,8 +618,8 @@ pub(crate) fn pay_lightning_offer(
     let offer = lightning::Offer::from_str(offer)
         .map_err(|err| anyhow::anyhow!("Failed to parse bolt12 offer: {:?}", err))?;
 
-    let (_, preimage) = crate::TOKIO_RUNTIME
-        .block_on(crate::pay_lightning_offer(offer.clone(), amount_opt))?;
+    let (_, preimage) =
+        crate::TOKIO_RUNTIME.block_on(crate::pay_lightning_offer(offer.clone(), amount_opt))?;
 
     Ok(Bolt12PaymentResult {
         preimage: preimage.to_lower_hex_string(),
@@ -638,16 +639,11 @@ pub(crate) fn pay_lightning_address(
     } else {
         Some(comment)
     };
-    let pay_lightning_address_result = crate::TOKIO_RUNTIME.block_on(crate::pay_lightning_address(
-        addr,
-        amount,
-        comment_opt,
-    ))?;
+    let pay_lightning_address_result =
+        crate::TOKIO_RUNTIME.block_on(crate::pay_lightning_address(addr, amount, comment_opt))?;
 
     Ok(LnurlPaymentResult {
-        preimage: pay_lightning_address_result
-            .1
-            .to_lower_hex_string(),
+        preimage: pay_lightning_address_result.1.to_lower_hex_string(),
         bolt11_invoice: pay_lightning_address_result.0.to_string(),
         lnurl: addr.to_string(),
         payment_type: PaymentTypes::Lnurl,
@@ -763,7 +759,11 @@ pub(crate) fn try_claim_lightning_receive(
     let payment_hash = PaymentHash::from_str(&payment_hash)?;
     let token_opt = unsafe { token.as_ref().map(|s| s.clone()) };
 
-    TOKIO_RUNTIME.block_on(crate::try_claim_lightning_receive(payment_hash, wait, token_opt))
+    TOKIO_RUNTIME.block_on(crate::try_claim_lightning_receive(
+        payment_hash,
+        wait,
+        token_opt,
+    ))
 }
 
 pub(crate) fn try_claim_all_lightning_receives(wait: bool) -> anyhow::Result<()> {

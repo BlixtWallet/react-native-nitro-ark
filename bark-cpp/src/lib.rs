@@ -542,19 +542,6 @@ pub async fn board_all() -> anyhow::Result<Board> {
         .await
 }
 
-pub async fn sync_past_rounds() -> anyhow::Result<()> {
-    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager
-        .with_context_async(|ctx| async {
-            ctx.wallet
-                .sync_past_rounds()
-                .await
-                .context("Failed to sync rounds")?;
-            Ok(())
-        })
-        .await
-}
-
 pub async fn validate_arkoor_address(address: bark::ark::Address) -> anyhow::Result<()> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager.with_context(|ctx| {

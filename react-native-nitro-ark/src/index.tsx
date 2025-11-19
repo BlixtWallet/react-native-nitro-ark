@@ -159,14 +159,6 @@ export function syncExits(): Promise<void> {
   return NitroArkHybridObject.syncExits();
 }
 
-/**
- * Synchronizes the rounds of the wallet.
- * @returns A promise that resolves on success.
- */
-export function syncPastRounds(): Promise<void> {
-  return NitroArkHybridObject.syncPastRounds();
-}
-
 // --- Wallet Info ---
 
 /**
@@ -433,7 +425,11 @@ export function tryClaimLightningReceive(
   wait: boolean,
   token?: string
 ): Promise<void> {
-  return NitroArkHybridObject.tryClaimLightningReceive(paymentHash, wait, token);
+  return NitroArkHybridObject.tryClaimLightningReceive(
+    paymentHash,
+    wait,
+    token
+  );
 }
 
 /**
