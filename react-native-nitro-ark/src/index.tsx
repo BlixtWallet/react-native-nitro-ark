@@ -475,12 +475,12 @@ export function payOffer(
  * @param comment An optional comment.
  * @returns A promise resolving to a LnurlPaymentResult object
  */
-export function sendLnaddr(
+export function payLightningAddress(
   addr: string,
   amountSat: number,
   comment: string
 ): Promise<LnurlPaymentResult> {
-  return NitroArkHybridObject.sendLnaddr(addr, amountSat, comment);
+  return NitroArkHybridObject.payLightningAddress(addr, amountSat, comment);
 }
 
 // --- Ark Operations ---

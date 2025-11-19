@@ -645,12 +645,12 @@ public:
     });
   }
 
-  std::shared_ptr<Promise<LnurlPaymentResult>> sendLnaddr(const std::string& addr, double amountSat,
-                                                          const std::string& comment) override {
+  std::shared_ptr<Promise<LnurlPaymentResult>> payLightningAddress(const std::string& addr, double amountSat,
+                                                                   const std::string& comment) override {
     return Promise<LnurlPaymentResult>::async([addr, amountSat, comment]() {
       try {
         bark_cxx::LnurlPaymentResult rust_result =
-            bark_cxx::send_lnaddr(addr, static_cast<uint64_t>(amountSat), comment);
+            bark_cxx::pay_lightning_address(addr, static_cast<uint64_t>(amountSat), comment);
 
         LnurlPaymentResult result;
         result.lnurl = std::string(rust_result.lnurl.data(), rust_result.lnurl.length());

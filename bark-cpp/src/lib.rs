@@ -616,7 +616,7 @@ pub async fn send_round_onchain_payment(addr: Address, amount: Amount) -> anyhow
         .await
 }
 
-pub async fn send_lnaddr(
+pub async fn pay_lightning_address(
     addr: &str,
     amount: Amount,
     comment: Option<&str>,
@@ -628,7 +628,7 @@ pub async fn send_lnaddr(
                 .with_context(|| format!("Invalid Lightning Address format: '{}'", addr))?;
 
             ctx.wallet
-                .send_lnaddr(&lightning_address, amount, comment)
+                .pay_lightning_address(&lightning_address, amount, comment)
                 .await
         })
         .await

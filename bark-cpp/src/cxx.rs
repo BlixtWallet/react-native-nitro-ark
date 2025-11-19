@@ -242,7 +242,11 @@ pub(crate) mod ffi {
             amount_sat: *const u64,
         ) -> Result<Bolt11PaymentResult>;
         unsafe fn pay_offer(offer: &str, amount_sat: *const u64) -> Result<Bolt12PaymentResult>;
-        fn send_lnaddr(addr: &str, amount_sat: u64, comment: &str) -> Result<LnurlPaymentResult>;
+        fn pay_lightning_address(
+            addr: &str,
+            amount_sat: u64,
+            comment: &str,
+        ) -> Result<LnurlPaymentResult>;
         fn send_round_onchain_payment(destination: &str, amount_sat: u64) -> Result<String>;
         fn offboard_specific(vtxo_ids: Vec<String>, destination_address: &str) -> Result<String>;
         fn offboard_all(destination_address: &str) -> Result<String>;
@@ -622,7 +626,7 @@ pub(crate) fn pay_offer(
     })
 }
 
-pub(crate) fn send_lnaddr(
+pub(crate) fn pay_lightning_address(
     addr: &str,
     amount_sat: u64,
     comment: &str,
@@ -633,12 +637,17 @@ pub(crate) fn send_lnaddr(
     } else {
         Some(comment)
     };
-    let send_lnaddr_result =
-        crate::TOKIO_RUNTIME.block_on(crate::send_lnaddr(addr, amount, comment_opt))?;
+    let pay_lightning_address_result = crate::TOKIO_RUNTIME.block_on(crate::pay_lightning_address(
+        addr,
+        amount,
+        comment_opt,
+    ))?;
 
     Ok(LnurlPaymentResult {
-        preimage: send_lnaddr_result.1.to_lower_hex_string(),
-        bolt11_invoice: send_lnaddr_result.0.to_string(),
+        preimage: pay_lightning_address_result
+            .1
+            .to_lower_hex_string(),
+        bolt11_invoice: pay_lightning_address_result.0.to_string(),
         lnurl: addr.to_string(),
         payment_type: PaymentTypes::Lnurl,
     })
