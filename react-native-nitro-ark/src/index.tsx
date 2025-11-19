@@ -461,11 +461,11 @@ export function sendLightningPayment(
  * @param amountSat The amount in satoshis to send. Use 0 for invoice amount.
  * @returns A promise resolving to a Bolt12PaymentResult object
  */
-export function payOffer(
+export function payLightningOffer(
   offer: string,
   amountSat?: number
 ): Promise<Bolt12PaymentResult> {
-  return NitroArkHybridObject.payOffer(offer, amountSat);
+  return NitroArkHybridObject.payLightningOffer(offer, amountSat);
 }
 
 /**

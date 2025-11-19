@@ -621,16 +621,16 @@ public:
     });
   }
 
-  std::shared_ptr<Promise<Bolt12PaymentResult>> payOffer(const std::string& bolt12,
-                                                         std::optional<double> amountSat) override {
+  std::shared_ptr<Promise<Bolt12PaymentResult>> payLightningOffer(const std::string& bolt12,
+                                                                  std::optional<double> amountSat) override {
     return Promise<Bolt12PaymentResult>::async([bolt12, amountSat]() {
       try {
         bark_cxx::Bolt12PaymentResult rust_result;
         if (amountSat.has_value()) {
           uint64_t amountSat_val = static_cast<uint64_t>(amountSat.value());
-          rust_result = bark_cxx::pay_offer(bolt12, &amountSat_val);
+          rust_result = bark_cxx::pay_lightning_offer(bolt12, &amountSat_val);
         } else {
-          rust_result = bark_cxx::pay_offer(bolt12, nullptr);
+          rust_result = bark_cxx::pay_lightning_offer(bolt12, nullptr);
         }
 
         Bolt12PaymentResult result;

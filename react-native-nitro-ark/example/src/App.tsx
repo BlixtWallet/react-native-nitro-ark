@@ -695,8 +695,8 @@ export default function ArkApp() {
       return;
     }
     runOperation(
-      'payOffer',
-      () => NitroArk.payOffer(arkDestinationAddress, amountNum),
+      'payLightningOffer',
+      () => NitroArk.payLightningOffer(arkDestinationAddress, amountNum),
       'ark'
     );
   };
@@ -715,8 +715,8 @@ export default function ArkApp() {
       return;
     }
     runOperation(
-      'sendLnaddr',
-      () => NitroArk.sendLnaddr(arkDestinationAddress, amountNum, arkComment),
+      'payLightningAddress',
+      () => NitroArk.payLightningAddress(arkDestinationAddress, amountNum, arkComment),
       'ark'
     );
   };

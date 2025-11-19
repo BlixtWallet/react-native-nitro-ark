@@ -140,7 +140,7 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<void>> validateArkoorAddress(const std::string& address) = 0;
       virtual std::shared_ptr<Promise<ArkoorPaymentResult>> sendArkoorPayment(const std::string& destination, double amountSat) = 0;
       virtual std::shared_ptr<Promise<Bolt11PaymentResult>> sendLightningPayment(const std::string& destination, std::optional<double> amountSat) = 0;
-      virtual std::shared_ptr<Promise<Bolt12PaymentResult>> payOffer(const std::string& offer, std::optional<double> amountSat) = 0;
+      virtual std::shared_ptr<Promise<Bolt12PaymentResult>> payLightningOffer(const std::string& offer, std::optional<double> amountSat) = 0;
       virtual std::shared_ptr<Promise<LnurlPaymentResult>> payLightningAddress(const std::string& addr, double amountSat, const std::string& comment) = 0;
       virtual std::shared_ptr<Promise<std::string>> sendRoundOnchainPayment(const std::string& destination, double amountSat) = 0;
       virtual std::shared_ptr<Promise<Bolt11Invoice>> bolt11Invoice(double amountMsat) = 0;

@@ -597,13 +597,13 @@ pub async fn send_lightning_payment(
         .await
 }
 
-pub async fn pay_offer(
+pub async fn pay_lightning_offer(
     offer: Offer,
     amount: Option<Amount>,
 ) -> anyhow::Result<(Bolt12Invoice, Preimage)> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
-        .with_context_async(|ctx| async { ctx.wallet.pay_offer(offer, amount).await })
+        .with_context_async(|ctx| async { ctx.wallet.pay_lightning_offer(offer, amount).await })
         .await
 }
 

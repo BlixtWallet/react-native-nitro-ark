@@ -241,7 +241,7 @@ pub(crate) mod ffi {
             destination: &str,
             amount_sat: *const u64,
         ) -> Result<Bolt11PaymentResult>;
-        unsafe fn pay_offer(offer: &str, amount_sat: *const u64) -> Result<Bolt12PaymentResult>;
+        unsafe fn pay_lightning_offer(offer: &str, amount_sat: *const u64) -> Result<Bolt12PaymentResult>;
         fn pay_lightning_address(
             addr: &str,
             amount_sat: u64,
@@ -604,7 +604,7 @@ pub(crate) fn send_lightning_payment(
     })
 }
 
-pub(crate) fn pay_offer(
+pub(crate) fn pay_lightning_offer(
     offer: &str,
     amount_sat: *const u64,
 ) -> anyhow::Result<Bolt12PaymentResult> {
@@ -616,8 +616,8 @@ pub(crate) fn pay_offer(
     let offer = lightning::Offer::from_str(offer)
         .map_err(|err| anyhow::anyhow!("Failed to parse bolt12 offer: {:?}", err))?;
 
-    let (_, preimage) =
-        crate::TOKIO_RUNTIME.block_on(crate::pay_offer(offer.clone(), amount_opt))?;
+    let (_, preimage) = crate::TOKIO_RUNTIME
+        .block_on(crate::pay_lightning_offer(offer.clone(), amount_opt))?;
 
     Ok(Bolt12PaymentResult {
         preimage: preimage.to_lower_hex_string(),

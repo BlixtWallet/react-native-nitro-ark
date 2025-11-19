@@ -1177,7 +1177,7 @@ void validate_arkoor_address(::rust::Str address);
 
 ::bark_cxx::Bolt11PaymentResult send_lightning_payment(::rust::Str destination, ::std::uint64_t const *amount_sat);
 
-::bark_cxx::Bolt12PaymentResult pay_offer(::rust::Str offer, ::std::uint64_t const *amount_sat);
+::bark_cxx::Bolt12PaymentResult pay_lightning_offer(::rust::Str offer, ::std::uint64_t const *amount_sat);
 
 ::bark_cxx::LnurlPaymentResult pay_lightning_address(::rust::Str addr, ::std::uint64_t amount_sat, ::rust::Str comment);
 
