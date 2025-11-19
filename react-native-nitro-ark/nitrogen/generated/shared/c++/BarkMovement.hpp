@@ -23,15 +23,16 @@
 #error NitroModules cannot be found! Are you sure you installed NitroModules properly?
 #endif
 
-// Forward declaration of `BarkVtxo` to properly resolve imports.
-namespace margelo::nitro::nitroark { struct BarkVtxo; }
-// Forward declaration of `BarkMovementRecipient` to properly resolve imports.
-namespace margelo::nitro::nitroark { struct BarkMovementRecipient; }
+// Forward declaration of `BarkMovementSubsystem` to properly resolve imports.
+namespace margelo::nitro::nitroark { struct BarkMovementSubsystem; }
+// Forward declaration of `BarkMovementDestination` to properly resolve imports.
+namespace margelo::nitro::nitroark { struct BarkMovementDestination; }
 
 #include <string>
-#include "BarkVtxo.hpp"
+#include "BarkMovementSubsystem.hpp"
+#include "BarkMovementDestination.hpp"
 #include <vector>
-#include "BarkMovementRecipient.hpp"
+#include <optional>
 
 namespace margelo::nitro::nitroark {
 
@@ -41,16 +42,24 @@ namespace margelo::nitro::nitroark {
   struct BarkMovement {
   public:
     double id     SWIFT_PRIVATE;
-    std::string kind     SWIFT_PRIVATE;
-    double fees     SWIFT_PRIVATE;
-    std::vector<BarkVtxo> spends     SWIFT_PRIVATE;
-    std::vector<BarkVtxo> receives     SWIFT_PRIVATE;
-    std::vector<BarkMovementRecipient> recipients     SWIFT_PRIVATE;
+    std::string status     SWIFT_PRIVATE;
+    BarkMovementSubsystem subsystem     SWIFT_PRIVATE;
+    std::string metadata_json     SWIFT_PRIVATE;
+    double intended_balance_sat     SWIFT_PRIVATE;
+    double effective_balance_sat     SWIFT_PRIVATE;
+    double offchain_fee_sat     SWIFT_PRIVATE;
+    std::vector<BarkMovementDestination> sent_to     SWIFT_PRIVATE;
+    std::vector<BarkMovementDestination> received_on     SWIFT_PRIVATE;
+    std::vector<std::string> input_vtxos     SWIFT_PRIVATE;
+    std::vector<std::string> output_vtxos     SWIFT_PRIVATE;
+    std::vector<std::string> exited_vtxos     SWIFT_PRIVATE;
     std::string created_at     SWIFT_PRIVATE;
+    std::string updated_at     SWIFT_PRIVATE;
+    std::optional<std::string> completed_at     SWIFT_PRIVATE;
 
   public:
     BarkMovement() = default;
-    explicit BarkMovement(double id, std::string kind, double fees, std::vector<BarkVtxo> spends, std::vector<BarkVtxo> receives, std::vector<BarkMovementRecipient> recipients, std::string created_at): id(id), kind(kind), fees(fees), spends(spends), receives(receives), recipients(recipients), created_at(created_at) {}
+    explicit BarkMovement(double id, std::string status, BarkMovementSubsystem subsystem, std::string metadata_json, double intended_balance_sat, double effective_balance_sat, double offchain_fee_sat, std::vector<BarkMovementDestination> sent_to, std::vector<BarkMovementDestination> received_on, std::vector<std::string> input_vtxos, std::vector<std::string> output_vtxos, std::vector<std::string> exited_vtxos, std::string created_at, std::string updated_at, std::optional<std::string> completed_at): id(id), status(status), subsystem(subsystem), metadata_json(metadata_json), intended_balance_sat(intended_balance_sat), effective_balance_sat(effective_balance_sat), offchain_fee_sat(offchain_fee_sat), sent_to(sent_to), received_on(received_on), input_vtxos(input_vtxos), output_vtxos(output_vtxos), exited_vtxos(exited_vtxos), created_at(created_at), updated_at(updated_at), completed_at(completed_at) {}
   };
 
 } // namespace margelo::nitro::nitroark
@@ -64,23 +73,39 @@ namespace margelo::nitro {
       jsi::Object obj = arg.asObject(runtime);
       return margelo::nitro::nitroark::BarkMovement(
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "id")),
-        JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "kind")),
-        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "fees")),
-        JSIConverter<std::vector<margelo::nitro::nitroark::BarkVtxo>>::fromJSI(runtime, obj.getProperty(runtime, "spends")),
-        JSIConverter<std::vector<margelo::nitro::nitroark::BarkVtxo>>::fromJSI(runtime, obj.getProperty(runtime, "receives")),
-        JSIConverter<std::vector<margelo::nitro::nitroark::BarkMovementRecipient>>::fromJSI(runtime, obj.getProperty(runtime, "recipients")),
-        JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "created_at"))
+        JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "status")),
+        JSIConverter<margelo::nitro::nitroark::BarkMovementSubsystem>::fromJSI(runtime, obj.getProperty(runtime, "subsystem")),
+        JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "metadata_json")),
+        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "intended_balance_sat")),
+        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "effective_balance_sat")),
+        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "offchain_fee_sat")),
+        JSIConverter<std::vector<margelo::nitro::nitroark::BarkMovementDestination>>::fromJSI(runtime, obj.getProperty(runtime, "sent_to")),
+        JSIConverter<std::vector<margelo::nitro::nitroark::BarkMovementDestination>>::fromJSI(runtime, obj.getProperty(runtime, "received_on")),
+        JSIConverter<std::vector<std::string>>::fromJSI(runtime, obj.getProperty(runtime, "input_vtxos")),
+        JSIConverter<std::vector<std::string>>::fromJSI(runtime, obj.getProperty(runtime, "output_vtxos")),
+        JSIConverter<std::vector<std::string>>::fromJSI(runtime, obj.getProperty(runtime, "exited_vtxos")),
+        JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "created_at")),
+        JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "updated_at")),
+        JSIConverter<std::optional<std::string>>::fromJSI(runtime, obj.getProperty(runtime, "completed_at"))
       );
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroark::BarkMovement& arg) {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, "id", JSIConverter<double>::toJSI(runtime, arg.id));
-      obj.setProperty(runtime, "kind", JSIConverter<std::string>::toJSI(runtime, arg.kind));
-      obj.setProperty(runtime, "fees", JSIConverter<double>::toJSI(runtime, arg.fees));
-      obj.setProperty(runtime, "spends", JSIConverter<std::vector<margelo::nitro::nitroark::BarkVtxo>>::toJSI(runtime, arg.spends));
-      obj.setProperty(runtime, "receives", JSIConverter<std::vector<margelo::nitro::nitroark::BarkVtxo>>::toJSI(runtime, arg.receives));
-      obj.setProperty(runtime, "recipients", JSIConverter<std::vector<margelo::nitro::nitroark::BarkMovementRecipient>>::toJSI(runtime, arg.recipients));
+      obj.setProperty(runtime, "status", JSIConverter<std::string>::toJSI(runtime, arg.status));
+      obj.setProperty(runtime, "subsystem", JSIConverter<margelo::nitro::nitroark::BarkMovementSubsystem>::toJSI(runtime, arg.subsystem));
+      obj.setProperty(runtime, "metadata_json", JSIConverter<std::string>::toJSI(runtime, arg.metadata_json));
+      obj.setProperty(runtime, "intended_balance_sat", JSIConverter<double>::toJSI(runtime, arg.intended_balance_sat));
+      obj.setProperty(runtime, "effective_balance_sat", JSIConverter<double>::toJSI(runtime, arg.effective_balance_sat));
+      obj.setProperty(runtime, "offchain_fee_sat", JSIConverter<double>::toJSI(runtime, arg.offchain_fee_sat));
+      obj.setProperty(runtime, "sent_to", JSIConverter<std::vector<margelo::nitro::nitroark::BarkMovementDestination>>::toJSI(runtime, arg.sent_to));
+      obj.setProperty(runtime, "received_on", JSIConverter<std::vector<margelo::nitro::nitroark::BarkMovementDestination>>::toJSI(runtime, arg.received_on));
+      obj.setProperty(runtime, "input_vtxos", JSIConverter<std::vector<std::string>>::toJSI(runtime, arg.input_vtxos));
+      obj.setProperty(runtime, "output_vtxos", JSIConverter<std::vector<std::string>>::toJSI(runtime, arg.output_vtxos));
+      obj.setProperty(runtime, "exited_vtxos", JSIConverter<std::vector<std::string>>::toJSI(runtime, arg.exited_vtxos));
       obj.setProperty(runtime, "created_at", JSIConverter<std::string>::toJSI(runtime, arg.created_at));
+      obj.setProperty(runtime, "updated_at", JSIConverter<std::string>::toJSI(runtime, arg.updated_at));
+      obj.setProperty(runtime, "completed_at", JSIConverter<std::optional<std::string>>::toJSI(runtime, arg.completed_at));
       return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -92,12 +117,20 @@ namespace margelo::nitro {
         return false;
       }
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "id"))) return false;
-      if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "kind"))) return false;
-      if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "fees"))) return false;
-      if (!JSIConverter<std::vector<margelo::nitro::nitroark::BarkVtxo>>::canConvert(runtime, obj.getProperty(runtime, "spends"))) return false;
-      if (!JSIConverter<std::vector<margelo::nitro::nitroark::BarkVtxo>>::canConvert(runtime, obj.getProperty(runtime, "receives"))) return false;
-      if (!JSIConverter<std::vector<margelo::nitro::nitroark::BarkMovementRecipient>>::canConvert(runtime, obj.getProperty(runtime, "recipients"))) return false;
+      if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "status"))) return false;
+      if (!JSIConverter<margelo::nitro::nitroark::BarkMovementSubsystem>::canConvert(runtime, obj.getProperty(runtime, "subsystem"))) return false;
+      if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "metadata_json"))) return false;
+      if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "intended_balance_sat"))) return false;
+      if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "effective_balance_sat"))) return false;
+      if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "offchain_fee_sat"))) return false;
+      if (!JSIConverter<std::vector<margelo::nitro::nitroark::BarkMovementDestination>>::canConvert(runtime, obj.getProperty(runtime, "sent_to"))) return false;
+      if (!JSIConverter<std::vector<margelo::nitro::nitroark::BarkMovementDestination>>::canConvert(runtime, obj.getProperty(runtime, "received_on"))) return false;
+      if (!JSIConverter<std::vector<std::string>>::canConvert(runtime, obj.getProperty(runtime, "input_vtxos"))) return false;
+      if (!JSIConverter<std::vector<std::string>>::canConvert(runtime, obj.getProperty(runtime, "output_vtxos"))) return false;
+      if (!JSIConverter<std::vector<std::string>>::canConvert(runtime, obj.getProperty(runtime, "exited_vtxos"))) return false;
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "created_at"))) return false;
+      if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "updated_at"))) return false;
+      if (!JSIConverter<std::optional<std::string>>::canConvert(runtime, obj.getProperty(runtime, "completed_at"))) return false;
       return true;
     }
   };

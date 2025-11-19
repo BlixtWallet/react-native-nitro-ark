@@ -25,7 +25,6 @@ use bark::persist::models::LightningReceive;
 use bark::persist::BarkPersister;
 use bark::round::RoundStatus;
 use bark::Config;
-use bark::Offboard;
 use bark::SqliteClient;
 use bark::Wallet;
 use bark::WalletVtxo;
@@ -491,7 +490,7 @@ pub async fn get_expiring_vtxos(threshold: BlockHeight) -> anyhow::Result<Vec<Wa
         .await
 }
 
-pub async fn refresh_vtxos(vtxos: Vec<Vtxo>) -> anyhow::Result<Option<RoundId>> {
+pub async fn refresh_vtxos(vtxos: Vec<Vtxo>) -> anyhow::Result<Option<RoundStatus>> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
@@ -596,7 +595,10 @@ pub async fn pay_lightning_offer(
         .await
 }
 
-pub async fn send_round_onchain_payment(addr: Address, amount: Amount) -> anyhow::Result<Offboard> {
+pub async fn send_round_onchain_payment(
+    addr: Address,
+    amount: Amount,
+) -> anyhow::Result<RoundStatus> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {

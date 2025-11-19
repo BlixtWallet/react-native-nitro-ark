@@ -147,19 +147,32 @@ export interface LightningReceive {
   preimage_revealed_at?: number;
 }
 
-export interface BarkMovementRecipient {
-  recipient: string;
+export interface BarkMovementSubsystem {
+  name: string;
+  kind: string;
+}
+
+export interface BarkMovementDestination {
+  destination: string;
   amount_sat: number;
 }
 
 export interface BarkMovement {
   id: number;
-  kind: string;
-  fees: number;
-  spends: BarkVtxo[];
-  receives: BarkVtxo[];
-  recipients: BarkMovementRecipient[];
+  status: string; // 'pending' | 'finished' | 'failed' | 'cancelled'
+  subsystem: BarkMovementSubsystem;
+  metadata_json: string;
+  intended_balance_sat: number;
+  effective_balance_sat: number;
+  offchain_fee_sat: number;
+  sent_to: BarkMovementDestination[];
+  received_on: BarkMovementDestination[];
+  input_vtxos: string[];
+  output_vtxos: string[];
+  exited_vtxos: string[];
   created_at: string;
+  updated_at: string;
+  completed_at?: string;
 }
 
 // --- Nitro Module Interface ---

@@ -382,23 +382,55 @@ public:
         for (const auto& movement_rs : movements_rs) {
           BarkMovement movement;
           movement.id = static_cast<double>(movement_rs.id);
-          movement.kind = std::string(movement_rs.kind.data(), movement_rs.kind.length());
-          movement.fees = static_cast<double>(movement_rs.fees);
+          movement.status = std::string(movement_rs.status.data(), movement_rs.status.length());
+          movement.metadata_json =
+              std::string(movement_rs.metadata_json.data(), movement_rs.metadata_json.length());
+          movement.intended_balance_sat = static_cast<double>(movement_rs.intended_balance_sat);
+          movement.effective_balance_sat = static_cast<double>(movement_rs.effective_balance_sat);
+          movement.offchain_fee_sat = static_cast<double>(movement_rs.offchain_fee_sat);
           movement.created_at = std::string(movement_rs.created_at.data(), movement_rs.created_at.length());
+          movement.updated_at = std::string(movement_rs.updated_at.data(), movement_rs.updated_at.length());
+          if (movement_rs.completed_at.length() == 0) {
+            movement.completed_at = std::nullopt;
+          } else {
+            movement.completed_at =
+                std::string(movement_rs.completed_at.data(), movement_rs.completed_at.length());
+          }
 
-          // Convert spends
-          movement.spends = convertRustVtxosToVector(movement_rs.spends);
+          movement.subsystem.name =
+              std::string(movement_rs.subsystem_name.data(), movement_rs.subsystem_name.length());
+          movement.subsystem.kind =
+              std::string(movement_rs.subsystem_kind.data(), movement_rs.subsystem_kind.length());
 
-          // Convert receives
-          movement.receives = convertRustVtxosToVector(movement_rs.receives);
+          movement.sent_to.reserve(movement_rs.sent_to.size());
+          for (const auto& dest_rs : movement_rs.sent_to) {
+            BarkMovementDestination destination;
+            destination.destination = std::string(dest_rs.destination.data(), dest_rs.destination.length());
+            destination.amount_sat = static_cast<double>(dest_rs.amount_sat);
+            movement.sent_to.push_back(std::move(destination));
+          }
 
-          // Convert recipients
-          movement.recipients.reserve(movement_rs.recipients.size());
-          for (const auto& recipient_rs : movement_rs.recipients) {
-            BarkMovementRecipient recipient;
-            recipient.recipient = std::string(recipient_rs.recipient.data(), recipient_rs.recipient.length());
-            recipient.amount_sat = static_cast<double>(recipient_rs.amount_sat);
-            movement.recipients.push_back(std::move(recipient));
+          movement.received_on.reserve(movement_rs.received_on.size());
+          for (const auto& dest_rs : movement_rs.received_on) {
+            BarkMovementDestination destination;
+            destination.destination = std::string(dest_rs.destination.data(), dest_rs.destination.length());
+            destination.amount_sat = static_cast<double>(dest_rs.amount_sat);
+            movement.received_on.push_back(std::move(destination));
+          }
+
+          movement.input_vtxos.reserve(movement_rs.input_vtxos.size());
+          for (const auto& vtxo_id : movement_rs.input_vtxos) {
+            movement.input_vtxos.emplace_back(std::string(vtxo_id.data(), vtxo_id.length()));
+          }
+
+          movement.output_vtxos.reserve(movement_rs.output_vtxos.size());
+          for (const auto& vtxo_id : movement_rs.output_vtxos) {
+            movement.output_vtxos.emplace_back(std::string(vtxo_id.data(), vtxo_id.length()));
+          }
+
+          movement.exited_vtxos.reserve(movement_rs.exited_vtxos.size());
+          for (const auto& vtxo_id : movement_rs.exited_vtxos) {
+            movement.exited_vtxos.emplace_back(std::string(vtxo_id.data(), vtxo_id.length()));
           }
 
           movements.push_back(std::move(movement));

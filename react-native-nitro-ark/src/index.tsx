@@ -15,6 +15,7 @@ import type {
   NewAddressResult,
   KeyPairResult,
   LightningReceive,
+  BarkMovement as NitroBarkMovement,
   BoardResult,
 } from './NitroArk.nitro';
 
@@ -28,28 +29,10 @@ export type BarkVtxo = {
   state: 'Spendable' | 'Spent' | 'Locked' | 'unknown';
 };
 
-export interface BarkMovementRecipient {
-  recipient: string;
-  amount_sat: number;
-}
+export type MovementStatus = 'pending' | 'finished' | 'failed' | 'cancelled';
 
-export type BarkMovement = {
-  id: number;
-  kind:
-    | 'onboard'
-    | 'round'
-    | 'offboard'
-    | 'arkoor-send'
-    | 'arkoor-receive'
-    | 'lightning-send'
-    | 'lightning-send-revocation'
-    | 'lightning-receive'
-    | 'exit';
-  fees: number;
-  spends: BarkVtxo[];
-  receives: BarkVtxo[];
-  recipients: BarkMovementRecipient[];
-  created_at: string;
+export type BarkMovement = NitroBarkMovement & {
+  status: MovementStatus;
 };
 
 // Create the hybrid object instance

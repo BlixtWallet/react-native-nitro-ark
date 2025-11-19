@@ -322,34 +322,62 @@ pub fn vtxo_to_bark_vtxo(vtxo: &Vtxo) -> crate::cxx::ffi::BarkVtxo {
 }
 
 pub fn movement_to_bark_movement(movement: &Movement) -> crate::cxx::ffi::BarkMovement {
-    let spends: Vec<crate::cxx::ffi::BarkVtxo> = movement
-        .spends
+    let sent_to: Vec<crate::cxx::ffi::BarkMovementDestination> = movement
+        .sent_to
         .iter()
-        .map(|vtxo| vtxo_to_bark_vtxo(vtxo))
-        .collect();
-
-    let receives: Vec<crate::cxx::ffi::BarkVtxo> = movement
-        .receives
-        .iter()
-        .map(|vtxo| vtxo_to_bark_vtxo(vtxo))
-        .collect();
-
-    let recipients: Vec<crate::cxx::ffi::BarkMovementRecipient> = movement
-        .recipients
-        .iter()
-        .map(|r| crate::cxx::ffi::BarkMovementRecipient {
-            recipient: r.recipient.clone(),
-            amount_sat: r.amount.to_sat(),
+        .map(|dest| crate::cxx::ffi::BarkMovementDestination {
+            destination: dest.destination.clone(),
+            amount_sat: dest.amount.to_sat(),
         })
         .collect();
 
+    let received_on: Vec<crate::cxx::ffi::BarkMovementDestination> = movement
+        .received_on
+        .iter()
+        .map(|dest| crate::cxx::ffi::BarkMovementDestination {
+            destination: dest.destination.clone(),
+            amount_sat: dest.amount.to_sat(),
+        })
+        .collect();
+
+    let metadata_json = serde_json::to_string(&movement.metadata).unwrap_or_else(|_| "{}".into());
+
+    let input_vtxos: Vec<String> = movement.input_vtxos.iter().map(|v| v.to_string()).collect();
+    let output_vtxos: Vec<String> = movement
+        .output_vtxos
+        .iter()
+        .map(|v| v.to_string())
+        .collect();
+    let exited_vtxos: Vec<String> = movement
+        .exited_vtxos
+        .iter()
+        .map(|v| v.to_string())
+        .collect();
+
+    let created_at = movement.time.created_at.to_rfc3339();
+    let updated_at = movement.time.updated_at.to_rfc3339();
+    let completed_at = movement
+        .time
+        .completed_at
+        .map(|ts| ts.to_rfc3339())
+        .unwrap_or_else(|| "".to_string());
+
     crate::cxx::ffi::BarkMovement {
-        id: movement.id,
-        kind: movement.kind.as_str().to_string(),
-        fees: movement.fees.to_sat(),
-        spends,
-        receives,
-        recipients,
-        created_at: movement.created_at.clone(),
+        id: movement.id.inner(),
+        status: movement.status.as_str().to_string(),
+        subsystem_name: movement.subsystem.name.clone(),
+        subsystem_kind: movement.subsystem.kind.clone(),
+        metadata_json,
+        intended_balance_sat: movement.intended_balance.to_sat(),
+        effective_balance_sat: movement.effective_balance.to_sat(),
+        offchain_fee_sat: movement.offchain_fee.to_sat(),
+        sent_to,
+        received_on,
+        input_vtxos,
+        output_vtxos,
+        exited_vtxos,
+        created_at,
+        updated_at,
+        completed_at,
     }
 }

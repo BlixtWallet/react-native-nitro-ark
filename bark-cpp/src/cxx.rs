@@ -180,19 +180,28 @@ pub(crate) mod ffi {
         pub secret_key: String,
     }
 
-    pub struct BarkMovementRecipient {
-        pub recipient: String,
+    pub struct BarkMovementDestination {
+        pub destination: String,
         pub amount_sat: u64,
     }
 
     pub struct BarkMovement {
         pub id: u32,
-        pub kind: String,
-        pub fees: u64,
-        pub spends: Vec<BarkVtxo>,
-        pub receives: Vec<BarkVtxo>,
-        pub recipients: Vec<BarkMovementRecipient>,
+        pub status: String,
+        pub subsystem_name: String,
+        pub subsystem_kind: String,
+        pub metadata_json: String,
+        pub intended_balance_sat: i64,
+        pub effective_balance_sat: i64,
+        pub offchain_fee_sat: u64,
+        pub sent_to: Vec<BarkMovementDestination>,
+        pub received_on: Vec<BarkMovementDestination>,
+        pub input_vtxos: Vec<String>,
+        pub output_vtxos: Vec<String>,
+        pub exited_vtxos: Vec<String>,
         pub created_at: String,
+        pub updated_at: String,
+        pub completed_at: String,
     }
 
     extern "Rust" {
