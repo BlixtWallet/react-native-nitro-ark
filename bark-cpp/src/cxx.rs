@@ -109,7 +109,7 @@ pub(crate) mod ffi {
         fallback_fee_rate: u64,
         htlc_recv_claim_delta: u16,
         vtxo_exit_margin: u16,
-        deep_round_confirmations: u16,
+        round_tx_required_confirmations: u32,
     }
 
     pub struct CreateOpts {

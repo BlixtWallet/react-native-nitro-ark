@@ -112,7 +112,6 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<void>> maintenanceRefresh() = 0;
       virtual std::shared_ptr<Promise<void>> sync() = 0;
       virtual std::shared_ptr<Promise<void>> syncExits() = 0;
-      virtual std::shared_ptr<Promise<void>> syncPastRounds() = 0;
       virtual std::shared_ptr<Promise<BarkArkInfo>> getArkInfo() = 0;
       virtual std::shared_ptr<Promise<OffchainBalanceResult>> offchainBalance() = 0;
       virtual std::shared_ptr<Promise<KeyPairResult>> deriveStoreNextKeypair() = 0;

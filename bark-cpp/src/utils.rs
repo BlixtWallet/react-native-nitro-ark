@@ -10,7 +10,6 @@ use bark::{
     lnurllib::lightning_address::LightningAddress,
     movement::Movement,
     onchain::OnchainWallet,
-    vtxo_state::VtxoState,
     Config, SqliteClient, Wallet as BarkWallet, WalletVtxo,
 };
 
@@ -96,7 +95,7 @@ pub struct ConfigOpts {
     pub fallback_fee_rate: Option<u64>,
     pub htlc_recv_claim_delta: u16,
     pub vtxo_exit_margin: u16,
-    pub deep_round_confirmations: u16,
+    pub round_tx_required_confirmations: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -237,7 +236,7 @@ pub fn merge_config_opts(opts: CreateOpts) -> anyhow::Result<(Config, Network)> 
         fallback_fee_rate,
         htlc_recv_claim_delta: opts.config.htlc_recv_claim_delta,
         vtxo_exit_margin: opts.config.vtxo_exit_margin,
-        deep_round_confirmations: opts.config.deep_round_confirmations,
+        round_tx_required_confirmations: opts.config.round_tx_required_confirmations,
     };
     opts.config
         .clone()
@@ -259,7 +258,7 @@ pub fn ffi_config_to_config(opts: ffi::CreateOpts) -> anyhow::Result<CreateOpts>
         fallback_fee_rate: Some(opts.config.fallback_fee_rate),
         htlc_recv_claim_delta: opts.config.htlc_recv_claim_delta,
         vtxo_exit_margin: opts.config.vtxo_exit_margin,
-        deep_round_confirmations: opts.config.deep_round_confirmations,
+        round_tx_required_confirmations: opts.config.round_tx_required_confirmations,
     };
 
     let create_opts = CreateOpts {

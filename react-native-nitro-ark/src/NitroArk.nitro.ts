@@ -15,7 +15,7 @@ export interface BarkConfigOpts {
   fallback_fee_rate?: number;
   htlc_recv_claim_delta: number;
   vtxo_exit_margin: number;
-  deep_round_confirmations: number;
+  round_tx_required_confirmations: number;
 }
 
 export interface BarkCreateOpts {

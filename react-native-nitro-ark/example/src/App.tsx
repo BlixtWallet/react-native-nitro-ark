@@ -215,7 +215,7 @@ export default function ArkApp() {
         fallback_fee_rate: 10000,
         htlc_recv_claim_delta: 18,
         vtxo_exit_margin: 12,
-        deep_round_confirmations: 1,
+        round_tx_required_confirmations: 1,
       },
     };
 
@@ -268,7 +268,7 @@ export default function ArkApp() {
         fallback_fee_rate: 10000,
         htlc_recv_claim_delta: 18,
         vtxo_exit_margin: 12,
-        deep_round_confirmations: 1,
+        round_tx_required_confirmations: 1,
       },
     };
 
