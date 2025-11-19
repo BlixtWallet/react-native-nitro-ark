@@ -597,16 +597,16 @@ public:
 
   // --- Lightning Operations ---
 
-  std::shared_ptr<Promise<Bolt11PaymentResult>> sendLightningPayment(const std::string& destination,
-                                                                     std::optional<double> amountSat) override {
+  std::shared_ptr<Promise<Bolt11PaymentResult>> payLightningInvoice(const std::string& destination,
+                                                                    std::optional<double> amountSat) override {
     return Promise<Bolt11PaymentResult>::async([destination, amountSat]() {
       try {
         bark_cxx::Bolt11PaymentResult rust_result;
         if (amountSat.has_value()) {
           uint64_t amountSat_val = static_cast<uint64_t>(amountSat.value());
-          rust_result = bark_cxx::send_lightning_payment(destination, &amountSat_val);
+          rust_result = bark_cxx::pay_lightning_invoice(destination, &amountSat_val);
         } else {
-          rust_result = bark_cxx::send_lightning_payment(destination, nullptr);
+          rust_result = bark_cxx::pay_lightning_invoice(destination, nullptr);
         }
 
         Bolt11PaymentResult result;

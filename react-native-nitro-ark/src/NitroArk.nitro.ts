@@ -239,7 +239,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
     destination: string,
     amountSat: number
   ): Promise<ArkoorPaymentResult>;
-  sendLightningPayment(
+  payLightningInvoice(
     destination: string,
     amountSat?: number
   ): Promise<Bolt11PaymentResult>;

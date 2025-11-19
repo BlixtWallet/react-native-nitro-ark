@@ -443,16 +443,16 @@ export function checkAndClaimAllOpenLnReceives(wait: boolean): Promise<void> {
 }
 
 /**
- * Sends a Lightning payment.
+ * Pays a Bolt11 Lightning invoice.
  * @param destination The Lightning invoice.
  * @param amountSat The amount in satoshis to send. Use 0 for invoice amount.
  * @returns A promise resolving to a Bolt11PaymentResult object
  */
-export function sendLightningPayment(
+export function payLightningInvoice(
   destination: string,
   amountSat?: number
 ): Promise<Bolt11PaymentResult> {
-  return NitroArkHybridObject.sendLightningPayment(destination, amountSat);
+  return NitroArkHybridObject.payLightningInvoice(destination, amountSat);
 }
 
 /**

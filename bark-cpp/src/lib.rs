@@ -583,7 +583,7 @@ pub async fn send_arkoor_payment(
         .await
 }
 
-pub async fn send_lightning_payment(
+pub async fn pay_lightning_invoice(
     destination: lightning::Invoice,
     amount_sat: Option<Amount>,
 ) -> anyhow::Result<Preimage> {
@@ -591,7 +591,7 @@ pub async fn send_lightning_payment(
     manager
         .with_context_async(|ctx| async {
             ctx.wallet
-                .send_lightning_payment(destination, amount_sat)
+                .pay_lightning_invoice(destination, amount_sat)
                 .await
         })
         .await

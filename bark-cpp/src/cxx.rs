@@ -237,7 +237,7 @@ pub(crate) mod ffi {
         fn board_all() -> Result<BoardResult>;
         fn validate_arkoor_address(address: &str) -> Result<()>;
         fn send_arkoor_payment(destination: &str, amount_sat: u64) -> Result<ArkoorPaymentResult>;
-        unsafe fn send_lightning_payment(
+        unsafe fn pay_lightning_invoice(
             destination: &str,
             amount_sat: *const u64,
         ) -> Result<Bolt11PaymentResult>;
@@ -582,7 +582,7 @@ pub(crate) fn send_arkoor_payment(
     })
 }
 
-pub(crate) fn send_lightning_payment(
+pub(crate) fn pay_lightning_invoice(
     destination: &str,
     amount_sat: *const u64,
 ) -> anyhow::Result<Bolt11PaymentResult> {
@@ -594,7 +594,7 @@ pub(crate) fn send_lightning_payment(
     let invoice = lightning::Invoice::from_str(destination)?;
 
     let preimage = crate::TOKIO_RUNTIME
-        .block_on(crate::send_lightning_payment(invoice, amount_opt))?
+        .block_on(crate::pay_lightning_invoice(invoice, amount_opt))?
         .to_lower_hex_string();
 
     Ok(Bolt11PaymentResult {

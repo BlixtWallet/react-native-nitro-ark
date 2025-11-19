@@ -674,8 +674,8 @@ export default function ArkApp() {
       return;
     }
     runOperation(
-      'sendLightningPayment',
-      () => NitroArk.sendLightningPayment(arkDestinationAddress, amountNum),
+      'payLightningInvoice',
+      () => NitroArk.payLightningInvoice(arkDestinationAddress, amountNum),
       'ark'
     );
   };

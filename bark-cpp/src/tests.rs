@@ -329,7 +329,7 @@ fn test_send_bolt11_payment_ffi() {
     // Here we test sending to a bolt11 invoice.
     let invoice = cxx::bolt11_invoice(10000).unwrap();
     let amount: u64 = 5000;
-    let send_res = cxx::send_lightning_payment(&invoice.bolt11_invoice, &amount as *const u64);
+    let send_res = cxx::pay_lightning_invoice(&invoice.bolt11_invoice, &amount as *const u64);
     assert!(
         send_res.is_ok(),
         "send_payment (bolt11) failed: {:?}",
