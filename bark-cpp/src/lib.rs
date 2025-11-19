@@ -23,6 +23,7 @@ use bark::movement::Movement;
 use bark::onchain::OnchainWallet;
 use bark::persist::models::LightningReceive;
 use bark::persist::BarkPersister;
+use bark::round::RoundStatus;
 use bark::Config;
 use bark::Offboard;
 use bark::SqliteClient;
@@ -638,14 +639,14 @@ pub async fn pay_lightning_address(
 pub async fn offboard_specific(
     vtxo_ids: Vec<VtxoId>,
     address: Address,
-) -> anyhow::Result<Offboard> {
+) -> anyhow::Result<RoundStatus> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async { ctx.wallet.offboard_vtxos(vtxo_ids, address).await })
         .await
 }
 
-pub async fn offboard_all(address: Address) -> anyhow::Result<Offboard> {
+pub async fn offboard_all(address: Address) -> anyhow::Result<RoundStatus> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async { ctx.wallet.offboard_all(address).await })

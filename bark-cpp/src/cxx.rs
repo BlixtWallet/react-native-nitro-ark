@@ -9,7 +9,6 @@ use bark::ark::bitcoin::{address, Address};
 use bark::ark::lightning::{self, PaymentHash};
 use bdk_wallet::bitcoin::{self, network, FeeRate};
 use bip39::Mnemonic;
-use cxx::CxxString;
 use logger::log::{self, info};
 use std::path::Path;
 use std::str::FromStr;
@@ -759,10 +758,10 @@ pub(crate) fn offboard_all(destination_address: &str) -> anyhow::Result<String> 
 pub(crate) fn try_claim_lightning_receive(
     payment_hash: String,
     wait: bool,
-    token: *const CxxString,
+    token: *const String,
 ) -> anyhow::Result<()> {
     let payment_hash = PaymentHash::from_str(&payment_hash)?;
-    let token_opt = unsafe { token.as_ref().map(|s| s.to_string_lossy().into_owned()) };
+    let token_opt = unsafe { token.as_ref().map(|s| s.clone()) };
 
     TOKIO_RUNTIME.block_on(crate::try_claim_lightning_receive(payment_hash, wait, token_opt))
 }
@@ -897,9 +896,9 @@ pub(crate) fn onchain_send_many(
 ) -> anyhow::Result<String> {
     let txid = crate::TOKIO_RUNTIME.block_on(async {
         let mut manager = crate::GLOBAL_WALLET_MANAGER.lock().await;
-        let (rust_outputs, fee_rate) = manager
+        let (destinations, fee_rate) = manager
             .with_context_async(|ctx| async {
-                let mut rust_outputs = Vec::new();
+                let mut destinations = Vec::new();
                 let net = ctx.wallet.properties().unwrap().network;
                 for output in outputs {
                     let address = Address::from_str(&output.destination)
@@ -907,7 +906,7 @@ pub(crate) fn onchain_send_many(
                         .require_network(net)
                         .context("Address on wrong network")?;
                     let amount = bark::ark::bitcoin::Amount::from_sat(output.amount_sat);
-                    rust_outputs.push((address, amount));
+                    destinations.push((address, amount));
                 }
 
                 let fee_rate = if fee_rate.is_null() {
@@ -915,11 +914,11 @@ pub(crate) fn onchain_send_many(
                 } else {
                     FeeRate::from_sat_per_vb(unsafe { *fee_rate }).context("Invalid fee rate")?
                 };
-                Ok((rust_outputs, fee_rate))
+                Ok((destinations, fee_rate))
             })
             .await?;
 
-        crate::onchain::send_many(rust_outputs, fee_rate).await
+        crate::onchain::send_many(&destinations, fee_rate).await
     })?;
     Ok(txid.to_string())
 }
