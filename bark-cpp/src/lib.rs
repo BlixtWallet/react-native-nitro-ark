@@ -13,7 +13,6 @@ use bark::ark::lightning::Bolt12Invoice;
 use bark::ark::lightning::Offer;
 use bark::ark::lightning::PaymentHash;
 use bark::ark::lightning::Preimage;
-use bark::ark::rounds::RoundId;
 use bark::ark::ArkInfo;
 use bark::ark::Vtxo;
 use bark::ark::VtxoId;

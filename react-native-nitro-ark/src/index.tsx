@@ -17,6 +17,7 @@ import type {
   LightningReceive,
   BarkMovement as NitroBarkMovement,
   BoardResult,
+  RoundStatus,
 } from './NitroArk.nitro';
 
 export type BarkVtxo = {
@@ -510,12 +511,12 @@ export function sendArkoorPayment(
  * Sends an onchain payment via an Ark round.
  * @param destination The destination Bitcoin address.
  * @param amountSat The amount in satoshis to send.
- * @returns A promise resolving to a JSON status string.
+ * @returns A promise resolving to the round status.
  */
 export function sendRoundOnchainPayment(
   destination: string,
   amountSat: number
-): Promise<string> {
+): Promise<RoundStatus> {
   return NitroArkHybridObject.sendRoundOnchainPayment(destination, amountSat);
 }
 
@@ -525,23 +526,21 @@ export function sendRoundOnchainPayment(
  * Offboards specific VTXOs to a destination address.
  * @param vtxoIds Array of VtxoId strings to offboard.
  * @param destinationAddress Destination Bitcoin address (if empty, sends to internal wallet).
- * @param no_sync If true, skips synchronization with the wallet. Defaults to false.
- * @returns A promise resolving to a JSON result string.
+ * @returns A promise resolving to the round status.
  */
 export function offboardSpecific(
   vtxoIds: string[],
   destinationAddress: string
-): Promise<string> {
+): Promise<RoundStatus> {
   return NitroArkHybridObject.offboardSpecific(vtxoIds, destinationAddress);
 }
 
 /**
  * Offboards all VTXOs to a destination address.
  * @param destinationAddress Destination Bitcoin address (if empty, sends to internal wallet).
- * @param no_sync If true, skips synchronization with the wallet. Defaults to false.
- * @returns A promise resolving to a JSON result string.
+ * @returns A promise resolving to the round status.
  */
-export function offboardAll(destinationAddress: string): Promise<string> {
+export function offboardAll(destinationAddress: string): Promise<RoundStatus> {
   return NitroArkHybridObject.offboardAll(destinationAddress);
 }
 
@@ -565,4 +564,5 @@ export type {
   KeyPairResult,
   LightningReceive,
   LightningReceiveBalance,
+  RoundStatus,
 } from './NitroArk.nitro';

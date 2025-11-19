@@ -43,6 +43,8 @@ namespace margelo::nitro::nitroark { struct Bolt11PaymentResult; }
 namespace margelo::nitro::nitroark { struct Bolt12PaymentResult; }
 // Forward declaration of `LnurlPaymentResult` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct LnurlPaymentResult; }
+// Forward declaration of `RoundStatus` to properly resolve imports.
+namespace margelo::nitro::nitroark { struct RoundStatus; }
 // Forward declaration of `Bolt11Invoice` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct Bolt11Invoice; }
 // Forward declaration of `LightningReceive` to properly resolve imports.
@@ -67,6 +69,7 @@ namespace margelo::nitro::nitroark { struct LightningReceive; }
 #include "Bolt11PaymentResult.hpp"
 #include "Bolt12PaymentResult.hpp"
 #include "LnurlPaymentResult.hpp"
+#include "RoundStatus.hpp"
 #include "Bolt11Invoice.hpp"
 #include "LightningReceive.hpp"
 
@@ -141,13 +144,13 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<Bolt11PaymentResult>> payLightningInvoice(const std::string& destination, std::optional<double> amountSat) = 0;
       virtual std::shared_ptr<Promise<Bolt12PaymentResult>> payLightningOffer(const std::string& offer, std::optional<double> amountSat) = 0;
       virtual std::shared_ptr<Promise<LnurlPaymentResult>> payLightningAddress(const std::string& addr, double amountSat, const std::string& comment) = 0;
-      virtual std::shared_ptr<Promise<std::string>> sendRoundOnchainPayment(const std::string& destination, double amountSat) = 0;
+      virtual std::shared_ptr<Promise<RoundStatus>> sendRoundOnchainPayment(const std::string& destination, double amountSat) = 0;
       virtual std::shared_ptr<Promise<Bolt11Invoice>> bolt11Invoice(double amountMsat) = 0;
       virtual std::shared_ptr<Promise<std::optional<LightningReceive>>> lightningReceiveStatus(const std::string& paymentHash) = 0;
       virtual std::shared_ptr<Promise<void>> tryClaimLightningReceive(const std::string& paymentHash, bool wait, const std::optional<std::string>& token) = 0;
       virtual std::shared_ptr<Promise<void>> tryClaimAllLightningReceives(bool wait) = 0;
-      virtual std::shared_ptr<Promise<std::string>> offboardSpecific(const std::vector<std::string>& vtxoIds, const std::string& destinationAddress) = 0;
-      virtual std::shared_ptr<Promise<std::string>> offboardAll(const std::string& destinationAddress) = 0;
+      virtual std::shared_ptr<Promise<RoundStatus>> offboardSpecific(const std::vector<std::string>& vtxoIds, const std::string& destinationAddress) = 0;
+      virtual std::shared_ptr<Promise<RoundStatus>> offboardAll(const std::string& destinationAddress) = 0;
 
     protected:
       // Hybrid Setup

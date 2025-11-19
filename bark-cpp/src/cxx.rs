@@ -1,6 +1,6 @@
 use crate::cxx::ffi::{
     ArkoorPaymentResult, BarkMovement, BarkVtxo, Bolt11PaymentResult, Bolt12PaymentResult,
-    LnurlPaymentResult, OnchainPaymentResult, PaymentTypes,
+    LnurlPaymentResult, OnchainPaymentResult, PaymentTypes, RoundStatus,
 };
 use crate::{utils, TOKIO_RUNTIME};
 use anyhow::{bail, Context, Ok};
@@ -204,6 +204,15 @@ pub(crate) mod ffi {
         pub completed_at: String,
     }
 
+    pub struct RoundStatus {
+        pub status: String,
+        pub funding_txid: String,
+        pub unsigned_funding_txids: Vec<String>,
+        pub error: String,
+        pub is_final: bool,
+        pub is_success: bool,
+    }
+
     extern "Rust" {
         fn init_logger();
         fn create_mnemonic() -> Result<String>;
@@ -258,9 +267,12 @@ pub(crate) mod ffi {
             amount_sat: u64,
             comment: &str,
         ) -> Result<LnurlPaymentResult>;
-        fn send_round_onchain_payment(destination: &str, amount_sat: u64) -> Result<String>;
-        fn offboard_specific(vtxo_ids: Vec<String>, destination_address: &str) -> Result<String>;
-        fn offboard_all(destination_address: &str) -> Result<String>;
+        fn send_round_onchain_payment(destination: &str, amount_sat: u64) -> Result<RoundStatus>;
+        fn offboard_specific(
+            vtxo_ids: Vec<String>,
+            destination_address: &str,
+        ) -> Result<RoundStatus>;
+        fn offboard_all(destination_address: &str) -> Result<RoundStatus>;
         unsafe fn try_claim_lightning_receive(
             payment_hash: String,
             wait: bool,
@@ -662,7 +674,7 @@ pub(crate) fn pay_lightning_address(
 pub(crate) fn send_round_onchain_payment(
     destination: &str,
     amount_sat: u64,
-) -> anyhow::Result<String> {
+) -> anyhow::Result<RoundStatus> {
     let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
     let address_unchecked = bitcoin::Address::from_str(destination)
         .with_context(|| format!("Invalid destination address format: '{}'", destination))?;
@@ -684,13 +696,13 @@ pub(crate) fn send_round_onchain_payment(
         amount,
     ))?;
 
-    Ok(result.round.to_string())
+    Ok(utils::round_status_to_ffi(result))
 }
 
 pub(crate) fn offboard_specific(
     vtxo_ids: Vec<String>,
     destination_address: &str,
-) -> anyhow::Result<String> {
+) -> anyhow::Result<RoundStatus> {
     let ids = vtxo_ids
         .into_iter()
         .map(|s| bark::ark::VtxoId::from_str(&s))
@@ -729,10 +741,10 @@ pub(crate) fn offboard_specific(
     let offboard_specific_result =
         crate::TOKIO_RUNTIME.block_on(crate::offboard_specific(ids, addr))?;
 
-    Ok(offboard_specific_result.round.to_string())
+    Ok(utils::round_status_to_ffi(offboard_specific_result))
 }
 
-pub(crate) fn offboard_all(destination_address: &str) -> anyhow::Result<String> {
+pub(crate) fn offboard_all(destination_address: &str) -> anyhow::Result<RoundStatus> {
     let ark_info = crate::TOKIO_RUNTIME.block_on(crate::get_ark_info())?;
 
     let destination_address_opt = Address::<address::NetworkUnchecked>::from_str(
@@ -757,7 +769,7 @@ pub(crate) fn offboard_all(destination_address: &str) -> anyhow::Result<String> 
 
     let offboard_all_result = crate::TOKIO_RUNTIME.block_on(crate::offboard_all(addr))?;
 
-    Ok(offboard_all_result.round.to_string())
+    Ok(utils::round_status_to_ffi(offboard_all_result))
 }
 
 pub(crate) fn try_claim_lightning_receive(

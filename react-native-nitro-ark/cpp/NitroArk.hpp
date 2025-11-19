@@ -50,6 +50,50 @@ inline std::vector<BarkVtxo> convertRustVtxosToVector(const rust::Vec<bark_cxx::
   return vtxos;
 }
 
+inline RoundStatus convertRoundStatus(const bark_cxx::RoundStatus& status_rs) {
+  RoundStatus status;
+  std::string status_str(status_rs.status.data(), status_rs.status.length());
+  if (status_str == "confirmed") {
+    status.status = RoundStatusType::CONFIRMED;
+  } else if (status_str == "unconfirmed") {
+    status.status = RoundStatusType::UNCONFIRMED;
+  } else if (status_str == "pending") {
+    status.status = RoundStatusType::PENDING;
+  } else if (status_str == "failed") {
+    status.status = RoundStatusType::FAILED;
+  } else {
+    status.status = RoundStatusType::FAILED;
+  }
+
+  if (status_rs.funding_txid.length() > 0) {
+    status.funding_txid = std::string(status_rs.funding_txid.data(), status_rs.funding_txid.length());
+  } else {
+    status.funding_txid = std::nullopt;
+  }
+
+  if (!status_rs.unsigned_funding_txids.empty()) {
+    std::vector<std::string> txids;
+    txids.reserve(status_rs.unsigned_funding_txids.size());
+    for (const auto& txid : status_rs.unsigned_funding_txids) {
+      txids.emplace_back(std::string(txid.data(), txid.length()));
+    }
+    status.unsigned_funding_txids = std::move(txids);
+  } else {
+    status.unsigned_funding_txids = std::nullopt;
+  }
+
+  if (status_rs.error.length() > 0) {
+    status.error = std::string(status_rs.error.data(), status_rs.error.length());
+  } else {
+    status.error = std::nullopt;
+  }
+
+  status.is_final = status_rs.is_final;
+  status.is_success = status_rs.is_success;
+
+  return status;
+}
+
 class NitroArk : public HybridNitroArkSpec {
 
 private:
@@ -383,8 +427,7 @@ public:
           BarkMovement movement;
           movement.id = static_cast<double>(movement_rs.id);
           movement.status = std::string(movement_rs.status.data(), movement_rs.status.length());
-          movement.metadata_json =
-              std::string(movement_rs.metadata_json.data(), movement_rs.metadata_json.length());
+          movement.metadata_json = std::string(movement_rs.metadata_json.data(), movement_rs.metadata_json.length());
           movement.intended_balance_sat = static_cast<double>(movement_rs.intended_balance_sat);
           movement.effective_balance_sat = static_cast<double>(movement_rs.effective_balance_sat);
           movement.offchain_fee_sat = static_cast<double>(movement_rs.offchain_fee_sat);
@@ -393,14 +436,11 @@ public:
           if (movement_rs.completed_at.length() == 0) {
             movement.completed_at = std::nullopt;
           } else {
-            movement.completed_at =
-                std::string(movement_rs.completed_at.data(), movement_rs.completed_at.length());
+            movement.completed_at = std::string(movement_rs.completed_at.data(), movement_rs.completed_at.length());
           }
 
-          movement.subsystem.name =
-              std::string(movement_rs.subsystem_name.data(), movement_rs.subsystem_name.length());
-          movement.subsystem.kind =
-              std::string(movement_rs.subsystem_kind.data(), movement_rs.subsystem_kind.length());
+          movement.subsystem.name = std::string(movement_rs.subsystem_name.data(), movement_rs.subsystem_name.length());
+          movement.subsystem.kind = std::string(movement_rs.subsystem_kind.data(), movement_rs.subsystem_kind.length());
 
           movement.sent_to.reserve(movement_rs.sent_to.size());
           for (const auto& dest_rs : movement_rs.sent_to) {
@@ -828,12 +868,13 @@ public:
     });
   }
 
-  std::shared_ptr<Promise<std::string>> sendRoundOnchainPayment(const std::string& destination,
+  std::shared_ptr<Promise<RoundStatus>> sendRoundOnchainPayment(const std::string& destination,
                                                                 double amountSat) override {
-    return Promise<std::string>::async([destination, amountSat]() {
+    return Promise<RoundStatus>::async([destination, amountSat]() {
       try {
-        rust::String status_rs = bark_cxx::send_round_onchain_payment(destination, static_cast<uint64_t>(amountSat));
-        return std::string(status_rs.data(), status_rs.length());
+        bark_cxx::RoundStatus status_rs =
+            bark_cxx::send_round_onchain_payment(destination, static_cast<uint64_t>(amountSat));
+        return convertRoundStatus(status_rs);
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
@@ -842,27 +883,27 @@ public:
 
   // --- Offboarding / Exiting ---
 
-  std::shared_ptr<Promise<std::string>> offboardSpecific(const std::vector<std::string>& vtxoIds,
+  std::shared_ptr<Promise<RoundStatus>> offboardSpecific(const std::vector<std::string>& vtxoIds,
                                                          const std::string& destinationAddress) override {
-    return Promise<std::string>::async([vtxoIds, destinationAddress]() {
+    return Promise<RoundStatus>::async([vtxoIds, destinationAddress]() {
       try {
         rust::Vec<rust::String> rust_vtxo_ids;
         for (const auto& id : vtxoIds) {
           rust_vtxo_ids.push_back(rust::String(id));
         }
-        rust::String status_rs = bark_cxx::offboard_specific(std::move(rust_vtxo_ids), destinationAddress);
-        return std::string(status_rs.data(), status_rs.length());
+        bark_cxx::RoundStatus status_rs = bark_cxx::offboard_specific(std::move(rust_vtxo_ids), destinationAddress);
+        return convertRoundStatus(status_rs);
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
     });
   }
 
-  std::shared_ptr<Promise<std::string>> offboardAll(const std::string& destinationAddress) override {
-    return Promise<std::string>::async([destinationAddress]() {
+  std::shared_ptr<Promise<RoundStatus>> offboardAll(const std::string& destinationAddress) override {
+    return Promise<RoundStatus>::async([destinationAddress]() {
       try {
-        rust::String status_rs = bark_cxx::offboard_all(destinationAddress);
-        return std::string(status_rs.data(), status_rs.length());
+        bark_cxx::RoundStatus status_rs = bark_cxx::offboard_all(destinationAddress);
+        return convertRoundStatus(status_rs);
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
