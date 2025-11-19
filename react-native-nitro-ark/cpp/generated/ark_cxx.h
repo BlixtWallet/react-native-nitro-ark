@@ -822,8 +822,9 @@ namespace bark_cxx {
   struct OffchainBalance;
   struct OnChainBalance;
   struct KeyPairResult;
-  struct BarkMovementRecipient;
+  struct BarkMovementDestination;
   struct BarkMovement;
+  struct RoundStatus;
 }
 
 namespace bark_cxx {
@@ -974,7 +975,7 @@ struct ConfigOpts final {
   ::std::uint64_t fallback_fee_rate CXX_DEFAULT_VALUE(0);
   ::std::uint16_t htlc_recv_claim_delta CXX_DEFAULT_VALUE(0);
   ::std::uint16_t vtxo_exit_margin CXX_DEFAULT_VALUE(0);
-  ::std::uint16_t deep_round_confirmations CXX_DEFAULT_VALUE(0);
+  ::std::uint32_t round_tx_required_confirmations CXX_DEFAULT_VALUE(0);
 
   using IsRelocatable = ::std::true_type;
 };
@@ -1086,30 +1087,53 @@ struct KeyPairResult final {
 };
 #endif // CXXBRIDGE1_STRUCT_bark_cxx$KeyPairResult
 
-#ifndef CXXBRIDGE1_STRUCT_bark_cxx$BarkMovementRecipient
-#define CXXBRIDGE1_STRUCT_bark_cxx$BarkMovementRecipient
-struct BarkMovementRecipient final {
-  ::rust::String recipient;
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$BarkMovementDestination
+#define CXXBRIDGE1_STRUCT_bark_cxx$BarkMovementDestination
+struct BarkMovementDestination final {
+  ::rust::String destination;
   ::std::uint64_t amount_sat CXX_DEFAULT_VALUE(0);
 
   using IsRelocatable = ::std::true_type;
 };
-#endif // CXXBRIDGE1_STRUCT_bark_cxx$BarkMovementRecipient
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$BarkMovementDestination
 
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$BarkMovement
 #define CXXBRIDGE1_STRUCT_bark_cxx$BarkMovement
 struct BarkMovement final {
   ::std::uint32_t id CXX_DEFAULT_VALUE(0);
-  ::rust::String kind;
-  ::std::uint64_t fees CXX_DEFAULT_VALUE(0);
-  ::rust::Vec<::bark_cxx::BarkVtxo> spends;
-  ::rust::Vec<::bark_cxx::BarkVtxo> receives;
-  ::rust::Vec<::bark_cxx::BarkMovementRecipient> recipients;
+  ::rust::String status;
+  ::rust::String subsystem_name;
+  ::rust::String subsystem_kind;
+  ::rust::String metadata_json;
+  ::std::int64_t intended_balance_sat CXX_DEFAULT_VALUE(0);
+  ::std::int64_t effective_balance_sat CXX_DEFAULT_VALUE(0);
+  ::std::uint64_t offchain_fee_sat CXX_DEFAULT_VALUE(0);
+  ::rust::Vec<::bark_cxx::BarkMovementDestination> sent_to;
+  ::rust::Vec<::bark_cxx::BarkMovementDestination> received_on;
+  ::rust::Vec<::rust::String> input_vtxos;
+  ::rust::Vec<::rust::String> output_vtxos;
+  ::rust::Vec<::rust::String> exited_vtxos;
   ::rust::String created_at;
+  ::rust::String updated_at;
+  ::rust::String completed_at;
 
   using IsRelocatable = ::std::true_type;
 };
 #endif // CXXBRIDGE1_STRUCT_bark_cxx$BarkMovement
+
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$RoundStatus
+#define CXXBRIDGE1_STRUCT_bark_cxx$RoundStatus
+struct RoundStatus final {
+  ::rust::String status;
+  ::rust::String funding_txid;
+  ::rust::Vec<::rust::String> unsigned_funding_txids;
+  ::rust::String error;
+  bool is_final CXX_DEFAULT_VALUE(false);
+  bool is_success CXX_DEFAULT_VALUE(false);
+
+  using IsRelocatable = ::std::true_type;
+};
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$RoundStatus
 
 void init_logger() noexcept;
 
@@ -1161,8 +1185,6 @@ void maintenance_refresh();
 
 void sync();
 
-void sync_past_rounds();
-
 void create_wallet(::rust::Str datadir, ::bark_cxx::CreateOpts opts);
 
 void load_wallet(::rust::Str datadir, ::bark_cxx::CreateOpts config);
@@ -1175,21 +1197,21 @@ void validate_arkoor_address(::rust::Str address);
 
 ::bark_cxx::ArkoorPaymentResult send_arkoor_payment(::rust::Str destination, ::std::uint64_t amount_sat);
 
-::bark_cxx::Bolt11PaymentResult send_lightning_payment(::rust::Str destination, ::std::uint64_t const *amount_sat);
+::bark_cxx::Bolt11PaymentResult pay_lightning_invoice(::rust::Str destination, ::std::uint64_t const *amount_sat);
 
-::bark_cxx::Bolt12PaymentResult pay_offer(::rust::Str offer, ::std::uint64_t const *amount_sat);
+::bark_cxx::Bolt12PaymentResult pay_lightning_offer(::rust::Str offer, ::std::uint64_t const *amount_sat);
 
-::bark_cxx::LnurlPaymentResult send_lnaddr(::rust::Str addr, ::std::uint64_t amount_sat, ::rust::Str comment);
+::bark_cxx::LnurlPaymentResult pay_lightning_address(::rust::Str addr, ::std::uint64_t amount_sat, ::rust::Str comment);
 
-::rust::String send_round_onchain_payment(::rust::Str destination, ::std::uint64_t amount_sat);
+::bark_cxx::RoundStatus send_round_onchain_payment(::rust::Str destination, ::std::uint64_t amount_sat);
 
-::rust::String offboard_specific(::rust::Vec<::rust::String> vtxo_ids, ::rust::Str destination_address);
+::bark_cxx::RoundStatus offboard_specific(::rust::Vec<::rust::String> vtxo_ids, ::rust::Str destination_address);
 
-::rust::String offboard_all(::rust::Str destination_address);
+::bark_cxx::RoundStatus offboard_all(::rust::Str destination_address);
 
-void check_and_claim_ln_receive(::rust::String payment_hash, bool wait);
+void try_claim_lightning_receive(::rust::String payment_hash, bool wait, ::rust::String const *token);
 
-void check_and_claim_all_open_ln_receives(bool wait);
+void try_claim_all_lightning_receives(bool wait);
 
 void sync_exits();
 
