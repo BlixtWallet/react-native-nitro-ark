@@ -262,16 +262,6 @@ public:
     });
   }
 
-  std::shared_ptr<Promise<void>> syncPastRounds() override {
-    return Promise<void>::async([]() {
-      try {
-        bark_cxx::sync_past_rounds();
-      } catch (const rust::Error& e) {
-        throw std::runtime_error(e.what());
-      }
-    });
-  }
-
   // --- Wallet Info ---
 
   std::shared_ptr<Promise<BarkArkInfo>> getArkInfo() override {
