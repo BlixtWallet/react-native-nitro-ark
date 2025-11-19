@@ -13,7 +13,6 @@ use bark::ark::lightning::Bolt12Invoice;
 use bark::ark::lightning::Offer;
 use bark::ark::lightning::PaymentHash;
 use bark::ark::lightning::Preimage;
-use bark::ark::rounds::RoundId;
 use bark::ark::ArkInfo;
 use bark::ark::Vtxo;
 use bark::ark::VtxoId;
@@ -23,8 +22,8 @@ use bark::movement::Movement;
 use bark::onchain::OnchainWallet;
 use bark::persist::models::LightningReceive;
 use bark::persist::BarkPersister;
+use bark::round::RoundStatus;
 use bark::Config;
-use bark::Offboard;
 use bark::SqliteClient;
 use bark::Wallet;
 use bark::WalletVtxo;
@@ -283,6 +282,28 @@ pub async fn new_address() -> anyhow::Result<bark::ark::Address> {
     })
 }
 
+pub async fn peak_address(index: u32) -> anyhow::Result<bark::ark::Address> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager.with_context(|ctx| {
+        Ok(ctx
+            .wallet
+            .peak_address(index)
+            .context("Failed to peak address")?)
+    })
+}
+
+pub async fn check_connection() -> anyhow::Result<()> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async {
+            ctx.wallet
+                .check_connection()
+                .await
+                .context("Failed to check connection")
+        })
+        .await
+}
+
 pub async fn sign_message(
     message: &str,
     index: u32,
@@ -372,16 +393,17 @@ pub async fn lightning_receive_status(
     })
 }
 
-pub async fn check_and_claim_ln_receive(
+pub async fn try_claim_lightning_receive(
     payment_hash: PaymentHash,
     wait: bool,
+    token: Option<String>,
 ) -> anyhow::Result<()> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
             let _ = ctx
                 .wallet
-                .check_and_claim_ln_receive(payment_hash, wait)
+                .try_claim_lightning_receive(payment_hash, wait, token.as_deref())
                 .await
                 .context("Failed to claim bolt11 payment")?;
             Ok(())
@@ -389,13 +411,13 @@ pub async fn check_and_claim_ln_receive(
         .await
 }
 
-pub async fn check_and_claim_all_open_ln_receives(wait: bool) -> anyhow::Result<()> {
+pub async fn try_claim_all_lightning_receives(wait: bool) -> anyhow::Result<()> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
             let _ = ctx
                 .wallet
-                .check_and_claim_all_open_ln_receives(wait)
+                .try_claim_all_lightning_receives(wait)
                 .await
                 .context("Failed to claim all open invoices")?;
             Ok(())
@@ -489,7 +511,7 @@ pub async fn get_expiring_vtxos(threshold: BlockHeight) -> anyhow::Result<Vec<Wa
         .await
 }
 
-pub async fn refresh_vtxos(vtxos: Vec<Vtxo>) -> anyhow::Result<Option<RoundId>> {
+pub async fn refresh_vtxos(vtxos: Vec<Vtxo>) -> anyhow::Result<Option<RoundStatus>> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
@@ -540,19 +562,6 @@ pub async fn board_all() -> anyhow::Result<Board> {
         .await
 }
 
-pub async fn sync_past_rounds() -> anyhow::Result<()> {
-    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager
-        .with_context_async(|ctx| async {
-            ctx.wallet
-                .sync_past_rounds()
-                .await
-                .context("Failed to sync rounds")?;
-            Ok(())
-        })
-        .await
-}
-
 pub async fn validate_arkoor_address(address: bark::ark::Address) -> anyhow::Result<()> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager.with_context(|ctx| {
@@ -583,7 +592,7 @@ pub async fn send_arkoor_payment(
         .await
 }
 
-pub async fn send_lightning_payment(
+pub async fn pay_lightning_invoice(
     destination: lightning::Invoice,
     amount_sat: Option<Amount>,
 ) -> anyhow::Result<Preimage> {
@@ -591,23 +600,26 @@ pub async fn send_lightning_payment(
     manager
         .with_context_async(|ctx| async {
             ctx.wallet
-                .send_lightning_payment(destination, amount_sat)
+                .pay_lightning_invoice(destination, amount_sat)
                 .await
         })
         .await
 }
 
-pub async fn pay_offer(
+pub async fn pay_lightning_offer(
     offer: Offer,
     amount: Option<Amount>,
 ) -> anyhow::Result<(Bolt12Invoice, Preimage)> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
-        .with_context_async(|ctx| async { ctx.wallet.pay_offer(offer, amount).await })
+        .with_context_async(|ctx| async { ctx.wallet.pay_lightning_offer(offer, amount).await })
         .await
 }
 
-pub async fn send_round_onchain_payment(addr: Address, amount: Amount) -> anyhow::Result<Offboard> {
+pub async fn send_round_onchain_payment(
+    addr: Address,
+    amount: Amount,
+) -> anyhow::Result<RoundStatus> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
@@ -616,7 +628,7 @@ pub async fn send_round_onchain_payment(addr: Address, amount: Amount) -> anyhow
         .await
 }
 
-pub async fn send_lnaddr(
+pub async fn pay_lightning_address(
     addr: &str,
     amount: Amount,
     comment: Option<&str>,
@@ -628,7 +640,7 @@ pub async fn send_lnaddr(
                 .with_context(|| format!("Invalid Lightning Address format: '{}'", addr))?;
 
             ctx.wallet
-                .send_lnaddr(&lightning_address, amount, comment)
+                .pay_lightning_address(&lightning_address, amount, comment)
                 .await
         })
         .await
@@ -637,14 +649,14 @@ pub async fn send_lnaddr(
 pub async fn offboard_specific(
     vtxo_ids: Vec<VtxoId>,
     address: Address,
-) -> anyhow::Result<Offboard> {
+) -> anyhow::Result<RoundStatus> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async { ctx.wallet.offboard_vtxos(vtxo_ids, address).await })
         .await
 }
 
-pub async fn offboard_all(address: Address) -> anyhow::Result<Offboard> {
+pub async fn offboard_all(address: Address) -> anyhow::Result<RoundStatus> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async { ctx.wallet.offboard_all(address).await })

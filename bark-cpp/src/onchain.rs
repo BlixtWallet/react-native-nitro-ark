@@ -40,8 +40,8 @@ pub async fn send(dest: Address, amount: Amount, fee_rate: FeeRate) -> anyhow::R
 }
 
 /// Send many onchain transactions
-pub async fn send_many<T: IntoIterator<Item = (Address, Amount)> + Send>(
-    destinations: T,
+pub async fn send_many(
+    destinations: &[(Address, Amount)],
     fee_rate: FeeRate,
 ) -> anyhow::Result<Txid> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;

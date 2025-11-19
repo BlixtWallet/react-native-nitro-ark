@@ -10,7 +10,8 @@ use bark::{
     lnurllib::lightning_address::LightningAddress,
     movement::Movement,
     onchain::OnchainWallet,
-    vtxo_state::VtxoState,
+    round::RoundStatus,
+    vtxo::state::VtxoState,
     Config, SqliteClient, Wallet as BarkWallet, WalletVtxo,
 };
 
@@ -96,7 +97,7 @@ pub struct ConfigOpts {
     pub fallback_fee_rate: Option<u64>,
     pub htlc_recv_claim_delta: u16,
     pub vtxo_exit_margin: u16,
-    pub deep_round_confirmations: u16,
+    pub round_tx_required_confirmations: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -237,7 +238,7 @@ pub fn merge_config_opts(opts: CreateOpts) -> anyhow::Result<(Config, Network)> 
         fallback_fee_rate,
         htlc_recv_claim_delta: opts.config.htlc_recv_claim_delta,
         vtxo_exit_margin: opts.config.vtxo_exit_margin,
-        deep_round_confirmations: opts.config.deep_round_confirmations,
+        round_tx_required_confirmations: opts.config.round_tx_required_confirmations,
     };
     opts.config
         .clone()
@@ -259,7 +260,7 @@ pub fn ffi_config_to_config(opts: ffi::CreateOpts) -> anyhow::Result<CreateOpts>
         fallback_fee_rate: Some(opts.config.fallback_fee_rate),
         htlc_recv_claim_delta: opts.config.htlc_recv_claim_delta,
         vtxo_exit_margin: opts.config.vtxo_exit_margin,
-        deep_round_confirmations: opts.config.deep_round_confirmations,
+        round_tx_required_confirmations: opts.config.round_tx_required_confirmations,
     };
 
     let create_opts = CreateOpts {
@@ -278,7 +279,7 @@ pub fn wallet_vtxo_to_bark_vtxo(wallet_vtxo: WalletVtxo) -> crate::cxx::ffi::Bar
     let state_name = match &wallet_vtxo.state {
         VtxoState::Spendable => "Spendable",
         VtxoState::Spent => "Spent",
-        VtxoState::Locked => "Locked",
+        VtxoState::Locked { movement_id: _ } => "Locked",
     }
     .to_string();
 
@@ -321,35 +322,111 @@ pub fn vtxo_to_bark_vtxo(vtxo: &Vtxo) -> crate::cxx::ffi::BarkVtxo {
     }
 }
 
-pub fn movement_to_bark_movement(movement: &Movement) -> crate::cxx::ffi::BarkMovement {
-    let spends: Vec<crate::cxx::ffi::BarkVtxo> = movement
-        .spends
+pub fn movement_to_bark_movement(
+    movement: &Movement,
+) -> anyhow::Result<crate::cxx::ffi::BarkMovement> {
+    let sent_to: Vec<crate::cxx::ffi::BarkMovementDestination> = movement
+        .sent_to
         .iter()
-        .map(|vtxo| vtxo_to_bark_vtxo(vtxo))
-        .collect();
-
-    let receives: Vec<crate::cxx::ffi::BarkVtxo> = movement
-        .receives
-        .iter()
-        .map(|vtxo| vtxo_to_bark_vtxo(vtxo))
-        .collect();
-
-    let recipients: Vec<crate::cxx::ffi::BarkMovementRecipient> = movement
-        .recipients
-        .iter()
-        .map(|r| crate::cxx::ffi::BarkMovementRecipient {
-            recipient: r.recipient.clone(),
-            amount_sat: r.amount.to_sat(),
+        .map(|dest| crate::cxx::ffi::BarkMovementDestination {
+            destination: dest.destination.clone(),
+            amount_sat: dest.amount.to_sat(),
         })
         .collect();
 
-    crate::cxx::ffi::BarkMovement {
-        id: movement.id,
-        kind: movement.kind.as_str().to_string(),
-        fees: movement.fees.to_sat(),
-        spends,
-        receives,
-        recipients,
-        created_at: movement.created_at.clone(),
+    let received_on: Vec<crate::cxx::ffi::BarkMovementDestination> = movement
+        .received_on
+        .iter()
+        .map(|dest| crate::cxx::ffi::BarkMovementDestination {
+            destination: dest.destination.clone(),
+            amount_sat: dest.amount.to_sat(),
+        })
+        .collect();
+
+    let metadata_json = serde_json::to_string(&movement.metadata)?;
+
+    let input_vtxos: Vec<String> = movement.input_vtxos.iter().map(|v| v.to_string()).collect();
+    let output_vtxos: Vec<String> = movement
+        .output_vtxos
+        .iter()
+        .map(|v| v.to_string())
+        .collect();
+    let exited_vtxos: Vec<String> = movement
+        .exited_vtxos
+        .iter()
+        .map(|v| v.to_string())
+        .collect();
+
+    let created_at = movement.time.created_at.to_rfc3339();
+    let updated_at = movement.time.updated_at.to_rfc3339();
+    let completed_at = movement
+        .time
+        .completed_at
+        .map(|ts| ts.to_rfc3339())
+        .unwrap_or_else(|| "".to_string());
+
+    Ok(crate::cxx::ffi::BarkMovement {
+        id: movement.id.inner(),
+        status: movement.status.as_str().to_string(),
+        subsystem_name: movement.subsystem.name.clone(),
+        subsystem_kind: movement.subsystem.kind.clone(),
+        metadata_json,
+        intended_balance_sat: movement.intended_balance.to_sat(),
+        effective_balance_sat: movement.effective_balance.to_sat(),
+        offchain_fee_sat: movement.offchain_fee.to_sat(),
+        sent_to,
+        received_on,
+        input_vtxos,
+        output_vtxos,
+        exited_vtxos,
+        created_at,
+        updated_at,
+        completed_at,
+    })
+}
+
+pub fn round_status_to_ffi(status: RoundStatus) -> crate::cxx::ffi::RoundStatus {
+    let is_final = status.is_final();
+    let is_success = status.is_success();
+
+    let (status_str, funding_txid, unsigned_funding_txids, error) = match &status {
+        RoundStatus::Confirmed { funding_txid } => (
+            "confirmed".to_string(),
+            funding_txid.to_string(),
+            Vec::new(),
+            String::new(),
+        ),
+        RoundStatus::Unconfirmed { funding_txid } => (
+            "unconfirmed".to_string(),
+            funding_txid.to_string(),
+            Vec::new(),
+            String::new(),
+        ),
+        RoundStatus::Pending {
+            unsigned_funding_txids,
+        } => (
+            "pending".to_string(),
+            String::new(),
+            unsigned_funding_txids
+                .iter()
+                .map(|txid| txid.to_string())
+                .collect(),
+            String::new(),
+        ),
+        RoundStatus::Failed { error } => (
+            "failed".to_string(),
+            String::new(),
+            Vec::new(),
+            error.clone(),
+        ),
+    };
+
+    crate::cxx::ffi::RoundStatus {
+        status: status_str,
+        funding_txid,
+        unsigned_funding_txids,
+        error,
+        is_final,
+        is_success,
     }
 }

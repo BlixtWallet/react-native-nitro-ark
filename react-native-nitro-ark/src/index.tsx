@@ -15,7 +15,9 @@ import type {
   NewAddressResult,
   KeyPairResult,
   LightningReceive,
+  BarkMovement as NitroBarkMovement,
   BoardResult,
+  RoundStatus,
 } from './NitroArk.nitro';
 
 export type BarkVtxo = {
@@ -28,28 +30,10 @@ export type BarkVtxo = {
   state: 'Spendable' | 'Spent' | 'Locked' | 'unknown';
 };
 
-export interface BarkMovementRecipient {
-  recipient: string;
-  amount_sat: number;
-}
+export type MovementStatus = 'pending' | 'finished' | 'failed' | 'cancelled';
 
-export type BarkMovement = {
-  id: number;
-  kind:
-    | 'onboard'
-    | 'round'
-    | 'offboard'
-    | 'arkoor-send'
-    | 'arkoor-receive'
-    | 'lightning-send'
-    | 'lightning-send-revocation'
-    | 'lightning-receive'
-    | 'exit';
-  fees: number;
-  spends: BarkVtxo[];
-  receives: BarkVtxo[];
-  recipients: BarkMovementRecipient[];
-  created_at: string;
+export type BarkMovement = NitroBarkMovement & {
+  status: MovementStatus;
 };
 
 // Create the hybrid object instance
@@ -99,6 +83,10 @@ export function loadWallet(
  */
 export function closeWallet(): Promise<void> {
   return NitroArkHybridObject.closeWallet();
+}
+
+export function checkConnection(): Promise<void> {
+  return NitroArkHybridObject.checkConnection();
 }
 
 /**
@@ -159,14 +147,6 @@ export function syncExits(): Promise<void> {
   return NitroArkHybridObject.syncExits();
 }
 
-/**
- * Synchronizes the rounds of the wallet.
- * @returns A promise that resolves on success.
- */
-export function syncPastRounds(): Promise<void> {
-  return NitroArkHybridObject.syncPastRounds();
-}
-
 // --- Wallet Info ---
 
 /**
@@ -200,6 +180,15 @@ export function deriveStoreNextKeypair(): Promise<KeyPairResult> {
  */
 export function peakKeyPair(index: number): Promise<KeyPairResult> {
   return NitroArkHybridObject.peakKeyPair(index);
+}
+
+/**
+ * Peeks a derived address without advancing the wallet's address index.
+ * @param index Index of the address to preview.
+ * @returns A promise resolving to the NewAddressResult object.
+ */
+export function peakAddress(index: number): Promise<NewAddressResult> {
+  return NitroArkHybridObject.peakAddress(index);
 }
 
 /**
@@ -422,15 +411,22 @@ export function lightningReceiveStatus(
 }
 
 /**
- * Checks and claims a Lightning payment.
+ * Attempts to claim a Lightning payment, optionally using a claim token.
  * @param paymentHash The payment hash of the Lightning payment.
+ * @param wait Whether to wait for the claim to complete.
+ * @param token Optional claim token used when no spendable VTXOs are owned.
  * @returns A promise that resolves on success or rejects on error.
  */
-export function checkAndClaimLnReceive(
+export function tryClaimLightningReceive(
   paymentHash: string,
-  wait: boolean
+  wait: boolean,
+  token?: string
 ): Promise<void> {
-  return NitroArkHybridObject.checkAndClaimLnReceive(paymentHash, wait);
+  return NitroArkHybridObject.tryClaimLightningReceive(
+    paymentHash,
+    wait,
+    token
+  );
 }
 
 /**
@@ -438,21 +434,21 @@ export function checkAndClaimLnReceive(
  * @param wait Whether to wait for the claim to complete.
  * @returns A promise that resolves on success or rejects on error.
  */
-export function checkAndClaimAllOpenLnReceives(wait: boolean): Promise<void> {
-  return NitroArkHybridObject.checkAndClaimAllOpenLnReceives(wait);
+export function tryClaimAllLightningReceives(wait: boolean): Promise<void> {
+  return NitroArkHybridObject.tryClaimAllLightningReceives(wait);
 }
 
 /**
- * Sends a Lightning payment.
+ * Pays a Bolt11 Lightning invoice.
  * @param destination The Lightning invoice.
  * @param amountSat The amount in satoshis to send. Use 0 for invoice amount.
  * @returns A promise resolving to a Bolt11PaymentResult object
  */
-export function sendLightningPayment(
+export function payLightningInvoice(
   destination: string,
   amountSat?: number
 ): Promise<Bolt11PaymentResult> {
-  return NitroArkHybridObject.sendLightningPayment(destination, amountSat);
+  return NitroArkHybridObject.payLightningInvoice(destination, amountSat);
 }
 
 /**
@@ -461,11 +457,11 @@ export function sendLightningPayment(
  * @param amountSat The amount in satoshis to send. Use 0 for invoice amount.
  * @returns A promise resolving to a Bolt12PaymentResult object
  */
-export function payOffer(
+export function payLightningOffer(
   offer: string,
   amountSat?: number
 ): Promise<Bolt12PaymentResult> {
-  return NitroArkHybridObject.payOffer(offer, amountSat);
+  return NitroArkHybridObject.payLightningOffer(offer, amountSat);
 }
 
 /**
@@ -475,12 +471,12 @@ export function payOffer(
  * @param comment An optional comment.
  * @returns A promise resolving to a LnurlPaymentResult object
  */
-export function sendLnaddr(
+export function payLightningAddress(
   addr: string,
   amountSat: number,
   comment: string
 ): Promise<LnurlPaymentResult> {
-  return NitroArkHybridObject.sendLnaddr(addr, amountSat, comment);
+  return NitroArkHybridObject.payLightningAddress(addr, amountSat, comment);
 }
 
 // --- Ark Operations ---
@@ -528,12 +524,12 @@ export function sendArkoorPayment(
  * Sends an onchain payment via an Ark round.
  * @param destination The destination Bitcoin address.
  * @param amountSat The amount in satoshis to send.
- * @returns A promise resolving to a JSON status string.
+ * @returns A promise resolving to the round status.
  */
 export function sendRoundOnchainPayment(
   destination: string,
   amountSat: number
-): Promise<string> {
+): Promise<RoundStatus> {
   return NitroArkHybridObject.sendRoundOnchainPayment(destination, amountSat);
 }
 
@@ -543,23 +539,21 @@ export function sendRoundOnchainPayment(
  * Offboards specific VTXOs to a destination address.
  * @param vtxoIds Array of VtxoId strings to offboard.
  * @param destinationAddress Destination Bitcoin address (if empty, sends to internal wallet).
- * @param no_sync If true, skips synchronization with the wallet. Defaults to false.
- * @returns A promise resolving to a JSON result string.
+ * @returns A promise resolving to the round status.
  */
 export function offboardSpecific(
   vtxoIds: string[],
   destinationAddress: string
-): Promise<string> {
+): Promise<RoundStatus> {
   return NitroArkHybridObject.offboardSpecific(vtxoIds, destinationAddress);
 }
 
 /**
  * Offboards all VTXOs to a destination address.
  * @param destinationAddress Destination Bitcoin address (if empty, sends to internal wallet).
- * @param no_sync If true, skips synchronization with the wallet. Defaults to false.
- * @returns A promise resolving to a JSON result string.
+ * @returns A promise resolving to the round status.
  */
-export function offboardAll(destinationAddress: string): Promise<string> {
+export function offboardAll(destinationAddress: string): Promise<RoundStatus> {
   return NitroArkHybridObject.offboardAll(destinationAddress);
 }
 
@@ -583,4 +577,5 @@ export type {
   KeyPairResult,
   LightningReceive,
   LightningReceiveBalance,
+  RoundStatus,
 } from './NitroArk.nitro';

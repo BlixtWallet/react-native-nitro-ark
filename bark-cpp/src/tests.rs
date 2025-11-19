@@ -30,7 +30,7 @@ fn setup_test_wallet_opts() -> (tempfile::TempDir, ffi::CreateOpts) {
         fallback_fee_rate: 1,
         htlc_recv_claim_delta: 18,
         vtxo_exit_margin: 12,
-        deep_round_confirmations: 0,
+        round_tx_required_confirmations: 0,
     };
 
     let create_opts = ffi::CreateOpts {
@@ -329,7 +329,7 @@ fn test_send_bolt11_payment_ffi() {
     // Here we test sending to a bolt11 invoice.
     let invoice = cxx::bolt11_invoice(10000).unwrap();
     let amount: u64 = 5000;
-    let send_res = cxx::send_lightning_payment(&invoice.bolt11_invoice, &amount as *const u64);
+    let send_res = cxx::pay_lightning_invoice(&invoice.bolt11_invoice, &amount as *const u64);
     assert!(
         send_res.is_ok(),
         "send_payment (bolt11) failed: {:?}",
@@ -358,7 +358,7 @@ fn test_claim_bolt11_payment_ffi() {
     let invoice = cxx::bolt11_invoice(10000).unwrap();
     // In a real test, you would now pay this invoice from another node.
     // For this unit test, we just check that trying to claim an unpaid invoice fails gracefully.
-    let claim_res = cxx::check_and_claim_ln_receive(invoice.payment_hash, false);
+    let claim_res = cxx::try_claim_lightning_receive(invoice.payment_hash, false, std::ptr::null());
     // Depending on the LDK setup, this might error differently.
     // The key is that it shouldn't panic.
     assert!(claim_res.is_err(), "Claiming an unpaid invoice should fail");

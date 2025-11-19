@@ -32,9 +32,31 @@ CXX_BINARY_NAME="libcxxbridge1.a"
 FRAMEWORK_NAME="Ark.xcframework"
 CXX_FRAMEWORK_NAME="ArkCxxBridge.xcframework"
 
-# --- Clean only the specific package artifacts ---
-echo "Cleaning previous build artifacts for '$CRATE_NAME'..."
-cargo clean --target-dir "$TARGET_DIR" -p "$CRATE_NAME"
+# --- Always build host target to refresh generated headers ---
+echo "Building host target to refresh FFI headers..."
+cargo build $CARGO_FLAG --lib
+HOST_BUILD_DIR="target/$BUILD_TYPE/build"
+
+# Prepare shared headers directory used later
+HEADERS_DIR_CXX="$TARGET_DIR/cxx_headers"
+rm -rf "$HEADERS_DIR_CXX"
+mkdir -p "$HEADERS_DIR_CXX"
+
+HOST_HEADER_SRC_PATH=$(find "$HOST_BUILD_DIR" -name "cxx.rs.h" | head -n 1)
+if [ -z "$HOST_HEADER_SRC_PATH" ]; then
+    echo "Error: Could not find host-generated cxx.rs.h header."
+    exit 1
+fi
+echo "Copying host API header from: $HOST_HEADER_SRC_PATH"
+cp "$HOST_HEADER_SRC_PATH" "$HEADERS_DIR_CXX/ark_cxx.h"
+
+HOST_CXX_HEADER_PATH=$(find "$HOST_BUILD_DIR" -path "*/include/rust/cxx.h" | head -n 1)
+if [ -z "$HOST_CXX_HEADER_PATH" ]; then
+    echo "Error: Could not find host-generated cxx.h header."
+    exit 1
+fi
+echo "Copying host cxx header from: $HOST_CXX_HEADER_PATH"
+cp "$HOST_CXX_HEADER_PATH" "$HEADERS_DIR_CXX/cxx.h"
 
 # --- Install Rust targets ---
 echo "Ensuring required Rust targets are installed..."
@@ -75,29 +97,7 @@ echo "Successfully created target/$FRAMEWORK_NAME"
 
 echo "Creating $CXX_FRAMEWORK_NAME..."
 
-# Prepare a single, clean directory for all CXX headers
-HEADERS_DIR_CXX="$TARGET_DIR/cxx_headers"
-rm -rf "$HEADERS_DIR_CXX"
-mkdir -p "$HEADERS_DIR_CXX"
-
-# Find and copy the generated API header, renaming it for clarity
-HEADER_SRC_PATH=$(find "$TARGET_DIR/aarch64-apple-ios/$BUILD_TYPE/build" -name "cxx.rs.h" | head -n 1)
-if [ -z "$HEADER_SRC_PATH" ]; then
-    echo "Error: Could not find generated cxx.rs.h header."
-    exit 1
-fi
-echo "Found generated API header at: $HEADER_SRC_PATH"
-cp "$HEADER_SRC_PATH" "$HEADERS_DIR_CXX/ark_cxx.h"
-
-# Find and copy the main cxx library header
-CXX_HEADER_PATH=$(find "$TARGET_DIR/aarch64-apple-ios/$BUILD_TYPE/build" -path "*/rust/cxx.h" | head -n 1)
-if [ -z "$CXX_HEADER_PATH" ]; then
-    echo "Error: Could not find cxx.h header."
-    exit 1
-fi
-echo "Found cxx library header at: $CXX_HEADER_PATH"
-cp "$CXX_HEADER_PATH" "$HEADERS_DIR_CXX/cxx.h"
-
+# HEADERS_DIR_CXX already populated from the host build.
 # Now HEADERS_DIR_CXX is the single source of truth for our headers.
 # Use it to populate the cpp/generated directory for local builds.
 DEST_HEADER_DIR="../react-native-nitro-ark/cpp/generated"

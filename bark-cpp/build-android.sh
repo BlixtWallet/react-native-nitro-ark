@@ -43,6 +43,31 @@ else
   echo "Performing a release build."
 fi
 
+# Directory for generated headers consumed by RN project
+DEST_HEADER_DIR="../react-native-nitro-ark/cpp/generated"
+
+# Always refresh host-generated headers before cross-compiling
+echo "Building host target to refresh FFI headers..."
+cargo build $CARGO_FLAG --lib
+HOST_BUILD_DIR="target/$BUILD_TYPE/build"
+
+HOST_HEADER_SRC_PATH=$(find "$HOST_BUILD_DIR" -name "cxx.rs.h" | head -n 1)
+if [ -z "$HOST_HEADER_SRC_PATH" ]; then
+    echo "Error: Could not find host-generated cxx.rs.h header."
+    exit 1
+fi
+echo "Copying host API header from: $HOST_HEADER_SRC_PATH"
+mkdir -p "$DEST_HEADER_DIR"
+cp -f "$HOST_HEADER_SRC_PATH" "$DEST_HEADER_DIR/ark_cxx.h"
+
+HOST_CXX_HEADER_PATH=$(find "$HOST_BUILD_DIR" -path "*/include/rust/cxx.h" | head -n 1)
+if [ -z "$HOST_CXX_HEADER_PATH" ]; then
+    echo "Error: Could not find host-generated cxx.h header."
+    exit 1
+fi
+echo "Copying host cxx header from: $HOST_CXX_HEADER_PATH"
+cp -f "$HOST_CXX_HEADER_PATH" "$DEST_HEADER_DIR/cxx.h"
+
 # Define build variables
 OUTPUT_DIR="target/jniLibs"
 BINARY_NAME="libbark_cpp.a"
@@ -140,24 +165,5 @@ cp -f "$OUTPUT_DIR/arm64-v8a/$CXX_BINARY_NAME" "$DEST_JNI_DIR_ARM64/"
 echo "Copying x86_64 binary..."
 cp -f "$OUTPUT_DIR/x86_64/$BINARY_NAME" "$DEST_JNI_DIR_X86_64/"
 cp -f "$OUTPUT_DIR/x86_64/$CXX_BINARY_NAME" "$DEST_JNI_DIR_X86_64/"
-
-# --- Copy CXX-generated header ---
-DEST_HEADER_DIR="../react-native-nitro-ark/cpp/generated"
-mkdir -p "$DEST_HEADER_DIR"
-HEADER_SRC_PATH=$(find "target/aarch64-linux-android/$BUILD_TYPE/build" -name "cxx.rs.h" | head -n 1)
-if [ -z "$HEADER_SRC_PATH" ]; then
-    echo "Error: Could not find generated cxx.rs.h header."
-    exit 1
-fi
-echo "Found cxx header at: $HEADER_SRC_PATH"
-cp -f "$HEADER_SRC_PATH" "$DEST_HEADER_DIR/ark_cxx.h"
-
-CXX_HEADER_PATH=$(find "target/aarch64-linux-android/$BUILD_TYPE/build" -path "*/rust/cxx.h" | head -n 1)
-if [ -z "$CXX_HEADER_PATH" ]; then
-    echo "Error: Could not find cxx.h header."
-    exit 1
-fi
-echo "Found cxx.h at: $CXX_HEADER_PATH"
-cp -f "$CXX_HEADER_PATH" "$DEST_HEADER_DIR/"
 
 echo "Android build complete!"

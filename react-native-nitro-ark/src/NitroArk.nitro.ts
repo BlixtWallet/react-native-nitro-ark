@@ -15,7 +15,7 @@ export interface BarkConfigOpts {
   fallback_fee_rate?: number;
   htlc_recv_claim_delta: number;
   vtxo_exit_margin: number;
-  deep_round_confirmations: number;
+  round_tx_required_confirmations: number;
 }
 
 export interface BarkCreateOpts {
@@ -147,19 +147,47 @@ export interface LightningReceive {
   preimage_revealed_at?: number;
 }
 
-export interface BarkMovementRecipient {
-  recipient: string;
+export interface BarkMovementSubsystem {
+  name: string;
+  kind: string;
+}
+
+export interface BarkMovementDestination {
+  destination: string;
   amount_sat: number;
 }
 
 export interface BarkMovement {
   id: number;
-  kind: string;
-  fees: number;
-  spends: BarkVtxo[];
-  receives: BarkVtxo[];
-  recipients: BarkMovementRecipient[];
+  status: string; // 'pending' | 'finished' | 'failed' | 'cancelled'
+  subsystem: BarkMovementSubsystem;
+  metadata_json: string;
+  intended_balance_sat: number;
+  effective_balance_sat: number;
+  offchain_fee_sat: number;
+  sent_to: BarkMovementDestination[];
+  received_on: BarkMovementDestination[];
+  input_vtxos: string[];
+  output_vtxos: string[];
+  exited_vtxos: string[];
   created_at: string;
+  updated_at: string;
+  completed_at?: string;
+}
+
+export type RoundStatusType =
+  | 'confirmed'
+  | 'unconfirmed'
+  | 'pending'
+  | 'failed';
+
+export interface RoundStatus {
+  status: RoundStatusType;
+  funding_txid?: string;
+  unsigned_funding_txids?: string[];
+  error?: string;
+  is_final: boolean;
+  is_success: boolean;
 }
 
 // --- Nitro Module Interface ---
@@ -171,19 +199,20 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   loadWallet(datadir: string, config: BarkCreateOpts): Promise<void>;
   isWalletLoaded(): Promise<boolean>;
   closeWallet(): Promise<void>;
+  checkConnection(): Promise<void>;
   syncPendingBoards(): Promise<void>;
   maintenance(): Promise<void>;
   maintenanceWithOnchain(): Promise<void>;
   maintenanceRefresh(): Promise<void>;
   sync(): Promise<void>;
   syncExits(): Promise<void>;
-  syncPastRounds(): Promise<void>;
 
   // --- Wallet Info ---
   getArkInfo(): Promise<BarkArkInfo>;
   offchainBalance(): Promise<OffchainBalanceResult>;
   deriveStoreNextKeypair(): Promise<KeyPairResult>;
   peakKeyPair(index: number): Promise<KeyPairResult>;
+  peakAddress(index: number): Promise<NewAddressResult>;
   newAddress(): Promise<NewAddressResult>;
   signMessage(message: string, index: number): Promise<string>;
   signMesssageWithMnemonic(
@@ -239,12 +268,15 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
     destination: string,
     amountSat: number
   ): Promise<ArkoorPaymentResult>;
-  sendLightningPayment(
+  payLightningInvoice(
     destination: string,
     amountSat?: number
   ): Promise<Bolt11PaymentResult>;
-  payOffer(offer: string, amountSat?: number): Promise<Bolt12PaymentResult>;
-  sendLnaddr(
+  payLightningOffer(
+    offer: string,
+    amountSat?: number
+  ): Promise<Bolt12PaymentResult>;
+  payLightningAddress(
     addr: string,
     amountSat: number,
     comment: string
@@ -252,20 +284,24 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   sendRoundOnchainPayment(
     destination: string,
     amountSat: number
-  ): Promise<string>; // Returns JSON status
+  ): Promise<RoundStatus>;
 
   // --- Lightning Invoicing ---
   bolt11Invoice(amountMsat: number): Promise<Bolt11Invoice>;
   lightningReceiveStatus(
     paymentHash: string
   ): Promise<LightningReceive | undefined>;
-  checkAndClaimLnReceive(paymentHash: string, wait: boolean): Promise<void>; // Throws on error
-  checkAndClaimAllOpenLnReceives(wait: boolean): Promise<void>; // Throws on error
+  tryClaimLightningReceive(
+    paymentHash: string,
+    wait: boolean,
+    token?: string
+  ): Promise<void>; // Throws on error
+  tryClaimAllLightningReceives(wait: boolean): Promise<void>; // Throws on error
 
   // --- Offboarding / Exiting ---
   offboardSpecific(
     vtxoIds: string[],
     destinationAddress: string
-  ): Promise<string>; // Returns JSON result
-  offboardAll(destinationAddress: string): Promise<string>; // Returns JSON result
+  ): Promise<RoundStatus>;
+  offboardAll(destinationAddress: string): Promise<RoundStatus>;
 }

@@ -211,11 +211,11 @@ export default function ArkApp() {
         ark: 'http://localhost:3535',
         bitcoind_user: 'second',
         bitcoind_pass: 'ark',
-        vtxo_refresh_expiry_threshold: 288,
+        vtxo_refresh_expiry_threshold: 48,
         fallback_fee_rate: 10000,
         htlc_recv_claim_delta: 18,
         vtxo_exit_margin: 12,
-        deep_round_confirmations: 1,
+        round_tx_required_confirmations: 1,
       },
     };
 
@@ -264,11 +264,11 @@ export default function ArkApp() {
         ark: 'http://localhost:3535',
         bitcoind_user: 'second',
         bitcoind_pass: 'ark',
-        vtxo_refresh_expiry_threshold: 288,
+        vtxo_refresh_expiry_threshold: 48,
         fallback_fee_rate: 10000,
         htlc_recv_claim_delta: 18,
         vtxo_exit_margin: 12,
-        deep_round_confirmations: 1,
+        round_tx_required_confirmations: 1,
       },
     };
 
@@ -300,6 +300,20 @@ export default function ArkApp() {
 
   const handleCloseWallet = () => {
     runOperation('closeWallet', () => NitroArk.closeWallet(), 'management');
+  };
+
+  const handleCheckConnection = () => {
+    runOperation(
+      'checkConnection',
+      () => NitroArk.checkConnection(),
+      'management',
+      () => {
+        setResults((prev) => ({
+          ...prev,
+          management: 'Connection OK',
+        }));
+      }
+    );
   };
 
   const handleIsWalletLoaded = () => {
@@ -383,14 +397,6 @@ export default function ArkApp() {
 
   const handleSyncExits = () => {
     runOperation('syncExits', () => NitroArk.syncExits(), 'management');
-  };
-
-  const handleSyncPastRounds = () => {
-    runOperation(
-      'syncPastRounds',
-      () => NitroArk.syncPastRounds(),
-      'management'
-    );
   };
 
   const handleGetArkInfo = () => {
@@ -477,6 +483,24 @@ export default function ArkApp() {
         setResults((prev) => ({
           ...prev,
           walletInfo: JSON.stringify(address, null, 2),
+        }));
+      }
+    );
+  };
+
+  const handlePeakAddress = () => {
+    if (!mnemonic) {
+      setError((prev) => ({ ...prev, walletInfo: 'Mnemonic required' }));
+      return;
+    }
+    runOperation(
+      'peakAddress',
+      () => NitroArk.peakAddress(0),
+      'walletInfo',
+      (address) => {
+        setResults((prev) => ({
+          ...prev,
+          walletInfo: `Peak Address: ${JSON.stringify(address, null, 2)}`,
         }));
       }
     );
@@ -674,8 +698,8 @@ export default function ArkApp() {
       return;
     }
     runOperation(
-      'sendLightningPayment',
-      () => NitroArk.sendLightningPayment(arkDestinationAddress, amountNum),
+      'payLightningInvoice',
+      () => NitroArk.payLightningInvoice(arkDestinationAddress),
       'ark'
     );
   };
@@ -695,8 +719,8 @@ export default function ArkApp() {
       return;
     }
     runOperation(
-      'payOffer',
-      () => NitroArk.payOffer(arkDestinationAddress, amountNum),
+      'payLightningOffer',
+      () => NitroArk.payLightningOffer(arkDestinationAddress, amountNum),
       'ark'
     );
   };
@@ -715,8 +739,13 @@ export default function ArkApp() {
       return;
     }
     runOperation(
-      'sendLnaddr',
-      () => NitroArk.sendLnaddr(arkDestinationAddress, amountNum, arkComment),
+      'payLightningAddress',
+      () =>
+        NitroArk.payLightningAddress(
+          arkDestinationAddress,
+          amountNum,
+          arkComment
+        ),
       'ark'
     );
   };
@@ -821,7 +850,7 @@ export default function ArkApp() {
     );
   };
 
-  const handlecheckAndClaimLnReceive = () => {
+  const handleTryClaimLightningReceive = () => {
     if (!mnemonic) {
       setError((prev) => ({ ...prev, lightning: 'Mnemonic required' }));
       return;
@@ -834,8 +863,8 @@ export default function ArkApp() {
       return;
     }
     runOperation(
-      'checkAndClaimLnReceive',
-      () => NitroArk.checkAndClaimLnReceive(paymentHash, false),
+      'tryClaimLightningReceive',
+      () => NitroArk.tryClaimLightningReceive(paymentHash, false),
       'lightning',
       () => {
         setResults((prev) => ({
@@ -846,14 +875,14 @@ export default function ArkApp() {
     );
   };
 
-  const handleCheckAndClaimAllOpenLnReceives = () => {
+  const handleTryClaimAllLightningReceives = () => {
     if (!mnemonic) {
       setError((prev) => ({ ...prev, lightning: 'Mnemonic required' }));
       return;
     }
     runOperation(
-      'checkAndClaimAllOpenLnReceives',
-      () => NitroArk.checkAndClaimAllOpenLnReceives(false),
+      'tryClaimAllLightningReceives',
+      () => NitroArk.tryClaimAllLightningReceives(false),
       'lightning',
       () => {
         setResults((prev) => ({
@@ -1019,6 +1048,7 @@ export default function ArkApp() {
             {renderOperationButton('Create Wallet', handleCreateWallet)}
             {renderOperationButton('Load Wallet', handleLoadWallet)}
             {renderOperationButton('Close Wallet', handleCloseWallet)}
+            {renderOperationButton('Check Connection', handleCheckConnection)}
             <View style={styles.buttonWrapper}>
               <Button
                 title="Check Wallet Status"
@@ -1042,7 +1072,6 @@ export default function ArkApp() {
             {renderOperationButton('Sync', handleSync)}
             {renderOperationButton('Onchain Sync', handleOnchainSync)}
             {renderOperationButton('Sync Exits', handleSyncExits)}
-            {renderOperationButton('Sync Past Rounds', handleSyncPastRounds)}
           </View>
         </View>
 
@@ -1108,6 +1137,7 @@ export default function ArkApp() {
               handleDeriveStoreNextKeypair
             )}
             {renderOperationButton('Peak Key Pair', handlePeakKeyPair)}
+            {renderOperationButton('Peak Address', handlePeakAddress)}
             {renderOperationButton(
               'Derive Keypair from Mnemonic',
               handleDeriveKeypairFromMnemonic
@@ -1255,8 +1285,8 @@ export default function ArkApp() {
 
           <View style={styles.buttonGrid}>
             {renderOperationButton(
-              'Check & Claim LN Receive',
-              handlecheckAndClaimLnReceive
+              'Try Claim Lightning Receive',
+              handleTryClaimLightningReceive
             )}
           </View>
           <View style={styles.inputContainer}>
@@ -1279,7 +1309,7 @@ export default function ArkApp() {
           <View style={styles.buttonGrid}>
             {renderOperationButton(
               'Check and Claim All Open Ln Receives',
-              handleCheckAndClaimAllOpenLnReceives
+              handleTryClaimAllLightningReceives
             )}
           </View>
         </View>
