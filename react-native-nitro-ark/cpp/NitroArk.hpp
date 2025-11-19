@@ -688,10 +688,10 @@ public:
     });
   }
 
-  std::shared_ptr<Promise<void>> checkAndClaimAllOpenLnReceives(bool wait) override {
+  std::shared_ptr<Promise<void>> tryClaimAllLightningReceives(bool wait) override {
     return Promise<void>::async([wait]() {
       try {
-        bark_cxx::check_and_claim_all_open_ln_receives(wait);
+        bark_cxx::try_claim_all_lightning_receives(wait);
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }

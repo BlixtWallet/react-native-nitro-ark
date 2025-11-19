@@ -251,7 +251,7 @@ pub(crate) mod ffi {
         fn offboard_specific(vtxo_ids: Vec<String>, destination_address: &str) -> Result<String>;
         fn offboard_all(destination_address: &str) -> Result<String>;
         fn check_and_claim_ln_receive(payment_hash: String, wait: bool) -> Result<()>;
-        fn check_and_claim_all_open_ln_receives(wait: bool) -> Result<()>;
+        fn try_claim_all_lightning_receives(wait: bool) -> Result<()>;
         fn sync_exits() -> Result<()>;
 
         // Onchain methods
@@ -760,8 +760,8 @@ pub(crate) fn check_and_claim_ln_receive(payment_hash: String, wait: bool) -> an
     TOKIO_RUNTIME.block_on(crate::check_and_claim_ln_receive(payment_hash, wait))
 }
 
-pub(crate) fn check_and_claim_all_open_ln_receives(wait: bool) -> anyhow::Result<()> {
-    let _ = crate::TOKIO_RUNTIME.block_on(crate::check_and_claim_all_open_ln_receives(wait))?;
+pub(crate) fn try_claim_all_lightning_receives(wait: bool) -> anyhow::Result<()> {
+    let _ = crate::TOKIO_RUNTIME.block_on(crate::try_claim_all_lightning_receives(wait))?;
     Ok(())
 }
 

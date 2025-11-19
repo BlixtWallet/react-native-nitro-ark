@@ -1189,7 +1189,7 @@ void validate_arkoor_address(::rust::Str address);
 
 void check_and_claim_ln_receive(::rust::String payment_hash, bool wait);
 
-void check_and_claim_all_open_ln_receives(bool wait);
+void try_claim_all_lightning_receives(bool wait);
 
 void sync_exits();
 

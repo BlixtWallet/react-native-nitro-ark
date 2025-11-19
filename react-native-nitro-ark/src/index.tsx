@@ -438,8 +438,8 @@ export function checkAndClaimLnReceive(
  * @param wait Whether to wait for the claim to complete.
  * @returns A promise that resolves on success or rejects on error.
  */
-export function checkAndClaimAllOpenLnReceives(wait: boolean): Promise<void> {
-  return NitroArkHybridObject.checkAndClaimAllOpenLnReceives(wait);
+export function tryClaimAllLightningReceives(wait: boolean): Promise<void> {
+  return NitroArkHybridObject.tryClaimAllLightningReceives(wait);
 }
 
 /**

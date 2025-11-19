@@ -389,13 +389,13 @@ pub async fn check_and_claim_ln_receive(
         .await
 }
 
-pub async fn check_and_claim_all_open_ln_receives(wait: bool) -> anyhow::Result<()> {
+pub async fn try_claim_all_lightning_receives(wait: bool) -> anyhow::Result<()> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
             let _ = ctx
                 .wallet
-                .check_and_claim_all_open_ln_receives(wait)
+                .try_claim_all_lightning_receives(wait)
                 .await
                 .context("Failed to claim all open invoices")?;
             Ok(())

@@ -846,14 +846,14 @@ export default function ArkApp() {
     );
   };
 
-  const handleCheckAndClaimAllOpenLnReceives = () => {
+  const handleTryClaimAllLightningReceives = () => {
     if (!mnemonic) {
       setError((prev) => ({ ...prev, lightning: 'Mnemonic required' }));
       return;
     }
     runOperation(
-      'checkAndClaimAllOpenLnReceives',
-      () => NitroArk.checkAndClaimAllOpenLnReceives(false),
+      'tryClaimAllLightningReceives',
+      () => NitroArk.tryClaimAllLightningReceives(false),
       'lightning',
       () => {
         setResults((prev) => ({
