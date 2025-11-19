@@ -223,6 +223,7 @@ pub(crate) mod ffi {
         fn derive_store_next_keypair() -> Result<KeyPairResult>;
         fn peak_keypair(index: u32) -> Result<KeyPairResult>;
         fn new_address() -> Result<NewAddressResult>;
+        fn peak_address(index: u32) -> Result<NewAddressResult>;
         fn sign_message(message: &str, index: u32) -> Result<String>;
         fn sign_messsage_with_mnemonic(
             message: &str,
@@ -365,6 +366,15 @@ pub(crate) fn peak_keypair(index: u32) -> anyhow::Result<ffi::KeyPairResult> {
 
 pub(crate) fn new_address() -> anyhow::Result<ffi::NewAddressResult> {
     let address = crate::TOKIO_RUNTIME.block_on(crate::new_address())?;
+    Ok(ffi::NewAddressResult {
+        user_pubkey: address.policy().user_pubkey().to_string(),
+        ark_id: address.ark_id().to_string(),
+        address: address.to_string(),
+    })
+}
+
+pub(crate) fn peak_address(index: u32) -> anyhow::Result<ffi::NewAddressResult> {
+    let address = crate::TOKIO_RUNTIME.block_on(crate::peak_address(index))?;
     Ok(ffi::NewAddressResult {
         user_pubkey: address.policy().user_pubkey().to_string(),
         ark_id: address.ark_id().to_string(),

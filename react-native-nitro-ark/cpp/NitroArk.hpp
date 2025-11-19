@@ -352,6 +352,21 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<NewAddressResult>> peakAddress(double index) override {
+    return Promise<NewAddressResult>::async([index]() {
+      try {
+        bark_cxx::NewAddressResult address_rs = bark_cxx::peak_address(static_cast<uint32_t>(index));
+        NewAddressResult address;
+        address.user_pubkey = std::string(address_rs.user_pubkey.data(), address_rs.user_pubkey.length());
+        address.ark_id = std::string(address_rs.ark_id.data(), address_rs.ark_id.length());
+        address.address = std::string(address_rs.address.data(), address_rs.address.length());
+        return address;
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   std::shared_ptr<Promise<std::string>> signMessage(const std::string& message, double index) override {
     return Promise<std::string>::async([message, index]() {
       try {

@@ -282,6 +282,16 @@ pub async fn new_address() -> anyhow::Result<bark::ark::Address> {
     })
 }
 
+pub async fn peak_address(index: u32) -> anyhow::Result<bark::ark::Address> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager.with_context(|ctx| {
+        Ok(ctx
+            .wallet
+            .peak_address(index)
+            .context("Failed to peak address")?)
+    })
+}
+
 pub async fn sign_message(
     message: &str,
     index: u32,

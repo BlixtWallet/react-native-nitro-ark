@@ -179,6 +179,15 @@ export function peakKeyPair(index: number): Promise<KeyPairResult> {
 }
 
 /**
+ * Peeks a derived address without advancing the wallet's address index.
+ * @param index Index of the address to preview.
+ * @returns A promise resolving to the NewAddressResult object.
+ */
+export function peakAddress(index: number): Promise<NewAddressResult> {
+  return NitroArkHybridObject.peakAddress(index);
+}
+
+/**
  * Gets the wallet's Address.
  * @returns A promise resolving to NewAddressResult object.
  */

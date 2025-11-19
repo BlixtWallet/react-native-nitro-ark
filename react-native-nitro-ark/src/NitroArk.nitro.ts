@@ -211,6 +211,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   offchainBalance(): Promise<OffchainBalanceResult>;
   deriveStoreNextKeypair(): Promise<KeyPairResult>;
   peakKeyPair(index: number): Promise<KeyPairResult>;
+  peakAddress(index: number): Promise<NewAddressResult>;
   newAddress(): Promise<NewAddressResult>;
   signMessage(message: string, index: number): Promise<string>;
   signMesssageWithMnemonic(

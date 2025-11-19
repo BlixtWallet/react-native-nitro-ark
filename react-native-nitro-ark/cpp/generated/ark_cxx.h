@@ -1153,6 +1153,8 @@ void close_wallet();
 
 ::bark_cxx::NewAddressResult new_address();
 
+::bark_cxx::NewAddressResult peak_address(::std::uint32_t index);
+
 ::rust::String sign_message(::rust::Str message, ::std::uint32_t index);
 
 ::rust::String sign_messsage_with_mnemonic(::rust::Str message, ::rust::Str mnemonic, ::rust::Str network, ::std::uint32_t index);

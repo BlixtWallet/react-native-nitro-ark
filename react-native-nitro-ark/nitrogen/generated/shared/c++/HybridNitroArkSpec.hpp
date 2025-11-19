@@ -119,6 +119,7 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<OffchainBalanceResult>> offchainBalance() = 0;
       virtual std::shared_ptr<Promise<KeyPairResult>> deriveStoreNextKeypair() = 0;
       virtual std::shared_ptr<Promise<KeyPairResult>> peakKeyPair(double index) = 0;
+      virtual std::shared_ptr<Promise<NewAddressResult>> peakAddress(double index) = 0;
       virtual std::shared_ptr<Promise<NewAddressResult>> newAddress() = 0;
       virtual std::shared_ptr<Promise<std::string>> signMessage(const std::string& message, double index) = 0;
       virtual std::shared_ptr<Promise<std::string>> signMesssageWithMnemonic(const std::string& message, const std::string& mnemonic, const std::string& network, double index) = 0;

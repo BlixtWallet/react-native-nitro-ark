@@ -474,6 +474,24 @@ export default function ArkApp() {
     );
   };
 
+  const handlePeakAddress = () => {
+    if (!mnemonic) {
+      setError((prev) => ({ ...prev, walletInfo: 'Mnemonic required' }));
+      return;
+    }
+    runOperation(
+      'peakAddress',
+      () => NitroArk.peakAddress(0),
+      'walletInfo',
+      (address) => {
+        setResults((prev) => ({
+          ...prev,
+          walletInfo: `Peak Address: ${JSON.stringify(address, null, 2)}`,
+        }));
+      }
+    );
+  };
+
   const handleGetOnchainAddress = () => {
     if (!mnemonic) {
       setError((prev) => ({ ...prev, walletInfo: 'Mnemonic required' }));
@@ -1104,6 +1122,7 @@ export default function ArkApp() {
               handleDeriveStoreNextKeypair
             )}
             {renderOperationButton('Peak Key Pair', handlePeakKeyPair)}
+            {renderOperationButton('Peak Address', handlePeakAddress)}
             {renderOperationButton(
               'Derive Keypair from Mnemonic',
               handleDeriveKeypairFromMnemonic
