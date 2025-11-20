@@ -61,6 +61,47 @@ const formatSats = (sats: number | undefined): string => {
   return `${sats.toLocaleString()} sats`;
 };
 
+const getWalletConfig = (mnemonic: string) => {
+  const opts: NitroArk.BarkCreateOpts = {
+    mnemonic: mnemonic,
+    regtest: true,
+    signet: false,
+    bitcoin: false,
+    config: {
+      bitcoind:
+        Platform.OS === 'android'
+          ? 'http://10.0.2.2:18443'
+          : 'http://localhost:18443',
+      ark:
+        Platform.OS === 'android'
+          ? 'http://10.0.2.2:3535'
+          : 'http://localhost:3535',
+      bitcoind_user: 'second',
+      bitcoind_pass: 'ark',
+      vtxo_refresh_expiry_threshold: 48,
+      fallback_fee_rate: 10000,
+      htlc_recv_claim_delta: 18,
+      vtxo_exit_margin: 12,
+      round_tx_required_confirmations: 1,
+    },
+  };
+
+  // const opts: NitroArk.BarkCreateOpts = {
+  //   mnemonic: mnemonic,
+  //   regtest: false,
+  //   signet: true,
+  //   bitcoin: false,
+  //   config: {
+  //     esplora: 'esplora.signet.2nd.dev',
+  //     ark: 'ark.signet.2nd.dev',
+  //     vtxo_refresh_expiry_threshold: 288,
+  //     fallback_fee_rate: 100000,
+  //   },
+  // };
+
+  return opts;
+};
+
 export default function ArkApp() {
   const [mnemonic, setMnemonic] = useState<string | undefined>(undefined);
   const [arkInfo, setArkInfo] = useState<BarkArkInfo | undefined>();
@@ -83,7 +124,6 @@ export default function ArkApp() {
   const [arkComment, setArkComment] = useState('');
   const [vtxoIdsInput, setVtxoIdsInput] = useState(''); // Comma separated
   const [optionalAddress, setOptionalAddress] = useState('');
-  const [keypairIndex, setKeypairIndex] = useState('0');
   const [invoiceAmount, setInvoiceAmount] = useState('1000');
   const [invoiceToClaim, setInvoiceToClaim] = useState('');
   const [messageToSign, setMessageToSign] = useState('hello world');
@@ -239,33 +279,15 @@ export default function ArkApp() {
       }));
       return;
     }
-    const opts: NitroArk.BarkCreateOpts = {
-      mnemonic: mnemonic,
-      regtest: true,
-      signet: false,
-      bitcoin: false,
-      config: {
-        bitcoind:
-          Platform.OS === 'android'
-            ? 'http://10.0.2.2:18443'
-            : 'http://localhost:18443',
-        ark:
-          Platform.OS === 'android'
-            ? 'http://10.0.2.2:3535'
-            : 'http://localhost:3535',
-        bitcoind_user: 'second',
-        bitcoind_pass: 'ark',
-        vtxo_refresh_expiry_threshold: 48,
-        fallback_fee_rate: 10000,
-        htlc_recv_claim_delta: 18,
-        vtxo_exit_margin: 12,
-        round_tx_required_confirmations: 1,
-      },
-    };
 
     runOperation(
       'androidNativeLoadWallet',
-      () => NitroArkDemo.loadWallet(ARK_DATA_PATH, mnemonic, opts),
+      () =>
+        NitroArkDemo.loadWallet(
+          ARK_DATA_PATH,
+          mnemonic,
+          getWalletConfig(mnemonic)
+        ),
       'androidNative'
     );
   };
@@ -345,7 +367,7 @@ export default function ArkApp() {
     }
     runOperation(
       'androidNative',
-      () => NitroArkDemo.peakKeyPair(parseInt(keypairIndex || '0', 10)),
+      () => NitroArkDemo.peakKeyPair(0),
       'androidNative'
     );
   };
@@ -395,46 +417,9 @@ export default function ArkApp() {
       return;
     }
 
-    const opts: NitroArk.BarkCreateOpts = {
-      mnemonic: mnemonic,
-      regtest: true,
-      signet: false,
-      bitcoin: false,
-      config: {
-        bitcoind:
-          Platform.OS === 'android'
-            ? 'http://10.0.2.2:18443'
-            : 'http://localhost:18443',
-        ark:
-          Platform.OS === 'android'
-            ? 'http://10.0.2.2:3535'
-            : 'http://localhost:3535',
-        bitcoind_user: 'second',
-        bitcoind_pass: 'ark',
-        vtxo_refresh_expiry_threshold: 48,
-        fallback_fee_rate: 10000,
-        htlc_recv_claim_delta: 18,
-        vtxo_exit_margin: 12,
-        round_tx_required_confirmations: 1,
-      },
-    };
-
-    // const opts: NitroArk.BarkCreateOpts = {
-    //   mnemonic: mnemonic,
-    //   regtest: false,
-    //   signet: true,
-    //   bitcoin: false,
-    //   config: {
-    //     esplora: 'esplora.signet.2nd.dev',
-    //     ark: 'ark.signet.2nd.dev',
-    //     vtxo_refresh_expiry_threshold: 288,
-    //     fallback_fee_rate: 100000,
-    //   },
-    // };
-
     runOperation(
       'createWallet',
-      () => NitroArk.createWallet(ARK_DATA_PATH, opts),
+      () => NitroArk.createWallet(ARK_DATA_PATH, getWalletConfig(mnemonic)),
       'management',
       () => {
         setResults((prev) => ({
@@ -454,46 +439,9 @@ export default function ArkApp() {
       return;
     }
 
-    const opts: NitroArk.BarkCreateOpts = {
-      mnemonic: mnemonic,
-      regtest: true,
-      signet: false,
-      bitcoin: false,
-      config: {
-        bitcoind:
-          Platform.OS === 'android'
-            ? 'http://10.0.2.2:18443'
-            : 'http://localhost:18443',
-        ark:
-          Platform.OS === 'android'
-            ? 'http://10.0.2.2:3535'
-            : 'http://localhost:3535',
-        bitcoind_user: 'second',
-        bitcoind_pass: 'ark',
-        vtxo_refresh_expiry_threshold: 48,
-        fallback_fee_rate: 10000,
-        htlc_recv_claim_delta: 18,
-        vtxo_exit_margin: 12,
-        round_tx_required_confirmations: 1,
-      },
-    };
-
-    // const opts: NitroArk.BarkCreateOpts = {
-    //   mnemonic: mnemonic,
-    //   regtest: false,
-    //   signet: true,
-    //   bitcoin: false,
-    //   config: {
-    //     esplora: 'esplora.signet.2nd.dev',
-    //     ark: 'ark.signet.2nd.dev',
-    //     vtxo_refresh_expiry_threshold: 288,
-    //     fallback_fee_rate: 100000,
-    //   },
-    // };
-
     runOperation(
       'loadWallet',
-      () => NitroArk.loadWallet(ARK_DATA_PATH, opts),
+      () => NitroArk.loadWallet(ARK_DATA_PATH, getWalletConfig(mnemonic)),
       'management',
       () => {
         setResults((prev) => ({

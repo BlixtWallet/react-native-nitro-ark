@@ -1,12 +1,11 @@
 package nitroark.example
 
-import com.facebook.react.bridge.Promise
-import com.facebook.react.bridge.ReactApplicationContext
-import com.facebook.react.bridge.ReactContextBaseJavaModule
-import com.facebook.react.bridge.ReactMethod
-import com.facebook.react.bridge.ReadableMap
+import com.facebook.react.bridge.*
 import com.facebook.react.module.annotations.ReactModule
+import com.margelo.nitro.nitroark.Bolt11InvoiceResult
+import com.margelo.nitro.nitroark.KeyPairResultAndroid
 import com.margelo.nitro.nitroark.NitroArkNative
+import com.margelo.nitro.nitroark.RoundStatusResult
 import android.util.Log
 
 @ReactModule(name = NitroArkDemoModule.NAME)
@@ -99,7 +98,7 @@ class NitroArkDemoModule(reactContext: ReactApplicationContext) :
   fun offboardAll(destinationAddress: String, promise: Promise) {
     try {
       val result = NitroArkNative.offboardAll(destinationAddress)
-      promise.resolve(result)
+      promise.resolve(roundStatusToMap(result))
     } catch (e: Exception) {
       promise.reject("ERR_OFFBOARD_ALL_JNI", e)
     }
@@ -109,7 +108,7 @@ class NitroArkDemoModule(reactContext: ReactApplicationContext) :
   fun peakKeyPair(index: Int, promise: Promise) {
     try {
       val result = NitroArkNative.peakKeyPair(index)
-      promise.resolve(result)
+      promise.resolve(keyPairToMap(result))
     } catch (e: Exception) {
       promise.reject("ERR_PEAK_KEYPAIR_JNI", e)
     }
@@ -129,7 +128,7 @@ class NitroArkDemoModule(reactContext: ReactApplicationContext) :
   fun bolt11Invoice(amountMsat: Double, promise: Promise) {
     try {
       val result = NitroArkNative.bolt11Invoice(amountMsat.toLong())
-      promise.resolve(result)
+      promise.resolve(bolt11InvoiceToMap(result))
     } catch (e: Exception) {
       promise.reject("ERR_BOLT11_INVOICE_JNI", e)
     }
@@ -154,3 +153,28 @@ private fun ReadableMap.getBooleanOrDefault(key: String, defaultValue: Boolean):
 
 private fun ReadableMap.getMapOrNull(key: String): ReadableMap? =
     if (hasKey(key) && !isNull(key)) getMap(key) else null
+
+private fun roundStatusToMap(result: RoundStatusResult): WritableMap =
+    Arguments.createMap().apply {
+      putString("status", result.status)
+      if (result.fundingTxid != null) putString("funding_txid", result.fundingTxid) else putNull("funding_txid")
+      val array = Arguments.createArray()
+      result.unsignedFundingTxids.forEach { array.pushString(it) }
+      putArray("unsigned_funding_txids", array)
+      if (result.error != null) putString("error", result.error) else putNull("error")
+      putBoolean("is_final", result.isFinal)
+      putBoolean("is_success", result.isSuccess)
+    }
+
+private fun keyPairToMap(result: KeyPairResultAndroid): WritableMap =
+    Arguments.createMap().apply {
+      putString("public_key", result.publicKey)
+      putString("secret_key", result.secretKey)
+    }
+
+private fun bolt11InvoiceToMap(result: Bolt11InvoiceResult): WritableMap =
+    Arguments.createMap().apply {
+      putString("bolt11_invoice", result.bolt11Invoice)
+      putString("payment_secret", result.paymentSecret)
+      putString("payment_hash", result.paymentHash)
+    }

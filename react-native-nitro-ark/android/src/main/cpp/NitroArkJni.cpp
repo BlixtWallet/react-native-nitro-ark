@@ -1,11 +1,11 @@
-#include <jni.h>
-#include <string>
-#include <stdexcept>
-#include <exception>
-#include <optional>
-#include <cstdint>
 #include <android/log.h>
-#include <sstream>
+#include <cstdint>
+#include <exception>
+#include <jni.h>
+#include <optional>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 #include "generated/ark_cxx.h"
 
@@ -33,21 +33,27 @@ void ThrowJavaException(JNIEnv* env, const char* message) {
 }
 
 std::optional<int32_t> GetOptionalInt(JNIEnv* env, jobject obj) {
-  if (obj == nullptr) return std::nullopt;
+  if (obj == nullptr)
+    return std::nullopt;
   jclass cls = env->FindClass("java/lang/Integer");
-  if (cls == nullptr) return std::nullopt;
+  if (cls == nullptr)
+    return std::nullopt;
   jmethodID mid = env->GetMethodID(cls, "intValue", "()I");
-  if (mid == nullptr) return std::nullopt;
+  if (mid == nullptr)
+    return std::nullopt;
   jint value = env->CallIntMethod(obj, mid);
   return static_cast<int32_t>(value);
 }
 
 std::optional<int64_t> GetOptionalLong(JNIEnv* env, jobject obj) {
-  if (obj == nullptr) return std::nullopt;
+  if (obj == nullptr)
+    return std::nullopt;
   jclass cls = env->FindClass("java/lang/Long");
-  if (cls == nullptr) return std::nullopt;
+  if (cls == nullptr)
+    return std::nullopt;
   jmethodID mid = env->GetMethodID(cls, "longValue", "()J");
-  if (mid == nullptr) return std::nullopt;
+  if (mid == nullptr)
+    return std::nullopt;
   jlong value = env->CallLongMethod(obj, mid);
   return static_cast<int64_t>(value);
 }
@@ -62,54 +68,101 @@ void HandleUnknownException(JNIEnv* env) {
   ThrowJavaException(env, "Unknown exception in NitroArk native call.");
 }
 
-std::string RoundStatusToJson(const bark_cxx::RoundStatus& status) {
-  std::ostringstream oss;
-  oss << "{";
-  oss << "\"status\":\"" << std::string(status.status.data(), status.status.length()) << "\",";
-  oss << "\"funding_txid\":\"" << std::string(status.funding_txid.data(), status.funding_txid.length()) << "\",";
+// Helpers to construct Java/Kotlin objects for return values.
+jobject MakeArrayList(JNIEnv* env, const std::vector<std::string>& elements) {
+  jclass arrayListClass = env->FindClass("java/util/ArrayList");
+  jmethodID arrayListCtor = env->GetMethodID(arrayListClass, "<init>", "()V");
+  jmethodID arrayListAdd = env->GetMethodID(arrayListClass, "add", "(Ljava/lang/Object;)Z");
+  jobject arrayListObj = env->NewObject(arrayListClass, arrayListCtor);
 
-  oss << "\"unsigned_funding_txids\":[";
-  for (size_t i = 0; i < status.unsigned_funding_txids.size(); ++i) {
-    const auto& txid = status.unsigned_funding_txids[i];
-    oss << "\"" << std::string(txid.data(), txid.length()) << "\"";
-    if (i + 1 < status.unsigned_funding_txids.size()) {
-      oss << ",";
-    }
+  for (const auto& element : elements) {
+    jstring jStr = env->NewStringUTF(element.c_str());
+    env->CallBooleanMethod(arrayListObj, arrayListAdd, jStr);
+    env->DeleteLocalRef(jStr);
   }
-  oss << "],";
-
-  oss << "\"error\":\"" << std::string(status.error.data(), status.error.length()) << "\",";
-  oss << "\"is_final\":" << (status.is_final ? "true" : "false") << ",";
-  oss << "\"is_success\":" << (status.is_success ? "true" : "false");
-  oss << "}";
-  return oss.str();
+  env->DeleteLocalRef(arrayListClass);
+  return arrayListObj;
 }
 
-std::string KeyPairToJson(const bark_cxx::KeyPairResult& keypair) {
-  std::ostringstream oss;
-  oss << "{";
-  oss << "\"public_key\":\"" << std::string(keypair.public_key.data(), keypair.public_key.length()) << "\",";
-  oss << "\"secret_key\":\"" << std::string(keypair.secret_key.data(), keypair.secret_key.length()) << "\"";
-  oss << "}";
-  return oss.str();
+jobject MakeRoundStatusResult(JNIEnv* env, const bark_cxx::RoundStatus& status) {
+  jclass cls = env->FindClass("com/margelo/nitro/nitroark/RoundStatusResult");
+  jmethodID ctor =
+      env->GetMethodID(cls, "<init>", "(Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Ljava/lang/String;ZZ)V");
+
+  std::string statusStr(status.status.data(), status.status.length());
+  std::string fundingTxid(status.funding_txid.data(), status.funding_txid.length());
+  std::string error(status.error.data(), status.error.length());
+
+  // Convert unsigned txids
+  std::vector<std::string> txids;
+  txids.reserve(status.unsigned_funding_txids.size());
+  for (const auto& tx : status.unsigned_funding_txids) {
+    txids.emplace_back(std::string(tx.data(), tx.length()));
+  }
+  jobject txidList = MakeArrayList(env, txids);
+
+  jstring jStatus = env->NewStringUTF(statusStr.c_str());
+  jstring jFundingTxid = fundingTxid.empty() ? nullptr : env->NewStringUTF(fundingTxid.c_str());
+  jstring jError = error.empty() ? nullptr : env->NewStringUTF(error.c_str());
+
+  jobject result =
+      env->NewObject(cls, ctor, jStatus, jFundingTxid, txidList, jError, status.is_final, status.is_success);
+
+  env->DeleteLocalRef(jStatus);
+  if (jFundingTxid)
+    env->DeleteLocalRef(jFundingTxid);
+  if (jError)
+    env->DeleteLocalRef(jError);
+  env->DeleteLocalRef(txidList);
+  env->DeleteLocalRef(cls);
+  return result;
 }
 
-std::string Bolt11InvoiceToJson(const bark_cxx::Bolt11Invoice& invoice) {
-  std::ostringstream oss;
-  oss << "{";
-  oss << "\"bolt11_invoice\":\"" << std::string(invoice.bolt11_invoice.data(), invoice.bolt11_invoice.length()) << "\",";
-  oss << "\"payment_secret\":\"" << std::string(invoice.payment_secret.data(), invoice.payment_secret.length()) << "\",";
-  oss << "\"payment_hash\":\"" << std::string(invoice.payment_hash.data(), invoice.payment_hash.length()) << "\"";
-  oss << "}";
-  return oss.str();
+jobject MakeKeyPairResult(JNIEnv* env, const bark_cxx::KeyPairResult& keypair) {
+  jclass cls = env->FindClass("com/margelo/nitro/nitroark/KeyPairResultAndroid");
+  jmethodID ctor = env->GetMethodID(cls, "<init>", "(Ljava/lang/String;Ljava/lang/String;)V");
+
+  std::string pub(keypair.public_key.data(), keypair.public_key.length());
+  std::string sec(keypair.secret_key.data(), keypair.secret_key.length());
+
+  jstring jPub = env->NewStringUTF(pub.c_str());
+  jstring jSec = env->NewStringUTF(sec.c_str());
+
+  jobject result = env->NewObject(cls, ctor, jPub, jSec);
+
+  env->DeleteLocalRef(jPub);
+  env->DeleteLocalRef(jSec);
+  env->DeleteLocalRef(cls);
+  return result;
+}
+
+jobject MakeBolt11Invoice(JNIEnv* env, const bark_cxx::Bolt11Invoice& invoice) {
+  jclass cls = env->FindClass("com/margelo/nitro/nitroark/Bolt11InvoiceResult");
+  jmethodID ctor = env->GetMethodID(cls, "<init>", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
+
+  std::string bolt11(invoice.bolt11_invoice.data(), invoice.bolt11_invoice.length());
+  std::string paymentSecret(invoice.payment_secret.data(), invoice.payment_secret.length());
+  std::string paymentHash(invoice.payment_hash.data(), invoice.payment_hash.length());
+
+  jstring jBolt11 = env->NewStringUTF(bolt11.c_str());
+  jstring jSecret = env->NewStringUTF(paymentSecret.c_str());
+  jstring jHash = env->NewStringUTF(paymentHash.c_str());
+
+  jobject result = env->NewObject(cls, ctor, jBolt11, jSecret, jHash);
+
+  env->DeleteLocalRef(jBolt11);
+  env->DeleteLocalRef(jSecret);
+  env->DeleteLocalRef(jHash);
+  env->DeleteLocalRef(cls);
+  return result;
 }
 
 } // namespace
 
 extern "C" {
 
-JNIEXPORT jboolean JNICALL
-Java_com_margelo_nitro_nitroark_NitroArkNative_isWalletLoaded(JNIEnv* env, jobject /*thiz*/) {
+JNIEXPORT jboolean JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_isWalletLoaded(JNIEnv* env,
+                                                                                         jobject /*thiz*/) {
   try {
     return bark_cxx::is_wallet_loaded();
   } catch (const std::exception& e) {
@@ -121,8 +174,7 @@ Java_com_margelo_nitro_nitroark_NitroArkNative_isWalletLoaded(JNIEnv* env, jobje
   }
 }
 
-JNIEXPORT void JNICALL
-Java_com_margelo_nitro_nitroark_NitroArkNative_closeWallet(JNIEnv* env, jobject /*thiz*/) {
+JNIEXPORT void JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_closeWallet(JNIEnv* env, jobject /*thiz*/) {
   try {
     bark_cxx::close_wallet();
   } catch (const std::exception& e) {
@@ -132,13 +184,12 @@ Java_com_margelo_nitro_nitroark_NitroArkNative_closeWallet(JNIEnv* env, jobject 
   }
 }
 
-JNIEXPORT void JNICALL
-Java_com_margelo_nitro_nitroark_NitroArkNative_loadWalletNative(
-    JNIEnv* env, jobject /*thiz*/, jstring jDatadir, jstring jMnemonic, jboolean jRegtest,
-    jboolean jSignet, jboolean jBitcoin, jobject jBirthdayHeight, jstring jArk, jstring jEsplora,
-    jstring jBitcoind, jstring jBitcoindCookie, jstring jBitcoindUser, jstring jBitcoindPass,
-    jobject jVtxoRefreshExpiryThreshold, jobject jFallbackFeeRate, jobject jHtlcRecvClaimDelta,
-    jobject jVtxoExitMargin, jobject jRoundTxRequiredConfirmations) {
+JNIEXPORT void JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_loadWalletNative(
+    JNIEnv* env, jobject /*thiz*/, jstring jDatadir, jstring jMnemonic, jboolean jRegtest, jboolean jSignet,
+    jboolean jBitcoin, jobject jBirthdayHeight, jstring jArk, jstring jEsplora, jstring jBitcoind,
+    jstring jBitcoindCookie, jstring jBitcoindUser, jstring jBitcoindPass, jobject jVtxoRefreshExpiryThreshold,
+    jobject jFallbackFeeRate, jobject jHtlcRecvClaimDelta, jobject jVtxoExitMargin,
+    jobject jRoundTxRequiredConfirmations) {
   try {
     const std::string datadir = JStringToString(env, jDatadir);
     const std::string mnemonic = JStringToString(env, jMnemonic);
@@ -168,29 +219,21 @@ Java_com_margelo_nitro_nitroark_NitroArkNative_loadWalletNative(
 
     config.vtxo_refresh_expiry_threshold =
         static_cast<uint32_t>(GetOptionalInt(env, jVtxoRefreshExpiryThreshold).value_or(0));
-    config.fallback_fee_rate =
-        static_cast<uint64_t>(GetOptionalLong(env, jFallbackFeeRate).value_or(0));
-    config.htlc_recv_claim_delta =
-        static_cast<uint16_t>(GetOptionalInt(env, jHtlcRecvClaimDelta).value_or(0));
+    config.fallback_fee_rate = static_cast<uint64_t>(GetOptionalLong(env, jFallbackFeeRate).value_or(0));
+    config.htlc_recv_claim_delta = static_cast<uint16_t>(GetOptionalInt(env, jHtlcRecvClaimDelta).value_or(0));
     config.vtxo_exit_margin = static_cast<uint16_t>(GetOptionalInt(env, jVtxoExitMargin).value_or(0));
     config.round_tx_required_confirmations =
         static_cast<uint32_t>(GetOptionalInt(env, jRoundTxRequiredConfirmations).value_or(0));
 
     opts.config = config;
 
-    __android_log_print(
-        ANDROID_LOG_INFO,
-        LOG_TAG,
-        "load_wallet(native) datadir=%s regtest=%s signet=%s bitcoin=%s birthday_height=%s ark=%s "
-        "esplora=%s bitcoind=%s",
-        datadir.c_str(),
-        opts.regtest ? "true" : "false",
-        opts.signet ? "true" : "false",
-        opts.bitcoin ? "true" : "false",
-        opts.birthday_height != nullptr ? std::to_string(*opts.birthday_height).c_str() : "null",
-        config.ark.c_str(),
-        config.esplora.c_str(),
-        config.bitcoind.c_str());
+    __android_log_print(ANDROID_LOG_INFO, LOG_TAG,
+                        "load_wallet(native) datadir=%s regtest=%s signet=%s bitcoin=%s birthday_height=%s ark=%s "
+                        "esplora=%s bitcoind=%s",
+                        datadir.c_str(), opts.regtest ? "true" : "false", opts.signet ? "true" : "false",
+                        opts.bitcoin ? "true" : "false",
+                        opts.birthday_height != nullptr ? std::to_string(*opts.birthday_height).c_str() : "null",
+                        config.ark.c_str(), config.esplora.c_str(), config.bitcoind.c_str());
 
     bark_cxx::load_wallet(datadir, opts);
     __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "load_wallet(native) success");
@@ -201,8 +244,8 @@ Java_com_margelo_nitro_nitroark_NitroArkNative_loadWalletNative(
   }
 }
 
-JNIEXPORT void JNICALL
-Java_com_margelo_nitro_nitroark_NitroArkNative_maintenanceRefresh(JNIEnv* env, jobject /*thiz*/) {
+JNIEXPORT void JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_maintenanceRefresh(JNIEnv* env,
+                                                                                         jobject /*thiz*/) {
   try {
     bark_cxx::maintenance_refresh();
   } catch (const std::exception& e) {
@@ -212,10 +255,8 @@ Java_com_margelo_nitro_nitroark_NitroArkNative_maintenanceRefresh(JNIEnv* env, j
   }
 }
 
-JNIEXPORT void JNICALL
-Java_com_margelo_nitro_nitroark_NitroArkNative_tryClaimLightningReceive(JNIEnv* env, jobject /*thiz*/,
-                                                                       jstring jPaymentHash, jboolean jWait,
-                                                                       jstring jToken) {
+JNIEXPORT void JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_tryClaimLightningReceive(
+    JNIEnv* env, jobject /*thiz*/, jstring jPaymentHash, jboolean jWait, jstring jToken) {
   try {
     const std::string payment_hash = JStringToString(env, jPaymentHash);
     const std::string token_str = JStringToString(env, jToken);
@@ -232,14 +273,12 @@ Java_com_margelo_nitro_nitroark_NitroArkNative_tryClaimLightningReceive(JNIEnv* 
   }
 }
 
-JNIEXPORT jstring JNICALL
-Java_com_margelo_nitro_nitroark_NitroArkNative_offboardAll(JNIEnv* env, jobject /*thiz*/,
-                                                          jstring jDestination) {
+JNIEXPORT jobject JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_offboardAll(JNIEnv* env, jobject /*thiz*/,
+                                                                                     jstring jDestination) {
   try {
     const std::string destination = JStringToString(env, jDestination);
     bark_cxx::RoundStatus status = bark_cxx::offboard_all(destination);
-    std::string json = RoundStatusToJson(status);
-    return env->NewStringUTF(json.c_str());
+    return MakeRoundStatusResult(env, status);
   } catch (const std::exception& e) {
     HandleException(env, e);
     return nullptr;
@@ -249,12 +288,11 @@ Java_com_margelo_nitro_nitroark_NitroArkNative_offboardAll(JNIEnv* env, jobject 
   }
 }
 
-JNIEXPORT jstring JNICALL
-Java_com_margelo_nitro_nitroark_NitroArkNative_peakKeyPair(JNIEnv* env, jobject /*thiz*/, jint jIndex) {
+JNIEXPORT jobject JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_peakKeyPair(JNIEnv* env, jobject /*thiz*/,
+                                                                                     jint jIndex) {
   try {
     bark_cxx::KeyPairResult keypair = bark_cxx::peak_keypair(static_cast<uint32_t>(jIndex));
-    std::string json = KeyPairToJson(keypair);
-    return env->NewStringUTF(json.c_str());
+    return MakeKeyPairResult(env, keypair);
   } catch (const std::exception& e) {
     HandleException(env, e);
     return nullptr;
@@ -264,10 +302,10 @@ Java_com_margelo_nitro_nitroark_NitroArkNative_peakKeyPair(JNIEnv* env, jobject 
   }
 }
 
-JNIEXPORT jboolean JNICALL
-Java_com_margelo_nitro_nitroark_NitroArkNative_verifyMessage(JNIEnv* env, jobject /*thiz*/,
-                                                            jstring jMessage, jstring jSignature,
-                                                            jstring jPublicKey) {
+JNIEXPORT jboolean JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_verifyMessage(JNIEnv* env, jobject /*thiz*/,
+                                                                                        jstring jMessage,
+                                                                                        jstring jSignature,
+                                                                                        jstring jPublicKey) {
   try {
     const std::string message = JStringToString(env, jMessage);
     const std::string signature = JStringToString(env, jSignature);
@@ -282,12 +320,11 @@ Java_com_margelo_nitro_nitroark_NitroArkNative_verifyMessage(JNIEnv* env, jobjec
   }
 }
 
-JNIEXPORT jstring JNICALL
-Java_com_margelo_nitro_nitroark_NitroArkNative_bolt11Invoice(JNIEnv* env, jobject /*thiz*/, jlong jAmountMsat) {
+JNIEXPORT jobject JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_bolt11Invoice(JNIEnv* env, jobject /*thiz*/,
+                                                                                       jlong jAmountMsat) {
   try {
     bark_cxx::Bolt11Invoice invoice = bark_cxx::bolt11_invoice(static_cast<uint64_t>(jAmountMsat));
-    std::string json = Bolt11InvoiceToJson(invoice);
-    return env->NewStringUTF(json.c_str());
+    return MakeBolt11Invoice(env, invoice);
   } catch (const std::exception& e) {
     HandleException(env, e);
     return nullptr;
