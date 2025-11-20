@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Button,
   ScrollView,
+  NativeModules,
   Platform,
   SafeAreaView,
   TextInput,
@@ -25,6 +26,32 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Constants
 const ARK_DATA_PATH = `${RNFSTurbo.DocumentDirectoryPath}/bark_data`;
 const MNEMONIC_STORAGE_KEY = 'NITRO_ARK_MNEMONIC';
+
+const { NitroArkDemo } = NativeModules as {
+  NitroArkDemo?: {
+    loadWallet(
+      datadir: string,
+      mnemonic: string,
+      config?: Record<string, any>
+    ): Promise<void>;
+    maintenanceRefresh(): Promise<void>;
+    tryClaimLightningReceive(
+      paymentHash: string,
+      wait: boolean,
+      token?: string
+    ): Promise<void>;
+    offboardAll(destination: string): Promise<string>;
+    peakKeyPair(index: number): Promise<string>;
+    verifyMessage(
+      message: string,
+      signature: string,
+      publicKey: string
+    ): Promise<boolean>;
+    bolt11Invoice(amountMsat: number): Promise<string>;
+    isWalletLoaded(): Promise<boolean>;
+    closeWallet(): Promise<void>;
+  };
+};
 
 // Helper to format satoshis
 const formatSats = (sats: number | undefined): string => {
@@ -56,6 +83,7 @@ export default function ArkApp() {
   const [arkComment, setArkComment] = useState('');
   const [vtxoIdsInput, setVtxoIdsInput] = useState(''); // Comma separated
   const [optionalAddress, setOptionalAddress] = useState('');
+  const [keypairIndex, setKeypairIndex] = useState('0');
   const [invoiceAmount, setInvoiceAmount] = useState('1000');
   const [invoiceToClaim, setInvoiceToClaim] = useState('');
   const [messageToSign, setMessageToSign] = useState('hello world');
@@ -192,6 +220,172 @@ export default function ArkApp() {
     }
   };
 
+  const handleAndroidNativeLoadWallet = () => {
+    if (Platform.OS !== 'android') {
+      return;
+    }
+    if (!NitroArkDemo) {
+      setError((prev) => ({
+        ...prev,
+        androidNative:
+          'NitroArkDemo native module is not available (Android-only demo).',
+      }));
+      return;
+    }
+    if (!mnemonic) {
+      setError((prev) => ({
+        ...prev,
+        androidNative: 'Mnemonic is required to load wallet.',
+      }));
+      return;
+    }
+    const opts: NitroArk.BarkCreateOpts = {
+      mnemonic: mnemonic,
+      regtest: true,
+      signet: false,
+      bitcoin: false,
+      config: {
+        bitcoind:
+          Platform.OS === 'android'
+            ? 'http://10.0.2.2:18443'
+            : 'http://localhost:18443',
+        ark:
+          Platform.OS === 'android'
+            ? 'http://10.0.2.2:3535'
+            : 'http://localhost:3535',
+        bitcoind_user: 'second',
+        bitcoind_pass: 'ark',
+        vtxo_refresh_expiry_threshold: 48,
+        fallback_fee_rate: 10000,
+        htlc_recv_claim_delta: 18,
+        vtxo_exit_margin: 12,
+        round_tx_required_confirmations: 1,
+      },
+    };
+
+    runOperation(
+      'androidNativeLoadWallet',
+      () => NitroArkDemo.loadWallet(ARK_DATA_PATH, mnemonic, opts),
+      'androidNative'
+    );
+  };
+
+  const handleAndroidNativeIsWalletLoaded = () => {
+    if (Platform.OS !== 'android' || !NitroArkDemo) {
+      return;
+    }
+    runOperation(
+      'androidNativeIsWalletLoaded',
+      () => NitroArkDemo.isWalletLoaded(),
+      'androidNative'
+    );
+  };
+
+  const handleAndroidNativeCloseWallet = () => {
+    if (Platform.OS !== 'android' || !NitroArkDemo) {
+      return;
+    }
+    runOperation(
+      'androidNativeCloseWallet',
+      () => NitroArkDemo.closeWallet(),
+      'androidNative'
+    );
+  };
+
+  const handleAndroidNativeMaintenanceRefresh = () => {
+    if (Platform.OS !== 'android' || !NitroArkDemo) {
+      return;
+    }
+    runOperation(
+      'androidNative',
+      () => NitroArkDemo.maintenanceRefresh(),
+      'androidNative'
+    );
+  };
+
+  const handleAndroidNativeTryClaimLightningReceive = () => {
+    if (Platform.OS !== 'android' || !NitroArkDemo) {
+      return;
+    }
+    if (!paymentHash) {
+      setError((prev) => ({
+        ...prev,
+        androidNative: 'Payment hash is required.',
+      }));
+      return;
+    }
+    runOperation(
+      'androidNative',
+      () => NitroArkDemo.tryClaimLightningReceive(paymentHash, true, undefined),
+      'androidNative'
+    );
+  };
+
+  const handleAndroidNativeOffboardAll = () => {
+    if (Platform.OS !== 'android' || !NitroArkDemo) {
+      return;
+    }
+    if (!optionalAddress) {
+      setError((prev) => ({
+        ...prev,
+        androidNative: 'Destination address is required.',
+      }));
+      return;
+    }
+    runOperation(
+      'androidNative',
+      () => NitroArkDemo.offboardAll(optionalAddress),
+      'androidNative'
+    );
+  };
+
+  const handleAndroidNativePeakKeyPair = () => {
+    if (Platform.OS !== 'android' || !NitroArkDemo) {
+      return;
+    }
+    runOperation(
+      'androidNative',
+      () => NitroArkDemo.peakKeyPair(parseInt(keypairIndex || '0', 10)),
+      'androidNative'
+    );
+  };
+
+  const handleAndroidNativeVerifyMessage = () => {
+    if (Platform.OS !== 'android' || !NitroArkDemo) {
+      return;
+    }
+    if (!messageToSign || !signature || !publicKeyForVerification) {
+      setError((prev) => ({
+        ...prev,
+        androidNative:
+          'Message, signature, and public key are required for verification.',
+      }));
+      return;
+    }
+    runOperation(
+      'androidNative',
+      () =>
+        NitroArkDemo.verifyMessage(
+          messageToSign,
+          signature,
+          publicKeyForVerification
+        ),
+      'androidNative'
+    );
+  };
+
+  const handleAndroidNativeBolt11Invoice = () => {
+    if (Platform.OS !== 'android' || !NitroArkDemo) {
+      return;
+    }
+    const amountMsat = parseInt(invoiceAmount || '0', 10) * 1000;
+    runOperation(
+      'androidNative',
+      () => NitroArkDemo.bolt11Invoice(amountMsat),
+      'androidNative'
+    );
+  };
+
   const handleCreateWallet = async () => {
     if (!mnemonic) {
       setError((prev) => ({
@@ -207,8 +401,14 @@ export default function ArkApp() {
       signet: false,
       bitcoin: false,
       config: {
-        bitcoind: 'http://localhost:18443',
-        ark: 'http://localhost:3535',
+        bitcoind:
+          Platform.OS === 'android'
+            ? 'http://10.0.2.2:18443'
+            : 'http://localhost:18443',
+        ark:
+          Platform.OS === 'android'
+            ? 'http://10.0.2.2:3535'
+            : 'http://localhost:3535',
         bitcoind_user: 'second',
         bitcoind_pass: 'ark',
         vtxo_refresh_expiry_threshold: 48,
@@ -260,8 +460,14 @@ export default function ArkApp() {
       signet: false,
       bitcoin: false,
       config: {
-        bitcoind: 'http://localhost:18443',
-        ark: 'http://localhost:3535',
+        bitcoind:
+          Platform.OS === 'android'
+            ? 'http://10.0.2.2:18443'
+            : 'http://localhost:18443',
+        ark:
+          Platform.OS === 'android'
+            ? 'http://10.0.2.2:3535'
+            : 'http://localhost:3535',
         bitcoind_user: 'second',
         bitcoind_pass: 'ark',
         vtxo_refresh_expiry_threshold: 48,
@@ -1074,6 +1280,56 @@ export default function ArkApp() {
             {renderOperationButton('Sync Exits', handleSyncExits)}
           </View>
         </View>
+
+        {/* --- Android Kotlin/JNI Demo --- */}
+        {Platform.OS === 'android' && (
+          <View style={styles.operationSection}>
+            <Text style={styles.sectionHeader}>Android Kotlin/JNI Demo</Text>
+            {renderResult('androidNative')}
+            <View style={styles.buttonGrid}>
+              {renderOperationButton(
+                'JNI Load Wallet (Kotlin)',
+                handleAndroidNativeLoadWallet
+              )}
+              {renderOperationButton(
+                'JNI Is Wallet Loaded',
+                handleAndroidNativeIsWalletLoaded
+              )}
+              {renderOperationButton(
+                'JNI Close Wallet',
+                handleAndroidNativeCloseWallet
+              )}
+              {renderOperationButton(
+                'JNI Maintenance Refresh',
+                handleAndroidNativeMaintenanceRefresh
+              )}
+              {renderOperationButton(
+                'JNI Try Claim Receive',
+                handleAndroidNativeTryClaimLightningReceive
+              )}
+              {renderOperationButton(
+                'JNI Offboard All',
+                handleAndroidNativeOffboardAll
+              )}
+              {renderOperationButton(
+                'JNI Peak Keypair',
+                handleAndroidNativePeakKeyPair
+              )}
+              {renderOperationButton(
+                'JNI Verify Message',
+                handleAndroidNativeVerifyMessage
+              )}
+              {renderOperationButton(
+                'JNI Bolt11 Invoice',
+                handleAndroidNativeBolt11Invoice
+              )}
+            </View>
+            <Text style={styles.statusText}>
+              These buttons call a Kotlin module in the example app which
+              forwards to the JNI shim inside the NitroArk library.
+            </Text>
+          </View>
+        )}
 
         {/* --- Wallet Info --- */}
         <View style={styles.operationSection}>
