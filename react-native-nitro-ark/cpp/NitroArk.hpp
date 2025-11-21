@@ -61,6 +61,8 @@ inline RoundStatus convertRoundStatus(const bark_cxx::RoundStatus& status_rs) {
     status.status = RoundStatusType::PENDING;
   } else if (status_str == "failed") {
     status.status = RoundStatusType::FAILED;
+  } else if (status_str == "canceled") {
+    status.status = RoundStatusType::CANCELED;
   } else {
     status.status = RoundStatusType::FAILED;
   }

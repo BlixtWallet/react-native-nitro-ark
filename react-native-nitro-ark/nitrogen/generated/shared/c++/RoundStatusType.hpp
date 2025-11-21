@@ -33,6 +33,7 @@ namespace margelo::nitro::nitroark {
     UNCONFIRMED      SWIFT_NAME(unconfirmed) = 1,
     PENDING      SWIFT_NAME(pending) = 2,
     FAILED      SWIFT_NAME(failed) = 3,
+    CANCELED      SWIFT_NAME(canceled) = 4,
   } CLOSED_ENUM;
 
 } // namespace margelo::nitro::nitroark
@@ -49,6 +50,7 @@ namespace margelo::nitro {
         case hashString("unconfirmed"): return margelo::nitro::nitroark::RoundStatusType::UNCONFIRMED;
         case hashString("pending"): return margelo::nitro::nitroark::RoundStatusType::PENDING;
         case hashString("failed"): return margelo::nitro::nitroark::RoundStatusType::FAILED;
+        case hashString("canceled"): return margelo::nitro::nitroark::RoundStatusType::CANCELED;
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert \"" + unionValue + "\" to enum RoundStatusType - invalid value!");
       }
@@ -59,6 +61,7 @@ namespace margelo::nitro {
         case margelo::nitro::nitroark::RoundStatusType::UNCONFIRMED: return JSIConverter<std::string>::toJSI(runtime, "unconfirmed");
         case margelo::nitro::nitroark::RoundStatusType::PENDING: return JSIConverter<std::string>::toJSI(runtime, "pending");
         case margelo::nitro::nitroark::RoundStatusType::FAILED: return JSIConverter<std::string>::toJSI(runtime, "failed");
+        case margelo::nitro::nitroark::RoundStatusType::CANCELED: return JSIConverter<std::string>::toJSI(runtime, "canceled");
         default: [[unlikely]]
           throw std::invalid_argument("Cannot convert RoundStatusType to JS - invalid value: "
                                     + std::to_string(static_cast<int>(arg)) + "!");
@@ -74,6 +77,7 @@ namespace margelo::nitro {
         case hashString("unconfirmed"):
         case hashString("pending"):
         case hashString("failed"):
+        case hashString("canceled"):
           return true;
         default:
           return false;

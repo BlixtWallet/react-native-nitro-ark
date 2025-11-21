@@ -179,7 +179,8 @@ export type RoundStatusType =
   | 'confirmed'
   | 'unconfirmed'
   | 'pending'
-  | 'failed';
+  | 'failed'
+  | 'canceled';
 
 export interface RoundStatus {
   status: RoundStatusType;

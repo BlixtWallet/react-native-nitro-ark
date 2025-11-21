@@ -419,6 +419,12 @@ pub fn round_status_to_ffi(status: RoundStatus) -> crate::cxx::ffi::RoundStatus 
             Vec::new(),
             error.clone(),
         ),
+        RoundStatus::Canceled => (
+            "canceled".to_string(),
+            String::new(),
+            Vec::new(),
+            String::new(),
+        ),
     };
 
     crate::cxx::ffi::RoundStatus {
