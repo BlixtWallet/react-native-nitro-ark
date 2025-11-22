@@ -19,6 +19,9 @@ std::string JStringToString(JNIEnv* env, jstring jStr) {
     return std::string();
   }
   const char* chars = env->GetStringUTFChars(jStr, nullptr);
+  if (chars == nullptr) {
+    return std::string();
+  }
   std::string result(chars);
   env->ReleaseStringUTFChars(jStr, chars);
   return result;
@@ -71,14 +74,23 @@ void HandleUnknownException(JNIEnv* env) {
 // Helpers to construct Java/Kotlin objects for return values.
 jobject MakeArrayList(JNIEnv* env, const std::vector<std::string>& elements) {
   jclass arrayListClass = env->FindClass("java/util/ArrayList");
+  if (arrayListClass == nullptr)
+    return nullptr;
   jmethodID arrayListCtor = env->GetMethodID(arrayListClass, "<init>", "()V");
   jmethodID arrayListAdd = env->GetMethodID(arrayListClass, "add", "(Ljava/lang/Object;)Z");
+  if (arrayListCtor == nullptr || arrayListAdd == nullptr)
+    return nullptr;
+
   jobject arrayListObj = env->NewObject(arrayListClass, arrayListCtor);
+  if (arrayListObj == nullptr)
+    return nullptr;
 
   for (const auto& element : elements) {
     jstring jStr = env->NewStringUTF(element.c_str());
-    env->CallBooleanMethod(arrayListObj, arrayListAdd, jStr);
-    env->DeleteLocalRef(jStr);
+    if (jStr != nullptr) {
+      env->CallBooleanMethod(arrayListObj, arrayListAdd, jStr);
+      env->DeleteLocalRef(jStr);
+    }
   }
   env->DeleteLocalRef(arrayListClass);
   return arrayListObj;
@@ -86,8 +98,12 @@ jobject MakeArrayList(JNIEnv* env, const std::vector<std::string>& elements) {
 
 jobject MakeRoundStatusResult(JNIEnv* env, const bark_cxx::RoundStatus& status) {
   jclass cls = env->FindClass("com/margelo/nitro/nitroark/RoundStatusResult");
+  if (cls == nullptr)
+    return nullptr;
   jmethodID ctor =
       env->GetMethodID(cls, "<init>", "(Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Ljava/lang/String;ZZ)V");
+  if (ctor == nullptr)
+    return nullptr;
 
   std::string statusStr(status.status.data(), status.status.length());
   std::string fundingTxid(status.funding_txid.data(), status.funding_txid.length());
@@ -108,19 +124,25 @@ jobject MakeRoundStatusResult(JNIEnv* env, const bark_cxx::RoundStatus& status) 
   jobject result =
       env->NewObject(cls, ctor, jStatus, jFundingTxid, txidList, jError, status.is_final, status.is_success);
 
-  env->DeleteLocalRef(jStatus);
+  if (jStatus)
+    env->DeleteLocalRef(jStatus);
   if (jFundingTxid)
     env->DeleteLocalRef(jFundingTxid);
   if (jError)
     env->DeleteLocalRef(jError);
-  env->DeleteLocalRef(txidList);
+  if (txidList)
+    env->DeleteLocalRef(txidList);
   env->DeleteLocalRef(cls);
   return result;
 }
 
 jobject MakeKeyPairResult(JNIEnv* env, const bark_cxx::KeyPairResult& keypair) {
   jclass cls = env->FindClass("com/margelo/nitro/nitroark/KeyPairResultAndroid");
+  if (cls == nullptr)
+    return nullptr;
   jmethodID ctor = env->GetMethodID(cls, "<init>", "(Ljava/lang/String;Ljava/lang/String;)V");
+  if (ctor == nullptr)
+    return nullptr;
 
   std::string pub(keypair.public_key.data(), keypair.public_key.length());
   std::string sec(keypair.secret_key.data(), keypair.secret_key.length());
@@ -130,15 +152,21 @@ jobject MakeKeyPairResult(JNIEnv* env, const bark_cxx::KeyPairResult& keypair) {
 
   jobject result = env->NewObject(cls, ctor, jPub, jSec);
 
-  env->DeleteLocalRef(jPub);
-  env->DeleteLocalRef(jSec);
+  if (jPub)
+    env->DeleteLocalRef(jPub);
+  if (jSec)
+    env->DeleteLocalRef(jSec);
   env->DeleteLocalRef(cls);
   return result;
 }
 
 jobject MakeBolt11Invoice(JNIEnv* env, const bark_cxx::Bolt11Invoice& invoice) {
   jclass cls = env->FindClass("com/margelo/nitro/nitroark/Bolt11InvoiceResult");
+  if (cls == nullptr)
+    return nullptr;
   jmethodID ctor = env->GetMethodID(cls, "<init>", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
+  if (ctor == nullptr)
+    return nullptr;
 
   std::string bolt11(invoice.bolt11_invoice.data(), invoice.bolt11_invoice.length());
   std::string paymentSecret(invoice.payment_secret.data(), invoice.payment_secret.length());
@@ -150,9 +178,12 @@ jobject MakeBolt11Invoice(JNIEnv* env, const bark_cxx::Bolt11Invoice& invoice) {
 
   jobject result = env->NewObject(cls, ctor, jBolt11, jSecret, jHash);
 
-  env->DeleteLocalRef(jBolt11);
-  env->DeleteLocalRef(jSecret);
-  env->DeleteLocalRef(jHash);
+  if (jBolt11)
+    env->DeleteLocalRef(jBolt11);
+  if (jSecret)
+    env->DeleteLocalRef(jSecret);
+  if (jHash)
+    env->DeleteLocalRef(jHash);
   env->DeleteLocalRef(cls);
   return result;
 }
