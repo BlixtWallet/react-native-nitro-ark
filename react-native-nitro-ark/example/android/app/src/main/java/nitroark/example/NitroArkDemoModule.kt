@@ -75,6 +75,16 @@ class NitroArkDemoModule(reactContext: ReactApplicationContext) :
   }
 
   @ReactMethod
+  fun maintenance(promise: Promise) {
+    try {
+      NitroArkNative.maintenance()
+      promise.resolve(null)
+    } catch (e: Exception) {
+      promise.reject("ERR_MAINTENANCE_JNI", e)
+    }
+  }
+
+  @ReactMethod
   fun maintenanceRefresh(promise: Promise) {
     try {
       NitroArkNative.maintenanceRefresh()

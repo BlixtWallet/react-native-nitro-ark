@@ -275,6 +275,17 @@ JNIEXPORT void JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_loadWallet
   }
 }
 
+JNIEXPORT void JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_maintenance(JNIEnv* env,
+                                                                                  jobject /*thiz*/) {
+  try {
+    bark_cxx::maintenance();
+  } catch (const std::exception& e) {
+    HandleException(env, e);
+  } catch (...) {
+    HandleUnknownException(env);
+  }
+}
+
 JNIEXPORT void JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_maintenanceRefresh(JNIEnv* env,
                                                                                          jobject /*thiz*/) {
   try {

@@ -84,6 +84,7 @@ object NitroArkNative {
   )
 
   // Additional helpers
+  external fun maintenance()
   external fun maintenanceRefresh()
   external fun tryClaimLightningReceive(
       paymentHash: String,

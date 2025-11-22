@@ -10,6 +10,7 @@ import {
   SafeAreaView,
   TextInput,
   ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
 import RNFSTurbo from 'react-native-fs-turbo';
 
@@ -35,6 +36,7 @@ const { NitroArkDemo } = NativeModules as {
       config?: Record<string, any>
     ): Promise<void>;
     maintenanceRefresh(): Promise<void>;
+    maintenance(): Promise<void>;
     tryClaimLightningReceive(
       paymentHash: string,
       wait: boolean,
@@ -70,11 +72,11 @@ const getWalletConfig = (mnemonic: string) => {
     config: {
       bitcoind:
         Platform.OS === 'android'
-          ? 'http://10.0.2.2:18443'
+          ? 'http://192.168.4.72:18443'
           : 'http://localhost:18443',
       ark:
         Platform.OS === 'android'
-          ? 'http://10.0.2.2:3535'
+          ? 'http://192.168.4.72:3535'
           : 'http://localhost:3535',
       bitcoind_user: 'second',
       bitcoind_pass: 'ark',
@@ -101,6 +103,32 @@ const getWalletConfig = (mnemonic: string) => {
 
   return opts;
 };
+
+interface CustomButtonProps {
+  title: string;
+  onPress: () => void;
+  disabled?: boolean;
+  color?: string;
+}
+
+const CustomButton = ({
+  title,
+  onPress,
+  disabled,
+  color,
+}: CustomButtonProps) => (
+  <TouchableOpacity
+    style={[
+      styles.customButton,
+      { backgroundColor: color || '#007AFF' },
+      disabled && styles.customButtonDisabled,
+    ]}
+    onPress={onPress}
+    disabled={disabled}
+  >
+    <Text style={styles.customButtonText}>{title}</Text>
+  </TouchableOpacity>
+);
 
 export default function ArkApp() {
   const [mnemonic, setMnemonic] = useState<string | undefined>(undefined);
@@ -310,6 +338,17 @@ export default function ArkApp() {
     runOperation(
       'androidNativeCloseWallet',
       () => NitroArkDemo.closeWallet(),
+      'androidNative'
+    );
+  };
+
+  const handleAndroidNativeMaintenance = () => {
+    if (Platform.OS !== 'android' || !NitroArkDemo) {
+      return;
+    }
+    runOperation(
+      'androidNativeMaintenance',
+      () => NitroArkDemo.maintenance(),
       'androidNative'
     );
   };
@@ -1132,7 +1171,7 @@ export default function ArkApp() {
 
   const renderOperationButton = (title: string, onPress: () => void) => (
     <View style={styles.buttonWrapper}>
-      <Button
+      <CustomButton
         title={title}
         onPress={onPress}
         disabled={walletOpsButtonDisabled}
@@ -1185,14 +1224,14 @@ export default function ArkApp() {
           {renderResult('management')}
           <View style={styles.buttonGrid}>
             <View style={styles.buttonWrapper}>
-              <Button
+              <CustomButton
                 title="Generate Mnemonic"
                 onPress={handleCreateMnemonic}
                 disabled={isLoading || !!mnemonic} // Disable if already generated
               />
             </View>
             <View style={styles.buttonWrapper}>
-              <Button
+              <CustomButton
                 title="Clear Mnemonic"
                 onPress={handleClearMnemonic}
                 disabled={isLoading || !mnemonic} // Disable if no mnemonic
@@ -1204,7 +1243,7 @@ export default function ArkApp() {
             {renderOperationButton('Close Wallet', handleCloseWallet)}
             {renderOperationButton('Check Connection', handleCheckConnection)}
             <View style={styles.buttonWrapper}>
-              <Button
+              <CustomButton
                 title="Check Wallet Status"
                 onPress={handleIsWalletLoaded}
                 disabled={isLoading}
@@ -1247,6 +1286,12 @@ export default function ArkApp() {
                 'JNI Close Wallet',
                 handleAndroidNativeCloseWallet
               )}
+              <View style={styles.buttonWrapper}>
+                <CustomButton
+                  title="JNI Maintenance (Kotlin)"
+                  onPress={handleAndroidNativeMaintenance}
+                />
+              </View>
               {renderOperationButton(
                 'JNI Maintenance Refresh',
                 handleAndroidNativeMaintenanceRefresh
@@ -1326,7 +1371,7 @@ export default function ArkApp() {
               handleGetOnchainBalance
             )}
             <View style={styles.buttonWrapper}>
-              <Button
+              <CustomButton
                 title="Get Offchain Balance"
                 onPress={handleGetOffchainBalance}
                 disabled={walletOpsButtonDisabled}
@@ -1620,6 +1665,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: 'bold',
     marginBottom: 15,
+    marginTop: 15,
     textAlign: 'center',
     color: '#333',
   },
@@ -1746,5 +1792,30 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
     zIndex: 10,
+  },
+  customButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  customButtonDisabled: {
+    opacity: 0.5,
+  },
+  customButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
