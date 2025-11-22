@@ -5,6 +5,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #include "generated/ark_cxx.h"
@@ -35,30 +36,39 @@ void ThrowJavaException(JNIEnv* env, const char* message) {
   __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Throwing Java exception: %s", message);
 }
 
+template <typename T, typename J>
+std::optional<T> GetOptionalNumber(JNIEnv* env, jobject obj, const char* className, const char* methodName,
+                                   const char* methodSig) {
+  if (obj == nullptr) {
+    return std::nullopt;
+  }
+  jclass cls = env->FindClass(className);
+  if (cls == nullptr) {
+    return std::nullopt;
+  }
+
+  std::optional<T> result = std::nullopt;
+  jmethodID mid = env->GetMethodID(cls, methodName, methodSig);
+  if (mid != nullptr) {
+    if constexpr (std::is_same_v<J, jint>) {
+      jint value = env->CallIntMethod(obj, mid);
+      result = static_cast<T>(value);
+    } else if constexpr (std::is_same_v<J, jlong>) {
+      jlong value = env->CallLongMethod(obj, mid);
+      result = static_cast<T>(value);
+    }
+  }
+
+  env->DeleteLocalRef(cls);
+  return result;
+}
+
 std::optional<int32_t> GetOptionalInt(JNIEnv* env, jobject obj) {
-  if (obj == nullptr)
-    return std::nullopt;
-  jclass cls = env->FindClass("java/lang/Integer");
-  if (cls == nullptr)
-    return std::nullopt;
-  jmethodID mid = env->GetMethodID(cls, "intValue", "()I");
-  if (mid == nullptr)
-    return std::nullopt;
-  jint value = env->CallIntMethod(obj, mid);
-  return static_cast<int32_t>(value);
+  return GetOptionalNumber<int32_t, jint>(env, obj, "java/lang/Integer", "intValue", "()I");
 }
 
 std::optional<int64_t> GetOptionalLong(JNIEnv* env, jobject obj) {
-  if (obj == nullptr)
-    return std::nullopt;
-  jclass cls = env->FindClass("java/lang/Long");
-  if (cls == nullptr)
-    return std::nullopt;
-  jmethodID mid = env->GetMethodID(cls, "longValue", "()J");
-  if (mid == nullptr)
-    return std::nullopt;
-  jlong value = env->CallLongMethod(obj, mid);
-  return static_cast<int64_t>(value);
+  return GetOptionalNumber<int64_t, jlong>(env, obj, "java/lang/Long", "longValue", "()J");
 }
 
 void HandleException(JNIEnv* env, const std::exception& e) {
@@ -232,7 +242,7 @@ JNIEXPORT void JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_loadWallet
     opts.mnemonic = mnemonic;
 
     auto birthday_height = GetOptionalInt(env, jBirthdayHeight);
-    uint32_t birthday_height_val = 0;
+    thread_local uint32_t birthday_height_val = 0;
     if (birthday_height.has_value()) {
       birthday_height_val = static_cast<uint32_t>(birthday_height.value());
       opts.birthday_height = &birthday_height_val;
@@ -275,8 +285,7 @@ JNIEXPORT void JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_loadWallet
   }
 }
 
-JNIEXPORT void JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_maintenance(JNIEnv* env,
-                                                                                  jobject /*thiz*/) {
+JNIEXPORT void JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_maintenance(JNIEnv* env, jobject /*thiz*/) {
   try {
     bark_cxx::maintenance();
   } catch (const std::exception& e) {
