@@ -78,6 +78,7 @@ rm -rf "$OUTPUT_DIR"
 
 # Create output directory structure
 mkdir -p "$OUTPUT_DIR/arm64-v8a"
+mkdir -p "$OUTPUT_DIR/armeabi-v7a"
 mkdir -p "$OUTPUT_DIR/x86_64"
 
 echo "Building for Android..."
@@ -127,6 +128,30 @@ if [ -z "$ARM64_CXX_LIB_PATH" ]; then
 fi
 cp "$ARM64_CXX_LIB_PATH" "$OUTPUT_DIR/arm64-v8a/"
 
+# --- Build for ARMv7 (armv7-linux-androideabi) ---
+echo "Building for armeabi-v7a..."
+TARGET_ARCH_ARMV7="armv7-linux-androideabi"
+TARGET_DIR_ARMV7="target/$TARGET_ARCH_ARMV7/$BUILD_TYPE"
+
+export TARGET_AR="$TOOLCHAIN_PATH/bin/llvm-ar"
+export TARGET_CC="$TOOLCHAIN_PATH/bin/armv7a-linux-androideabi$API_LEVEL-clang"
+export TARGET_CXX="$TOOLCHAIN_PATH/bin/armv7a-linux-androideabi$API_LEVEL-clang++"
+export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_AR="$TOOLCHAIN_PATH/bin/llvm-ar"
+export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER="$TOOLCHAIN_PATH/bin/armv7a-linux-androideabi$API_LEVEL-clang"
+export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_RANLIB="$TOOLCHAIN_PATH/bin/llvm-ranlib"
+export OPENSSL_INCLUDE_DIR="$PWD/target/$TARGET_ARCH_ARMV7/$BUILD_TYPE/build/openssl-sys-*/out/include"
+export OPENSSL_LIB_DIR="$PWD/target/$TARGET_ARCH_ARMV7/$BUILD_TYPE/build/openssl-sys-*/out/lib"
+
+rustup target add $TARGET_ARCH_ARMV7
+cargo build --target=$TARGET_ARCH_ARMV7 $CARGO_FLAG --lib
+cp "$TARGET_DIR_ARMV7/$BINARY_NAME" "$OUTPUT_DIR/armeabi-v7a/"
+ARMV7_CXX_LIB_PATH=$(find "$TARGET_DIR_ARMV7/build" -name "$CXX_BINARY_NAME" | head -n 1)
+if [ -z "$ARMV7_CXX_LIB_PATH" ]; then
+    echo "Error: Could not find CXX bridge library for armeabi-v7a."
+    exit 1
+fi
+cp "$ARMV7_CXX_LIB_PATH" "$OUTPUT_DIR/armeabi-v7a/"
+
 # --- Build for x86_64 (x86_64-linux-android) ---
 echo "Building for x86_64..."
 TARGET_ARCH_X86_64="x86_64-linux-android"
@@ -153,14 +178,20 @@ cp "$X86_64_CXX_LIB_PATH" "$OUTPUT_DIR/x86_64/"
 
 # --- Copy binaries to React Native project ---
 DEST_JNI_DIR_ARM64="../../react-native-nitro-ark/react-native-nitro-ark/android/src/main/jniLibs/arm64-v8a"
+DEST_JNI_DIR_ARMV7="../../react-native-nitro-ark/react-native-nitro-ark/android/src/main/jniLibs/armeabi-v7a"
 DEST_JNI_DIR_X86_64="../../react-native-nitro-ark/react-native-nitro-ark/android/src/main/jniLibs/x86_64"
 
 mkdir -p "$DEST_JNI_DIR_ARM64"
+mkdir -p "$DEST_JNI_DIR_ARMV7"
 mkdir -p "$DEST_JNI_DIR_X86_64"
 
 echo "Copying arm64-v8a binary..."
 cp -f "$OUTPUT_DIR/arm64-v8a/$BINARY_NAME" "$DEST_JNI_DIR_ARM64/"
 cp -f "$OUTPUT_DIR/arm64-v8a/$CXX_BINARY_NAME" "$DEST_JNI_DIR_ARM64/"
+
+echo "Copying armeabi-v7a binary..."
+cp -f "$OUTPUT_DIR/armeabi-v7a/$BINARY_NAME" "$DEST_JNI_DIR_ARMV7/"
+cp -f "$OUTPUT_DIR/armeabi-v7a/$CXX_BINARY_NAME" "$DEST_JNI_DIR_ARMV7/"
 
 echo "Copying x86_64 binary..."
 cp -f "$OUTPUT_DIR/x86_64/$BINARY_NAME" "$DEST_JNI_DIR_X86_64/"
