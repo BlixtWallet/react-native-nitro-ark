@@ -385,4 +385,30 @@ JNIEXPORT jobject JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_bolt11I
   }
 }
 
+JNIEXPORT jstring JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_signMessage(JNIEnv* env, jobject /*thiz*/,
+                                                                                     jstring jMessage, jint jIndex) {
+  try {
+    const std::string message = JStringToString(env, jMessage);
+    rust::String signature = bark_cxx::sign_message(message, static_cast<uint32_t>(jIndex));
+    std::string signatureStr(signature.data(), signature.length());
+    return env->NewStringUTF(signatureStr.c_str());
+  } catch (const std::exception& e) {
+    HandleException(env, e);
+    return nullptr;
+  } catch (...) {
+    HandleUnknownException(env);
+    return nullptr;
+  }
+}
+
+JNIEXPORT void JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_sync(JNIEnv* env, jobject /*thiz*/) {
+  try {
+    bark_cxx::sync();
+  } catch (const std::exception& e) {
+    HandleException(env, e);
+  } catch (...) {
+    HandleUnknownException(env);
+  }
+}
+
 } // extern "C"

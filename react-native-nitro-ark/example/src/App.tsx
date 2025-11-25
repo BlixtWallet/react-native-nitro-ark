@@ -3,7 +3,6 @@ import {
   Text,
   View,
   StyleSheet,
-  Button,
   ScrollView,
   NativeModules,
   Platform,
@@ -52,6 +51,8 @@ const { NitroArkDemo } = NativeModules as {
     bolt11Invoice(amountMsat: number): Promise<string>;
     isWalletLoaded(): Promise<boolean>;
     closeWallet(): Promise<void>;
+    signMessage(message: string, index: number): Promise<string>;
+    sync(): Promise<void>;
   };
 };
 
@@ -445,6 +446,24 @@ export default function ArkApp() {
       () => NitroArkDemo.bolt11Invoice(amountMsat),
       'androidNative'
     );
+  };
+
+  const handleAndroidNativeSignMessage = () => {
+    if (Platform.OS !== 'android' || !NitroArkDemo) {
+      return;
+    }
+    runOperation(
+      'androidNative',
+      () => NitroArkDemo.signMessage(messageToSign || '', 0),
+      'androidNative'
+    );
+  };
+
+  const handleAndroidNativeSync = () => {
+    if (Platform.OS !== 'android' || !NitroArkDemo) {
+      return;
+    }
+    runOperation('androidNative', () => NitroArkDemo.sync(), 'androidNative');
   };
 
   const handleCreateWallet = async () => {
@@ -1316,6 +1335,11 @@ export default function ArkApp() {
                 'JNI Bolt11 Invoice',
                 handleAndroidNativeBolt11Invoice
               )}
+              {renderOperationButton(
+                'JNI Sign Message',
+                handleAndroidNativeSignMessage
+              )}
+              {renderOperationButton('JNI Sync', handleAndroidNativeSync)}
             </View>
             <Text style={styles.statusText}>
               These buttons call a Kotlin module in the example app which
@@ -1633,7 +1657,6 @@ export default function ArkApp() {
               value={signature}
               onChangeText={setSignature}
               placeholder="Signature will appear here"
-              editable={false}
             />
           </View>
         </View>

@@ -95,4 +95,6 @@ object NitroArkNative {
   external fun peakKeyPair(index: Int): KeyPairResultAndroid
   external fun verifyMessage(message: String, signature: String, publicKey: String): Boolean
   external fun bolt11Invoice(amountMsat: Long): Bolt11InvoiceResult
+  external fun signMessage(message: String, index: Int): String
+  external fun sync()
 }

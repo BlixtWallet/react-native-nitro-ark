@@ -144,6 +144,26 @@ class NitroArkDemoModule(reactContext: ReactApplicationContext) :
     }
   }
 
+  @ReactMethod
+  fun signMessage(message: String, index: Int, promise: Promise) {
+    try {
+      val result = NitroArkNative.signMessage(message, index)
+      promise.resolve(result)
+    } catch (e: Exception) {
+      promise.reject("ERR_SIGN_MESSAGE_JNI", e)
+    }
+  }
+
+  @ReactMethod
+  fun sync(promise: Promise) {
+    try {
+      NitroArkNative.sync()
+      promise.resolve(null)
+    } catch (e: Exception) {
+      promise.reject("ERR_SYNC_JNI", e)
+    }
+  }
+
   companion object {
     const val NAME = "NitroArkDemo"
   }
