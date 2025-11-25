@@ -102,9 +102,17 @@ jobject MakeArrayList(JNIEnv* env, const std::vector<std::string>& elements) {
 
   for (const auto& element : elements) {
     jstring jStr = env->NewStringUTF(element.c_str());
-    if (jStr != nullptr) {
-      env->CallBooleanMethod(arrayListObj, arrayListAdd, jStr);
-      env->DeleteLocalRef(jStr);
+    if (jStr == nullptr) {
+      env->DeleteLocalRef(arrayListObj);
+      env->DeleteLocalRef(arrayListClass);
+      return nullptr;
+    }
+    env->CallBooleanMethod(arrayListObj, arrayListAdd, jStr);
+    env->DeleteLocalRef(jStr);
+    if (env->ExceptionCheck()) {
+      env->DeleteLocalRef(arrayListObj);
+      env->DeleteLocalRef(arrayListClass);
+      return nullptr;
     }
   }
   env->DeleteLocalRef(arrayListClass);
@@ -135,14 +143,43 @@ jobject MakeRoundStatusResult(JNIEnv* env, const bark_cxx::RoundStatus& status) 
   jobject txidList = MakeArrayList(env, txids);
 
   jstring jStatus = env->NewStringUTF(statusStr.c_str());
-  jstring jFundingTxid = fundingTxid.empty() ? nullptr : env->NewStringUTF(fundingTxid.c_str());
-  jstring jError = error.empty() ? nullptr : env->NewStringUTF(error.c_str());
+  if (jStatus == nullptr) {
+    if (txidList)
+      env->DeleteLocalRef(txidList);
+    env->DeleteLocalRef(cls);
+    return nullptr;
+  }
+
+  jstring jFundingTxid = nullptr;
+  if (!fundingTxid.empty()) {
+    jFundingTxid = env->NewStringUTF(fundingTxid.c_str());
+    if (jFundingTxid == nullptr) {
+      env->DeleteLocalRef(jStatus);
+      if (txidList)
+        env->DeleteLocalRef(txidList);
+      env->DeleteLocalRef(cls);
+      return nullptr;
+    }
+  }
+
+  jstring jError = nullptr;
+  if (!error.empty()) {
+    jError = env->NewStringUTF(error.c_str());
+    if (jError == nullptr) {
+      env->DeleteLocalRef(jStatus);
+      if (jFundingTxid)
+        env->DeleteLocalRef(jFundingTxid);
+      if (txidList)
+        env->DeleteLocalRef(txidList);
+      env->DeleteLocalRef(cls);
+      return nullptr;
+    }
+  }
 
   jobject result =
       env->NewObject(cls, ctor, jStatus, jFundingTxid, txidList, jError, status.is_final, status.is_success);
 
-  if (jStatus)
-    env->DeleteLocalRef(jStatus);
+  env->DeleteLocalRef(jStatus);
   if (jFundingTxid)
     env->DeleteLocalRef(jFundingTxid);
   if (jError)
@@ -167,14 +204,22 @@ jobject MakeKeyPairResult(JNIEnv* env, const bark_cxx::KeyPairResult& keypair) {
   std::string sec(keypair.secret_key.data(), keypair.secret_key.length());
 
   jstring jPub = env->NewStringUTF(pub.c_str());
+  if (jPub == nullptr) {
+    env->DeleteLocalRef(cls);
+    return nullptr;
+  }
+
   jstring jSec = env->NewStringUTF(sec.c_str());
+  if (jSec == nullptr) {
+    env->DeleteLocalRef(jPub);
+    env->DeleteLocalRef(cls);
+    return nullptr;
+  }
 
   jobject result = env->NewObject(cls, ctor, jPub, jSec);
 
-  if (jPub)
-    env->DeleteLocalRef(jPub);
-  if (jSec)
-    env->DeleteLocalRef(jSec);
+  env->DeleteLocalRef(jPub);
+  env->DeleteLocalRef(jSec);
   env->DeleteLocalRef(cls);
   return result;
 }
@@ -194,17 +239,31 @@ jobject MakeBolt11Invoice(JNIEnv* env, const bark_cxx::Bolt11Invoice& invoice) {
   std::string paymentHash(invoice.payment_hash.data(), invoice.payment_hash.length());
 
   jstring jBolt11 = env->NewStringUTF(bolt11.c_str());
+  if (jBolt11 == nullptr) {
+    env->DeleteLocalRef(cls);
+    return nullptr;
+  }
+
   jstring jSecret = env->NewStringUTF(paymentSecret.c_str());
+  if (jSecret == nullptr) {
+    env->DeleteLocalRef(jBolt11);
+    env->DeleteLocalRef(cls);
+    return nullptr;
+  }
+
   jstring jHash = env->NewStringUTF(paymentHash.c_str());
+  if (jHash == nullptr) {
+    env->DeleteLocalRef(jBolt11);
+    env->DeleteLocalRef(jSecret);
+    env->DeleteLocalRef(cls);
+    return nullptr;
+  }
 
   jobject result = env->NewObject(cls, ctor, jBolt11, jSecret, jHash);
 
-  if (jBolt11)
-    env->DeleteLocalRef(jBolt11);
-  if (jSecret)
-    env->DeleteLocalRef(jSecret);
-  if (jHash)
-    env->DeleteLocalRef(jHash);
+  env->DeleteLocalRef(jBolt11);
+  env->DeleteLocalRef(jSecret);
+  env->DeleteLocalRef(jHash);
   env->DeleteLocalRef(cls);
   return result;
 }
