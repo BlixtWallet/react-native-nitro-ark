@@ -32,6 +32,7 @@ void ThrowJavaException(JNIEnv* env, const char* message) {
   jclass exClass = env->FindClass("java/lang/RuntimeException");
   if (exClass != nullptr) {
     env->ThrowNew(exClass, message);
+    env->DeleteLocalRef(exClass);
   }
   __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, "Throwing Java exception: %s", message);
 }
@@ -88,12 +89,16 @@ jobject MakeArrayList(JNIEnv* env, const std::vector<std::string>& elements) {
     return nullptr;
   jmethodID arrayListCtor = env->GetMethodID(arrayListClass, "<init>", "()V");
   jmethodID arrayListAdd = env->GetMethodID(arrayListClass, "add", "(Ljava/lang/Object;)Z");
-  if (arrayListCtor == nullptr || arrayListAdd == nullptr)
+  if (arrayListCtor == nullptr || arrayListAdd == nullptr) {
+    env->DeleteLocalRef(arrayListClass);
     return nullptr;
+  }
 
   jobject arrayListObj = env->NewObject(arrayListClass, arrayListCtor);
-  if (arrayListObj == nullptr)
+  if (arrayListObj == nullptr) {
+    env->DeleteLocalRef(arrayListClass);
     return nullptr;
+  }
 
   for (const auto& element : elements) {
     jstring jStr = env->NewStringUTF(element.c_str());
@@ -112,8 +117,10 @@ jobject MakeRoundStatusResult(JNIEnv* env, const bark_cxx::RoundStatus& status) 
     return nullptr;
   jmethodID ctor =
       env->GetMethodID(cls, "<init>", "(Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Ljava/lang/String;ZZ)V");
-  if (ctor == nullptr)
+  if (ctor == nullptr) {
+    env->DeleteLocalRef(cls);
     return nullptr;
+  }
 
   std::string statusStr(status.status.data(), status.status.length());
   std::string fundingTxid(status.funding_txid.data(), status.funding_txid.length());
@@ -151,8 +158,10 @@ jobject MakeKeyPairResult(JNIEnv* env, const bark_cxx::KeyPairResult& keypair) {
   if (cls == nullptr)
     return nullptr;
   jmethodID ctor = env->GetMethodID(cls, "<init>", "(Ljava/lang/String;Ljava/lang/String;)V");
-  if (ctor == nullptr)
+  if (ctor == nullptr) {
+    env->DeleteLocalRef(cls);
     return nullptr;
+  }
 
   std::string pub(keypair.public_key.data(), keypair.public_key.length());
   std::string sec(keypair.secret_key.data(), keypair.secret_key.length());
@@ -175,8 +184,10 @@ jobject MakeBolt11Invoice(JNIEnv* env, const bark_cxx::Bolt11Invoice& invoice) {
   if (cls == nullptr)
     return nullptr;
   jmethodID ctor = env->GetMethodID(cls, "<init>", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
-  if (ctor == nullptr)
+  if (ctor == nullptr) {
+    env->DeleteLocalRef(cls);
     return nullptr;
+  }
 
   std::string bolt11(invoice.bolt11_invoice.data(), invoice.bolt11_invoice.length());
   std::string paymentSecret(invoice.payment_secret.data(), invoice.payment_secret.length());
@@ -242,7 +253,7 @@ JNIEXPORT void JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_loadWallet
     opts.mnemonic = mnemonic;
 
     auto birthday_height = GetOptionalInt(env, jBirthdayHeight);
-    thread_local uint32_t birthday_height_val = 0;
+    uint32_t birthday_height_val = 0;
     if (birthday_height.has_value()) {
       birthday_height_val = static_cast<uint32_t>(birthday_height.value());
       opts.birthday_height = &birthday_height_val;
