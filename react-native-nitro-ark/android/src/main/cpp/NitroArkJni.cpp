@@ -279,13 +279,13 @@ JNIEXPORT void JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_loadWallet
 
     opts.config = config;
 
+    std::string birthday_height_str = opts.birthday_height != nullptr ? std::to_string(*opts.birthday_height) : "null";
     __android_log_print(ANDROID_LOG_INFO, LOG_TAG,
                         "load_wallet(native) datadir=%s regtest=%s signet=%s bitcoin=%s birthday_height=%s ark=%s "
                         "esplora=%s bitcoind=%s",
                         datadir.c_str(), opts.regtest ? "true" : "false", opts.signet ? "true" : "false",
-                        opts.bitcoin ? "true" : "false",
-                        opts.birthday_height != nullptr ? std::to_string(*opts.birthday_height).c_str() : "null",
-                        config.ark.c_str(), config.esplora.c_str(), config.bitcoind.c_str());
+                        opts.bitcoin ? "true" : "false", birthday_height_str.c_str(), config.ark.c_str(),
+                        config.esplora.c_str(), config.bitcoind.c_str());
 
     bark_cxx::load_wallet(datadir, opts);
     __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "load_wallet(native) success");
