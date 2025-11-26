@@ -28,6 +28,7 @@ add_library(
   ${PROJECT_NAME}
   SHARED
   src/main/cpp/cpp-adapter.cpp
+  src/main/cpp/NitroArkJni.cpp
   ../cpp/HybridArk.cpp
 )
 
