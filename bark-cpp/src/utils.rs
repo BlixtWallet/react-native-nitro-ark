@@ -36,21 +36,19 @@ impl ConfigOpts {
             };
         }
         if let Some(v) = self.bitcoind {
-            cfg.bitcoind_address = if v == "" { None } else { Some(v) };
+            cfg.bitcoind_address = if v.is_empty() { None } else { Some(v) };
         }
         if let Some(v) = self.bitcoind_cookie {
-            cfg.bitcoind_cookiefile = if v == "" { None } else { Some(v.into()) };
+            cfg.bitcoind_cookiefile = if v.is_empty() { None } else { Some(v.into()) };
         }
         if let Some(v) = self.bitcoind_user {
-            cfg.bitcoind_user = if v == "" { None } else { Some(v) };
+            cfg.bitcoind_user = if v.is_empty() { None } else { Some(v) };
         }
         if let Some(v) = self.bitcoind_pass {
-            cfg.bitcoind_pass = if v == "" { None } else { Some(v) };
+            cfg.bitcoind_pass = if v.is_empty() { None } else { Some(v) };
         }
         cfg.vtxo_refresh_expiry_threshold = self.vtxo_refresh_expiry_threshold;
-        cfg.fallback_fee_rate = self
-            .fallback_fee_rate
-            .map(|f| FeeRate::from_sat_per_kvb_ceil(f));
+        cfg.fallback_fee_rate = self.fallback_fee_rate.map(FeeRate::from_sat_per_kvb_ceil);
 
         if cfg.esplora_address.is_none() && cfg.bitcoind_address.is_none() {
             bail!("Provide either an esplora or bitcoind url as chain source.");
@@ -198,13 +196,7 @@ pub fn merge_config_opts(opts: CreateOpts) -> anyhow::Result<(Config, Network)> 
     };
 
     let fallback_fee_rate = match opts.config.fallback_fee_rate {
-        Some(rate) => {
-            if let Some(rate) = FeeRate::from_sat_per_vb(rate) {
-                Some(rate)
-            } else {
-                None
-            }
-        }
+        Some(rate) => FeeRate::from_sat_per_vb(rate).map(|rate: FeeRate| rate),
         None => None,
     };
 
@@ -290,13 +282,13 @@ pub fn wallet_vtxo_to_bark_vtxo(wallet_vtxo: WalletVtxo) -> crate::cxx::ffi::Bar
         exit_delta: wallet_vtxo.vtxo.exit_delta(),
         anchor_point: format!(
             "{}:{}",
-            wallet_vtxo.vtxo.chain_anchor().txid.to_string(),
-            wallet_vtxo.vtxo.chain_anchor().vout.to_string()
+            wallet_vtxo.vtxo.chain_anchor().txid,
+            wallet_vtxo.vtxo.chain_anchor().vout
         ),
         point: format!(
             "{}:{}",
-            wallet_vtxo.vtxo.point().txid.to_string(),
-            wallet_vtxo.vtxo.point().vout.to_string()
+            wallet_vtxo.vtxo.point().txid,
+            wallet_vtxo.vtxo.point().vout
         ),
         state: state_name,
     }
@@ -308,16 +300,8 @@ pub fn vtxo_to_bark_vtxo(vtxo: &Vtxo) -> crate::cxx::ffi::BarkVtxo {
         expiry_height: vtxo.expiry_height(),
         server_pubkey: vtxo.server_pubkey().to_string(),
         exit_delta: vtxo.exit_delta(),
-        anchor_point: format!(
-            "{}:{}",
-            vtxo.chain_anchor().txid.to_string(),
-            vtxo.chain_anchor().vout.to_string()
-        ),
-        point: format!(
-            "{}:{}",
-            vtxo.point().txid.to_string(),
-            vtxo.point().vout.to_string()
-        ),
+        anchor_point: format!("{}:{}", vtxo.chain_anchor().txid, vtxo.chain_anchor().vout),
+        point: format!("{}:{}", vtxo.point().txid, vtxo.point().vout),
         state: "unknown".to_string(),
     }
 }
@@ -363,7 +347,7 @@ pub fn movement_to_bark_movement(
         .time
         .completed_at
         .map(|ts| ts.to_rfc3339())
-        .unwrap_or_else(|| "".to_string());
+        .unwrap_or_default();
 
     Ok(crate::cxx::ffi::BarkMovement {
         id: movement.id.inner(),

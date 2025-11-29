@@ -453,11 +453,11 @@ pub(crate) fn verify_message(
 
 pub(crate) fn movements() -> anyhow::Result<Vec<BarkMovement>> {
     let movements = crate::TOKIO_RUNTIME.block_on(crate::movements())?;
+    fn fun_name(m: &bark::movement::Movement) -> Result<BarkMovement, anyhow::Error> {
+        utils::movement_to_bark_movement(m)
+    }
 
-    movements
-        .iter()
-        .map(|m| utils::movement_to_bark_movement(m))
-        .collect()
+    movements.iter().map(fun_name).collect()
 }
 
 pub(crate) fn vtxos() -> anyhow::Result<Vec<BarkVtxo>> {
@@ -624,10 +624,8 @@ pub(crate) fn pay_lightning_invoice(
     destination: &str,
     amount_sat: *const u64,
 ) -> anyhow::Result<Bolt11PaymentResult> {
-    let amount_opt = match unsafe { amount_sat.as_ref().map(|r| *r) } {
-        Some(amount) => Some(bark::ark::bitcoin::Amount::from_sat(amount)),
-        None => None,
-    };
+    let amount_opt =
+        unsafe { amount_sat.as_ref().map(|r| *r) }.map(bark::ark::bitcoin::Amount::from_sat);
 
     let invoice = lightning::Invoice::from_str(destination)?;
 
@@ -646,10 +644,8 @@ pub(crate) fn pay_lightning_offer(
     offer: &str,
     amount_sat: *const u64,
 ) -> anyhow::Result<Bolt12PaymentResult> {
-    let amount_opt = match unsafe { amount_sat.as_ref().map(|r| *r) } {
-        Some(amount) => Some(bark::ark::bitcoin::Amount::from_sat(amount)),
-        None => None,
-    };
+    let amount_opt =
+        unsafe { amount_sat.as_ref().map(|r| *r) }.map(bark::ark::bitcoin::Amount::from_sat);
 
     let offer = lightning::Offer::from_str(offer)
         .map_err(|err| anyhow::anyhow!("Failed to parse bolt12 offer: {:?}", err))?;
@@ -725,15 +721,13 @@ pub(crate) fn offboard_specific(
 
     let ark_info = crate::TOKIO_RUNTIME.block_on(crate::get_ark_info())?;
 
-    let destination_address_opt = Address::<address::NetworkUnchecked>::from_str(
-        &destination_address,
-    )
-    .with_context(|| {
-        format!(
-            "Invalid destination address format: '{}'",
-            destination_address
-        )
-    })?;
+    let destination_address_opt =
+        Address::<address::NetworkUnchecked>::from_str(destination_address).with_context(|| {
+            format!(
+                "Invalid destination address format: '{}'",
+                destination_address
+            )
+        })?;
     let addr = destination_address_opt
         .require_network(ark_info.network)
         .with_context(|| {
@@ -762,15 +756,13 @@ pub(crate) fn offboard_specific(
 pub(crate) fn offboard_all(destination_address: &str) -> anyhow::Result<RoundStatus> {
     let ark_info = crate::TOKIO_RUNTIME.block_on(crate::get_ark_info())?;
 
-    let destination_address_opt = Address::<address::NetworkUnchecked>::from_str(
-        &destination_address,
-    )
-    .with_context(|| {
-        format!(
-            "Invalid destination address format: '{}'",
-            destination_address
-        )
-    })?;
+    let destination_address_opt =
+        Address::<address::NetworkUnchecked>::from_str(destination_address).with_context(|| {
+            format!(
+                "Invalid destination address format: '{}'",
+                destination_address
+            )
+        })?;
     let addr = destination_address_opt
         .require_network(ark_info.network)
         .with_context(|| {
@@ -803,7 +795,7 @@ pub(crate) fn try_claim_lightning_receive(
 }
 
 pub(crate) fn try_claim_all_lightning_receives(wait: bool) -> anyhow::Result<()> {
-    let _ = crate::TOKIO_RUNTIME.block_on(crate::try_claim_all_lightning_receives(wait))?;
+    crate::TOKIO_RUNTIME.block_on(crate::try_claim_all_lightning_receives(wait))?;
     Ok(())
 }
 

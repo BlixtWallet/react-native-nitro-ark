@@ -61,7 +61,7 @@ impl WalletTestFixture {
         }
 
         cxx::create_wallet(datadir_str, opts)
-            .with_context(|| format!("Failed to load wallet in test setup"))
+            .with_context(|| "Failed to load wallet in test setup".to_string())
             .unwrap();
 
         WalletTestFixture {

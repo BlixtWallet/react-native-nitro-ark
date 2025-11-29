@@ -1,9 +1,7 @@
-use anyhow;
-use anyhow::bail;
 use anyhow::Ok;
-use bark;
+use anyhow::{self, bail};
+use bark::{self, ark::bitcoin::Address};
 
-use bark::ark::bitcoin::Address;
 use bark::ark::bitcoin::Amount;
 use bark::ark::bitcoin::Network;
 use bark::Board;
@@ -101,7 +99,7 @@ impl WalletManager {
         config: Config,
     ) -> anyhow::Result<()> {
         if self.context.is_some() {
-            bail!("Wallet is already loaded. Please close it first.");
+            return Ok(());
         }
 
         debug!("Loading wallet in {}", datadir.display());
@@ -114,7 +112,7 @@ impl WalletManager {
         let (wallet, onchain_wallet) = self.open_wallet(datadir, mnemonic, config).await?;
 
         self.context = Some(WalletContext {
-            wallet: wallet,
+            wallet,
             onchain_wallet,
         });
 
@@ -201,6 +199,12 @@ impl WalletManager {
     }
 }
 
+impl Default for WalletManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 // function to explicitly initialize the logger.
 // This should be called once from your FFI entry point.
 pub fn init_logger() {
@@ -246,7 +250,7 @@ pub async fn get_ark_info() -> anyhow::Result<ArkInfo> {
     manager.with_context_ref(|ctx| {
         let info = ctx.wallet.ark_info();
         if let Some(info) = info {
-            Ok(info.clone())
+            Ok(*info)
         } else {
             bail!("Failed to get ark info")
         }
@@ -363,7 +367,7 @@ pub async fn verify_message(
     let hash = bark::ark::bitcoin::sign_message::signed_msg_hash(message);
     let secp = bark::ark::bitcoin::secp256k1::Secp256k1::new();
     let msg = bark::ark::bitcoin::secp256k1::Message::from_digest_slice(&hash[..]).unwrap();
-    Ok(secp.verify_ecdsa(&msg, &signature, &public_key).is_ok())
+    Ok(secp.verify_ecdsa(&msg, &signature, public_key).is_ok())
 }
 
 pub async fn bolt11_invoice(amount: u64) -> anyhow::Result<Bolt11Invoice> {
@@ -415,8 +419,7 @@ pub async fn try_claim_all_lightning_receives(wait: bool) -> anyhow::Result<()> 
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
-            let _ = ctx
-                .wallet
+            ctx.wallet
                 .try_claim_all_lightning_receives(wait)
                 .await
                 .context("Failed to claim all open invoices")?;
@@ -429,8 +432,7 @@ pub async fn sync_pending_boards() -> anyhow::Result<()> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
-            let _ = ctx
-                .wallet
+            ctx.wallet
                 .sync_pending_boards()
                 .await
                 .context("Failed to sync pending boards")?;
