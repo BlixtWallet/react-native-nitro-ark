@@ -36,7 +36,6 @@ export interface BarkArkInfo {
   vtxo_expiry_delta: number; // u16
   htlc_send_expiry_delta: number; // u16
   max_vtxo_amount: number; // u64
-  max_arkoor_depth: number; // u16
   required_board_confirmations: number; // u8
 }
 
@@ -200,7 +199,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   loadWallet(datadir: string, config: BarkCreateOpts): Promise<void>;
   isWalletLoaded(): Promise<boolean>;
   closeWallet(): Promise<void>;
-  checkConnection(): Promise<void>;
+  refreshServer(): Promise<void>;
   syncPendingBoards(): Promise<void>;
   maintenance(): Promise<void>;
   maintenanceWithOnchain(): Promise<void>;

@@ -200,10 +200,10 @@ public:
     });
   }
 
-  std::shared_ptr<Promise<void>> checkConnection() override {
+  std::shared_ptr<Promise<void>> refreshServer() override {
     return Promise<void>::async([]() {
       try {
-        bark_cxx::check_connection();
+        bark_cxx::refresh_server();
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
@@ -289,7 +289,6 @@ public:
         info.vtxo_expiry_delta = static_cast<double>(rust_info.vtxo_expiry_delta);
         info.htlc_send_expiry_delta = static_cast<double>(rust_info.htlc_send_expiry_delta);
         info.max_vtxo_amount = static_cast<double>(rust_info.max_vtxo_amount);
-        info.max_arkoor_depth = static_cast<double>(rust_info.max_arkoor_depth);
         info.required_board_confirmations = static_cast<double>(rust_info.required_board_confirmations);
         return info;
       } catch (const rust::Error& e) {

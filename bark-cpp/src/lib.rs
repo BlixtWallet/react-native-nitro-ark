@@ -1,10 +1,9 @@
-use anyhow::Ok;
 use anyhow::{self, bail};
 use bark::{self, ark::bitcoin::Address};
+use std::result::Result::Ok;
 
 use bark::ark::bitcoin::Amount;
 use bark::ark::bitcoin::Network;
-use bark::Board;
 
 use bark::ark::lightning;
 use bark::ark::lightning::Bolt12Invoice;
@@ -18,7 +17,7 @@ use bark::lightning_invoice::Bolt11Invoice;
 use bark::lnurllib::lightning_address::LightningAddress;
 use bark::movement::Movement;
 use bark::onchain::OnchainWallet;
-use bark::persist::models::LightningReceive;
+use bark::persist::models::{LightningReceive, PendingBoard};
 use bark::persist::BarkPersister;
 use bark::round::RoundStatus;
 use bark::Config;
@@ -246,15 +245,26 @@ pub async fn balance() -> anyhow::Result<bark::Balance> {
 }
 
 pub async fn get_ark_info() -> anyhow::Result<ArkInfo> {
-    let manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager.with_context_ref(|ctx| {
-        let info = ctx.wallet.ark_info();
-        if let Some(info) = info {
-            Ok(*info)
-        } else {
-            bail!("Failed to get ark info")
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    let info = manager
+        .with_context_async(|ctx| async {
+            ctx.wallet
+                .ark_info()
+                .await
+                .context("Failed to get ark info")
+        })
+        .await;
+
+    match info {
+        Ok(info) => {
+            if let Some(info) = info {
+                Ok(info)
+            } else {
+                bail!("Failed to get ark info, returned as null")
+            }
         }
-    })
+        Err(err) => Err(err),
+    }
 }
 
 pub async fn derive_store_next_keypair() -> anyhow::Result<Keypair> {
@@ -278,32 +288,38 @@ pub async fn peak_keypair(index: u32) -> anyhow::Result<Keypair> {
 
 pub async fn new_address() -> anyhow::Result<bark::ark::Address> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager.with_context(|ctx| {
-        Ok(ctx
-            .wallet
-            .new_address()
-            .context("Failed to create new address")?)
-    })
+    manager
+        .with_context_async(|ctx| async {
+            Ok(ctx
+                .wallet
+                .new_address()
+                .await
+                .context("Failed to create new address")?)
+        })
+        .await
 }
 
 pub async fn peak_address(index: u32) -> anyhow::Result<bark::ark::Address> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager.with_context(|ctx| {
-        Ok(ctx
-            .wallet
-            .peak_address(index)
-            .context("Failed to peak address")?)
-    })
+    manager
+        .with_context_async(|ctx| async {
+            Ok(ctx
+                .wallet
+                .peak_address(index)
+                .await
+                .context("Failed to peak address")?)
+        })
+        .await
 }
 
-pub async fn check_connection() -> anyhow::Result<()> {
+pub async fn refresh_server() -> anyhow::Result<()> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
             ctx.wallet
-                .check_connection()
+                .refresh_server()
                 .await
-                .context("Failed to check connection")
+                .context("Failed to refresh server connection")
         })
         .await
 }
@@ -546,7 +562,7 @@ pub async fn get_next_required_refresh_blockheight() -> anyhow::Result<Option<Bl
     })
 }
 
-pub async fn board_amount(amount: Amount) -> anyhow::Result<Board> {
+pub async fn board_amount(amount: Amount) -> anyhow::Result<PendingBoard> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
@@ -557,7 +573,7 @@ pub async fn board_amount(amount: Amount) -> anyhow::Result<Board> {
         .await
 }
 
-pub async fn board_all() -> anyhow::Result<Board> {
+pub async fn board_all() -> anyhow::Result<PendingBoard> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async { ctx.wallet.board_all(&mut ctx.onchain_wallet).await })
@@ -566,12 +582,14 @@ pub async fn board_all() -> anyhow::Result<Board> {
 
 pub async fn validate_arkoor_address(address: bark::ark::Address) -> anyhow::Result<()> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager.with_context(|ctx| {
-        ctx.wallet
-            .validate_arkoor_address(&address)
-            .context("Failed to validate address")?;
-        Ok(())
-    })
+    manager
+        .with_context_async(|ctx| async {
+            ctx.wallet
+                .validate_arkoor_address(&address)
+                .await
+                .context("Failed to validate address")
+        })
+        .await
 }
 
 pub async fn send_arkoor_payment(

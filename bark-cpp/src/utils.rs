@@ -350,7 +350,7 @@ pub fn movement_to_bark_movement(
         .unwrap_or_default();
 
     Ok(crate::cxx::ffi::BarkMovement {
-        id: movement.id.inner(),
+        id: movement.id.0,
         status: movement.status.as_str().to_string(),
         subsystem_name: movement.subsystem.name.clone(),
         subsystem_kind: movement.subsystem.kind.clone(),

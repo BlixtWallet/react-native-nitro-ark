@@ -85,8 +85,12 @@ export function closeWallet(): Promise<void> {
   return NitroArkHybridObject.closeWallet();
 }
 
-export function checkConnection(): Promise<void> {
-  return NitroArkHybridObject.checkConnection();
+/**
+ * Refreshes the server state.
+ * @returns A promise that resolves on success or rejects on error.
+ */
+export function refreshServer(): Promise<void> {
+  return NitroArkHybridObject.refreshServer();
 }
 
 /**

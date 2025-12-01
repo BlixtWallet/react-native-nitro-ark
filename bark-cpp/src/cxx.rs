@@ -94,7 +94,6 @@ pub(crate) mod ffi {
         vtxo_expiry_delta: u16,
         htlc_send_expiry_delta: u16,
         max_vtxo_amount: u64,
-        max_arkoor_depth: u16,
         required_board_confirmations: u8,
     }
 
@@ -248,7 +247,7 @@ pub(crate) mod ffi {
         fn maintenance() -> Result<()>;
         fn maintenance_with_onchain() -> Result<()>;
         fn maintenance_refresh() -> Result<()>;
-        fn check_connection() -> Result<()>;
+        fn refresh_server() -> Result<()>;
         fn sync() -> Result<()>;
         fn create_wallet(datadir: &str, opts: CreateOpts) -> Result<()>;
         fn load_wallet(datadir: &str, config: CreateOpts) -> Result<()>;
@@ -329,7 +328,6 @@ pub(crate) fn get_ark_info() -> anyhow::Result<ffi::CxxArkInfo> {
         vtxo_expiry_delta: info.vtxo_expiry_delta,
         htlc_send_expiry_delta: info.htlc_send_expiry_delta,
         max_vtxo_amount: info.max_vtxo_amount.map_or(0, |a| a.to_sat()),
-        max_arkoor_depth: info.max_arkoor_depth,
         required_board_confirmations: info.required_board_confirmations as u8,
     })
 }
@@ -541,8 +539,8 @@ pub(crate) fn maintenance_refresh() -> anyhow::Result<()> {
     crate::TOKIO_RUNTIME.block_on(crate::maintenance_refresh())
 }
 
-pub(crate) fn check_connection() -> anyhow::Result<()> {
-    crate::TOKIO_RUNTIME.block_on(crate::check_connection())
+pub(crate) fn refresh_server() -> anyhow::Result<()> {
+    crate::TOKIO_RUNTIME.block_on(crate::refresh_server())
 }
 
 pub(crate) fn sync() -> anyhow::Result<()> {
