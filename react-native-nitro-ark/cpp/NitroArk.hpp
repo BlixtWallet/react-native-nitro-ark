@@ -307,9 +307,7 @@ public:
         balance.pending_in_round = static_cast<double>(rust_balance.pending_in_round);
         balance.pending_exit = static_cast<double>(rust_balance.pending_exit);
         balance.pending_board = static_cast<double>(rust_balance.pending_board);
-        balance.pending_lightning_receive.total = static_cast<double>(rust_balance.pending_lightning_receive.total);
-        balance.pending_lightning_receive.claimable =
-            static_cast<double>(rust_balance.pending_lightning_receive.claimable);
+
         return balance;
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());

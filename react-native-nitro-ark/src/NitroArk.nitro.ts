@@ -111,7 +111,6 @@ export interface LightningReceiveBalance {
 export interface OffchainBalanceResult {
   spendable: number; // u64
   pending_lightning_send: number; // u64
-  pending_lightning_receive: LightningReceiveBalance;
   pending_in_round: number; // u64
   pending_exit: number; // u64
   pending_board: number; // u64
