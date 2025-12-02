@@ -1216,6 +1216,8 @@ void try_claim_all_lightning_receives(bool wait);
 
 void sync_exits();
 
+void start_sync_past_rounds();
+
 ::bark_cxx::OnChainBalance onchain_balance();
 
 void onchain_sync();

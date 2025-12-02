@@ -151,6 +151,14 @@ export function syncExits(): Promise<void> {
   return NitroArkHybridObject.syncExits();
 }
 
+/**
+ * Starts synchronizing past rounds.
+ * @returns A promise that resolves on success.
+ */
+export function startSyncPastRounds(): Promise<void> {
+  return NitroArkHybridObject.startSyncPastRounds();
+}
+
 // --- Wallet Info ---
 
 /**

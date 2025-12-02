@@ -205,6 +205,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   maintenanceRefresh(): Promise<void>;
   sync(): Promise<void>;
   syncExits(): Promise<void>;
+  startSyncPastRounds(): Promise<void>;
 
   // --- Wallet Info ---
   getArkInfo(): Promise<BarkArkInfo>;
