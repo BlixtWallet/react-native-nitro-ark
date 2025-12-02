@@ -241,7 +241,7 @@ pub async fn is_wallet_loaded() -> bool {
 
 pub async fn balance() -> anyhow::Result<bark::Balance> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager.with_context(|ctx| Ok(ctx.wallet.balance()?))
+    manager.with_context(|ctx| ctx.wallet.balance())
 }
 
 pub async fn get_ark_info() -> anyhow::Result<ArkInfo> {
@@ -279,10 +279,9 @@ pub async fn derive_store_next_keypair() -> anyhow::Result<Keypair> {
 pub async fn peak_keypair(index: u32) -> anyhow::Result<Keypair> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager.with_context(|ctx| {
-        Ok(ctx
-            .wallet
+        ctx.wallet
             .peak_keypair(index)
-            .context("Failed to peak keypair")?)
+            .context("Failed to peak keypair")
     })
 }
 
@@ -290,11 +289,10 @@ pub async fn new_address() -> anyhow::Result<bark::ark::Address> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
-            Ok(ctx
-                .wallet
+            ctx.wallet
                 .new_address()
                 .await
-                .context("Failed to create new address")?)
+                .context("Failed to create new address")
         })
         .await
 }
@@ -303,11 +301,10 @@ pub async fn peak_address(index: u32) -> anyhow::Result<bark::ark::Address> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
-            Ok(ctx
-                .wallet
+            ctx.wallet
                 .peak_address(index)
                 .await
-                .context("Failed to peak address")?)
+                .context("Failed to peak address")
         })
         .await
 }
@@ -508,12 +505,12 @@ pub async fn sync() -> anyhow::Result<()> {
 
 pub async fn movements() -> anyhow::Result<Vec<Movement>> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager.with_context(|ctx| Ok(ctx.wallet.movements()?))
+    manager.with_context(|ctx| ctx.wallet.movements())
 }
 
 pub async fn vtxos() -> anyhow::Result<Vec<WalletVtxo>> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager.with_context(|ctx| Ok(ctx.wallet.vtxos()?))
+    manager.with_context(|ctx| ctx.wallet.vtxos())
 }
 
 pub async fn get_expiring_vtxos(threshold: BlockHeight) -> anyhow::Result<Vec<WalletVtxo>> {
@@ -643,7 +640,7 @@ pub async fn send_round_onchain_payment(
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
-            Ok(ctx.wallet.send_round_onchain_payment(addr, amount).await?)
+            ctx.wallet.send_round_onchain_payment(addr, amount).await
         })
         .await
 }

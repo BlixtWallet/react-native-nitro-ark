@@ -36,7 +36,7 @@ pub(crate) mod ffi {
     }
 
     pub struct BoardResult {
-        vtxos: Vec<BarkVtxo>,
+        vtxos: Vec<String>,
         funding_txid: String,
     }
 
@@ -571,9 +571,9 @@ pub(crate) fn board_amount(amount_sat: u64) -> anyhow::Result<ffi::BoardResult> 
         vtxos: board_result
             .vtxos
             .iter()
-            .map(utils::vtxo_to_bark_vtxo)
+            .map(|vtxo| vtxo.to_string())
             .collect(),
-        funding_txid: board_result.funding_txid.to_string(),
+        funding_txid: board_result.funding_tx.compute_txid().to_string(),
     })
 }
 
@@ -584,9 +584,9 @@ pub(crate) fn board_all() -> anyhow::Result<ffi::BoardResult> {
         vtxos: board_result
             .vtxos
             .iter()
-            .map(utils::vtxo_to_bark_vtxo)
+            .map(|vtxo| vtxo.to_string())
             .collect(),
-        funding_txid: board_result.funding_txid.to_string(),
+        funding_txid: board_result.funding_tx.compute_txid().to_string(),
     })
 }
 

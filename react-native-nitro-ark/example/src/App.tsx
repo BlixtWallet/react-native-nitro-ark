@@ -514,10 +514,10 @@ export default function ArkApp() {
     runOperation('closeWallet', () => NitroArk.closeWallet(), 'management');
   };
 
-  const handleCheckConnection = () => {
+  const handleRefreshServer = () => {
     runOperation(
-      'checkConnection',
-      () => NitroArk.checkConnection(),
+      'refreshServer',
+      () => NitroArk.refreshServer(),
       'management',
       () => {
         setResults((prev) => ({
@@ -1260,7 +1260,7 @@ export default function ArkApp() {
             {renderOperationButton('Create Wallet', handleCreateWallet)}
             {renderOperationButton('Load Wallet', handleLoadWallet)}
             {renderOperationButton('Close Wallet', handleCloseWallet)}
-            {renderOperationButton('Check Connection', handleCheckConnection)}
+            {renderOperationButton('Check Connection', handleRefreshServer)}
             <View style={styles.buttonWrapper}>
               <CustomButton
                 title="Check Wallet Status"

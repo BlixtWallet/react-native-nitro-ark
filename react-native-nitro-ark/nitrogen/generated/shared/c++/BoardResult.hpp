@@ -23,11 +23,9 @@
 #error NitroModules cannot be found! Are you sure you installed NitroModules properly?
 #endif
 
-// Forward declaration of `BarkVtxo` to properly resolve imports.
-namespace margelo::nitro::nitroark { struct BarkVtxo; }
+
 
 #include <string>
-#include "BarkVtxo.hpp"
 #include <vector>
 
 namespace margelo::nitro::nitroark {
@@ -38,11 +36,11 @@ namespace margelo::nitro::nitroark {
   struct BoardResult {
   public:
     std::string funding_txid     SWIFT_PRIVATE;
-    std::vector<BarkVtxo> vtxos     SWIFT_PRIVATE;
+    std::vector<std::string> vtxos     SWIFT_PRIVATE;
 
   public:
     BoardResult() = default;
-    explicit BoardResult(std::string funding_txid, std::vector<BarkVtxo> vtxos): funding_txid(funding_txid), vtxos(vtxos) {}
+    explicit BoardResult(std::string funding_txid, std::vector<std::string> vtxos): funding_txid(funding_txid), vtxos(vtxos) {}
   };
 
 } // namespace margelo::nitro::nitroark
@@ -56,13 +54,13 @@ namespace margelo::nitro {
       jsi::Object obj = arg.asObject(runtime);
       return margelo::nitro::nitroark::BoardResult(
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "funding_txid")),
-        JSIConverter<std::vector<margelo::nitro::nitroark::BarkVtxo>>::fromJSI(runtime, obj.getProperty(runtime, "vtxos"))
+        JSIConverter<std::vector<std::string>>::fromJSI(runtime, obj.getProperty(runtime, "vtxos"))
       );
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroark::BoardResult& arg) {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, "funding_txid", JSIConverter<std::string>::toJSI(runtime, arg.funding_txid));
-      obj.setProperty(runtime, "vtxos", JSIConverter<std::vector<margelo::nitro::nitroark::BarkVtxo>>::toJSI(runtime, arg.vtxos));
+      obj.setProperty(runtime, "vtxos", JSIConverter<std::vector<std::string>>::toJSI(runtime, arg.vtxos));
       return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -74,7 +72,7 @@ namespace margelo::nitro {
         return false;
       }
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "funding_txid"))) return false;
-      if (!JSIConverter<std::vector<margelo::nitro::nitroark::BarkVtxo>>::canConvert(runtime, obj.getProperty(runtime, "vtxos"))) return false;
+      if (!JSIConverter<std::vector<std::string>>::canConvert(runtime, obj.getProperty(runtime, "vtxos"))) return false;
       return true;
     }
   };

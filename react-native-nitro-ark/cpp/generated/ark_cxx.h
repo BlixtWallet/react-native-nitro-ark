@@ -857,7 +857,7 @@ enum class PaymentTypes : ::std::uint8_t {
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$BoardResult
 #define CXXBRIDGE1_STRUCT_bark_cxx$BoardResult
 struct BoardResult final {
-  ::rust::Vec<::bark_cxx::BarkVtxo> vtxos;
+  ::rust::Vec<::rust::String> vtxos;
   ::rust::String funding_txid;
 
   using IsRelocatable = ::std::true_type;
@@ -955,7 +955,6 @@ struct CxxArkInfo final {
   ::std::uint16_t vtxo_expiry_delta CXX_DEFAULT_VALUE(0);
   ::std::uint16_t htlc_send_expiry_delta CXX_DEFAULT_VALUE(0);
   ::std::uint64_t max_vtxo_amount CXX_DEFAULT_VALUE(0);
-  ::std::uint16_t max_arkoor_depth CXX_DEFAULT_VALUE(0);
   ::std::uint8_t required_board_confirmations CXX_DEFAULT_VALUE(0);
 
   using IsRelocatable = ::std::true_type;
@@ -1048,8 +1047,6 @@ struct OffchainBalance final {
   ::std::uint64_t spendable CXX_DEFAULT_VALUE(0);
   // Coins that are in the process of being sent over Lightning.
   ::std::uint64_t pending_lightning_send CXX_DEFAULT_VALUE(0);
-  // Coins that are in the process of being received over Lightning.
-  ::bark_cxx::LightningReceiveBalance pending_lightning_receive;
   // Coins locked in a round.
   ::std::uint64_t pending_in_round CXX_DEFAULT_VALUE(0);
   // Coins that are in the process of unilaterally exiting the Ark.
@@ -1185,7 +1182,7 @@ void maintenance_with_onchain();
 
 void maintenance_refresh();
 
-void check_connection();
+void refresh_server();
 
 void sync();
 

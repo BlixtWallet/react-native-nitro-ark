@@ -828,7 +828,11 @@ public:
         bark_cxx::BoardResult result_rs = bark_cxx::board_amount(static_cast<uint64_t>(amountSat));
         BoardResult result;
         result.funding_txid = std::string(result_rs.funding_txid.data(), result_rs.funding_txid.length());
-        result.vtxos = convertRustVtxosToVector(result_rs.vtxos);
+        std::vector<std::string> vtxos_vec;
+        for (const auto& vtxo : result_rs.vtxos) {
+          vtxos_vec.push_back(std::string(vtxo.data(), vtxo.length()));
+        }
+        result.vtxos = vtxos_vec;
         return result;
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
@@ -842,7 +846,11 @@ public:
         bark_cxx::BoardResult result_rs = bark_cxx::board_all();
         BoardResult result;
         result.funding_txid = std::string(result_rs.funding_txid.data(), result_rs.funding_txid.length());
-        result.vtxos = convertRustVtxosToVector(result_rs.vtxos);
+        std::vector<std::string> vtxos_vec;
+        for (const auto& vtxo : result_rs.vtxos) {
+          vtxos_vec.push_back(std::string(vtxo.data(), vtxo.length()));
+        }
+        result.vtxos = vtxos_vec;
         return result;
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());

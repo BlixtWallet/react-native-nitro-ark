@@ -57,7 +57,7 @@ interface BarkVtxo {
 
 export interface BoardResult {
   funding_txid: string;
-  vtxos: BarkVtxo[];
+  vtxos: string[];
 }
 
 export interface Bolt11Invoice {
