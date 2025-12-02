@@ -611,6 +611,22 @@ export default function ArkApp() {
     runOperation('syncExits', () => NitroArk.syncExits(), 'management');
   };
 
+  const handleStartSyncPastRounds = () => {
+    runOperation(
+      'startSyncPastRounds',
+      () => NitroArk.startSyncPastRounds(),
+      'management'
+    );
+  };
+
+  const handleSyncPendingRounds = () => {
+    runOperation(
+      'syncPendingRounds',
+      () => NitroArk.syncPendingRounds(),
+      'management'
+    );
+  };
+
   const handleGetArkInfo = () => {
     runOperation(
       'getArkInfo',
@@ -1284,6 +1300,14 @@ export default function ArkApp() {
             {renderOperationButton('Sync', handleSync)}
             {renderOperationButton('Onchain Sync', handleOnchainSync)}
             {renderOperationButton('Sync Exits', handleSyncExits)}
+            {renderOperationButton(
+              'Start Sync Past Rounds',
+              handleStartSyncPastRounds
+            )}
+            {renderOperationButton(
+              'Sync Pending Rounds',
+              handleSyncPendingRounds
+            )}
           </View>
         </View>
 

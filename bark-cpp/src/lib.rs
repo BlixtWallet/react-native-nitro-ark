@@ -705,3 +705,16 @@ pub async fn start_sync_past_rounds() -> anyhow::Result<()> {
         })
         .await
 }
+
+pub async fn sync_pending_rounds() -> anyhow::Result<()> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async {
+            ctx.wallet
+                .sync_pending_rounds()
+                .await
+                .context("Failed to sync pending rounds")?;
+            Ok(())
+        })
+        .await
+}

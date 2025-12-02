@@ -280,6 +280,7 @@ pub(crate) mod ffi {
         fn try_claim_all_lightning_receives(wait: bool) -> Result<()>;
         fn sync_exits() -> Result<()>;
         fn start_sync_past_rounds() -> Result<()>;
+        fn sync_pending_rounds() -> Result<()>;
 
         // Onchain methods
         fn onchain_balance() -> Result<OnChainBalance>;
@@ -799,6 +800,10 @@ pub(crate) fn sync_exits() -> anyhow::Result<()> {
 
 pub(crate) fn start_sync_past_rounds() -> anyhow::Result<()> {
     TOKIO_RUNTIME.block_on(crate::start_sync_past_rounds())
+}
+
+pub(crate) fn sync_pending_rounds() -> anyhow::Result<()> {
+    TOKIO_RUNTIME.block_on(crate::sync_pending_rounds())
 }
 
 // Onchain methods

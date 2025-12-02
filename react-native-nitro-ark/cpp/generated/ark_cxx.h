@@ -1218,6 +1218,8 @@ void sync_exits();
 
 void start_sync_past_rounds();
 
+void sync_pending_rounds();
+
 ::bark_cxx::OnChainBalance onchain_balance();
 
 void onchain_sync();

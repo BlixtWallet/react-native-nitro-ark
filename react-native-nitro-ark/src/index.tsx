@@ -159,6 +159,14 @@ export function startSyncPastRounds(): Promise<void> {
   return NitroArkHybridObject.startSyncPastRounds();
 }
 
+/**
+ * Synchronizes pending rounds.
+ * @returns A promise that resolves on success.
+ */
+export function syncPendingRounds(): Promise<void> {
+  return NitroArkHybridObject.syncPendingRounds();
+}
+
 // --- Wallet Info ---
 
 /**
