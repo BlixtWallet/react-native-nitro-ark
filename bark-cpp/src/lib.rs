@@ -208,7 +208,7 @@ impl Default for WalletManager {
 // This should be called once from your FFI entry point.
 pub fn init_logger() {
     LOGGER_INIT.call_once(|| {
-        logger::Logger::new();
+        logger::Logger::new(logger::log::LevelFilter::Debug);
     });
 }
 

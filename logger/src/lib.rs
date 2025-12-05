@@ -10,22 +10,17 @@ use oslog::OsLogger;
 pub struct Logger {}
 
 impl Logger {
-    pub fn new() -> Self {
+    pub fn new(level: LevelFilter) -> Self {
         #[cfg(target_os = "android")]
         {
-            // Android-specific logger initialization
-            android_logger::init_once(
-                Config::default()
-                    .with_max_level(LevelFilter::Debug) // Set the max log level
-                    .with_tag("NitroArk"), // Set a custom tag for logcat
-            );
+            android_logger::init_once(Config::default().with_max_level(level).with_tag("NitroArk"));
             log::info!("Android logger initialized.");
         }
 
         #[cfg(target_os = "ios")]
         {
             OsLogger::new("com.nitro.ark")
-                .level_filter(LevelFilter::Debug)
+                .level_filter(level)
                 .init()
                 .unwrap();
             log::info!("oslog initialized.");
@@ -33,12 +28,9 @@ impl Logger {
 
         #[cfg(not(any(target_os = "android", target_os = "ios")))]
         {
-            // Standard logger for non-Android platforms (e.g., iOS, desktop)
-            // The RUST_LOG environment variable can be used to control verbosity.
-            // Example: `RUST_LOG=info` or `RUST_LOG=debug`
             env_logger::builder()
-                .filter_level(LevelFilter::Debug) // Default level
-                .parse_default_env() // Override with RUST_LOG if set
+                .filter_level(level)
+                .parse_default_env()
                 .init();
             log::info!("Standard (env_logger) initialized.");
         }
@@ -49,6 +41,6 @@ impl Logger {
 
 impl Default for Logger {
     fn default() -> Self {
-        Logger::new()
+        Logger::new(LevelFilter::Debug)
     }
 }
