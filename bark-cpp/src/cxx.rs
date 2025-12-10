@@ -513,9 +513,9 @@ pub(crate) fn lightning_receive_status(
         payment_hash: status.payment_hash.to_string(),
         payment_preimage: status.payment_preimage.to_string(),
         invoice: status.invoice.to_string(),
-        preimage_revealed_at: status
-            .preimage_revealed_at
-            .map_or(std::ptr::null(), |v| Box::into_raw(Box::new(v))),
+        preimage_revealed_at: status.preimage_revealed_at.map_or(std::ptr::null(), |v| {
+            Box::into_raw(Box::new(v.timestamp() as u64))
+        }),
     });
     Ok(Box::into_raw(status))
 }
@@ -814,7 +814,7 @@ pub(crate) fn onchain_list_unspent() -> anyhow::Result<String> {
 }
 
 pub(crate) fn onchain_sync() -> anyhow::Result<()> {
-    let _ = crate::TOKIO_RUNTIME.block_on(crate::onchain::sync())?;
+    crate::TOKIO_RUNTIME.block_on(crate::onchain::sync())?;
     Ok(())
 }
 

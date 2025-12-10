@@ -1,4 +1,4 @@
-use bark::onchain::Utxo;
+use bark::onchain::{ChainSync, Utxo};
 use bdk_wallet::bitcoin::{Address, Amount, FeeRate, Txid};
 
 use crate::GLOBAL_WALLET_MANAGER;
@@ -67,7 +67,7 @@ pub async fn drain(destination: Address, fee_rate: FeeRate) -> anyhow::Result<Tx
 }
 
 /// Synchronize the onchain wallet with the blockchain
-pub async fn sync() -> anyhow::Result<Amount> {
+pub async fn sync() -> anyhow::Result<()> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async { ctx.onchain_wallet.sync(&ctx.wallet.chain).await })
