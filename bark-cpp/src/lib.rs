@@ -1,15 +1,14 @@
 use anyhow::{self, bail};
+use bark::persist::models::LightningSend;
 use bark::{self, ark::bitcoin::Address};
 use std::result::Result::Ok;
 
 use bark::ark::bitcoin::Amount;
 use bark::ark::bitcoin::Network;
 
-use bark::ark::lightning;
-use bark::ark::lightning::Bolt12Invoice;
 use bark::ark::lightning::Offer;
 use bark::ark::lightning::PaymentHash;
-use bark::ark::lightning::Preimage;
+use bark::ark::lightning::{self, Preimage};
 use bark::ark::ArkInfo;
 use bark::ark::Vtxo;
 use bark::ark::VtxoId;
@@ -418,8 +417,7 @@ pub async fn try_claim_lightning_receive(
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
-            let _ = ctx
-                .wallet
+            ctx.wallet
                 .try_claim_lightning_receive(payment_hash, wait, token.as_deref())
                 .await
                 .context("Failed to claim bolt11 payment")?;
@@ -609,10 +607,22 @@ pub async fn send_arkoor_payment(
         .await
 }
 
+pub async fn check_lightning_payment(
+    payment_hash: PaymentHash,
+    wait: bool,
+) -> anyhow::Result<Option<Preimage>> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async {
+            ctx.wallet.check_lightning_payment(payment_hash, wait).await
+        })
+        .await
+}
+
 pub async fn pay_lightning_invoice(
     destination: lightning::Invoice,
     amount_sat: Option<Amount>,
-) -> anyhow::Result<Preimage> {
+) -> anyhow::Result<LightningSend> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
@@ -626,7 +636,7 @@ pub async fn pay_lightning_invoice(
 pub async fn pay_lightning_offer(
     offer: Offer,
     amount: Option<Amount>,
-) -> anyhow::Result<(Bolt12Invoice, Preimage)> {
+) -> anyhow::Result<LightningSend> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async { ctx.wallet.pay_lightning_offer(offer, amount).await })
@@ -649,7 +659,7 @@ pub async fn pay_lightning_address(
     addr: &str,
     amount: Amount,
     comment: Option<&str>,
-) -> anyhow::Result<(Bolt11Invoice, Preimage)> {
+) -> anyhow::Result<LightningSend> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {

@@ -1136,6 +1136,21 @@ export default function ArkApp() {
     );
   };
 
+  const handleCheckLightningPayment = () => {
+    if (!paymentHash) {
+      setError((prev) => ({
+        ...prev,
+        lightning: 'Payment hash is required.',
+      }));
+      return;
+    }
+    runOperation(
+      'checkLightningPayment',
+      () => NitroArk.checkLightningPayment(paymentHash, false),
+      'lightning'
+    );
+  };
+
   const handleSignMessage = () => {
     if (!messageToSign) {
       setError((prev) => ({
@@ -1600,6 +1615,13 @@ export default function ArkApp() {
             {renderOperationButton(
               'Get Lightning Receive Status',
               handleLightningReceiveStatus
+            )}
+          </View>
+
+          <View style={styles.buttonGrid}>
+            {renderOperationButton(
+              'Check Lightning Payment',
+              handleCheckLightningPayment
             )}
           </View>
 

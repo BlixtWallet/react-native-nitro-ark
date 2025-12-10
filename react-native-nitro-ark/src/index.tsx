@@ -6,9 +6,7 @@ import type {
   Bolt11Invoice,
   BarkSendManyOutput,
   ArkoorPaymentResult,
-  Bolt11PaymentResult,
-  Bolt12PaymentResult,
-  LnurlPaymentResult,
+  LightningSendResult,
   OnchainPaymentResult,
   OffchainBalanceResult,
   OnchainBalanceResult,
@@ -431,6 +429,19 @@ export function lightningReceiveStatus(
 }
 
 /**
+ * Checks if a Lightning payment has been received and returns the preimage if available.
+ * @param paymentHash The payment hash of the Lightning payment.
+ * @param wait Whether to wait for the payment to be received.
+ * @returns A promise resolving to the preimage string if payment received, or null if not.
+ */
+export function checkLightningPayment(
+  paymentHash: string,
+  wait: boolean
+): Promise<string | null> {
+  return NitroArkHybridObject.checkLightningPayment(paymentHash, wait);
+}
+
+/**
  * Attempts to claim a Lightning payment, optionally using a claim token.
  * @param paymentHash The payment hash of the Lightning payment.
  * @param wait Whether to wait for the claim to complete.
@@ -462,12 +473,12 @@ export function tryClaimAllLightningReceives(wait: boolean): Promise<void> {
  * Pays a Bolt11 Lightning invoice.
  * @param destination The Lightning invoice.
  * @param amountSat The amount in satoshis to send. Use 0 for invoice amount.
- * @returns A promise resolving to a Bolt11PaymentResult object
+ * @returns A promise resolving to a LightningSendResult object
  */
 export function payLightningInvoice(
   destination: string,
   amountSat?: number
-): Promise<Bolt11PaymentResult> {
+): Promise<LightningSendResult> {
   return NitroArkHybridObject.payLightningInvoice(destination, amountSat);
 }
 
@@ -475,12 +486,12 @@ export function payLightningInvoice(
  * Sends a payment to a Bolt12 offer.
  * @param offer The Bolt12 offer.
  * @param amountSat The amount in satoshis to send. Use 0 for invoice amount.
- * @returns A promise resolving to a Bolt12PaymentResult object
+ * @returns A promise resolving to a LightningSendResult object
  */
 export function payLightningOffer(
   offer: string,
   amountSat?: number
-): Promise<Bolt12PaymentResult> {
+): Promise<LightningSendResult> {
   return NitroArkHybridObject.payLightningOffer(offer, amountSat);
 }
 
@@ -489,13 +500,13 @@ export function payLightningOffer(
  * @param addr The Lightning Address.
  * @param amountSat The amount in satoshis to send.
  * @param comment An optional comment.
- * @returns A promise resolving to a LnurlPaymentResult object
+ * @returns A promise resolving to a LightningSendResult object
  */
 export function payLightningAddress(
   addr: string,
   amountSat: number,
   comment: string
-): Promise<LnurlPaymentResult> {
+): Promise<LightningSendResult> {
   return NitroArkHybridObject.payLightningAddress(addr, amountSat, comment);
 }
 
@@ -587,8 +598,7 @@ export type {
   BoardResult,
   BarkSendManyOutput,
   ArkoorPaymentResult,
-  Bolt11PaymentResult,
-  LnurlPaymentResult,
+  LightningSendResult,
   OnchainPaymentResult,
   PaymentTypes,
   OffchainBalanceResult,

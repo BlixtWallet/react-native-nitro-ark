@@ -75,23 +75,12 @@ export interface ArkoorPaymentResult {
   payment_type: PaymentTypes; // 'Arkoor'
 }
 
-export interface Bolt11PaymentResult {
-  bolt11_invoice: string;
-  preimage: string;
-  payment_type: PaymentTypes; // 'Lightning'
-}
-
-export interface Bolt12PaymentResult {
-  bolt12_offer: string;
-  preimage: string;
-  payment_type: PaymentTypes; // 'Bolt12'
-}
-
-export interface LnurlPaymentResult {
-  lnurl: string;
-  bolt11_invoice: string;
-  preimage: string;
-  payment_type: PaymentTypes; // 'Lnurl'
+export interface LightningSendResult {
+  invoice: string;
+  amount: number; // u64
+  htlc_vtxos: BarkVtxo[];
+  movement_id: number; // u32
+  preimage: string | null;
 }
 
 export interface OnchainPaymentResult {
@@ -272,16 +261,16 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   payLightningInvoice(
     destination: string,
     amountSat?: number
-  ): Promise<Bolt11PaymentResult>;
+  ): Promise<LightningSendResult>;
   payLightningOffer(
     offer: string,
     amountSat?: number
-  ): Promise<Bolt12PaymentResult>;
+  ): Promise<LightningSendResult>;
   payLightningAddress(
     addr: string,
     amountSat: number,
     comment: string
-  ): Promise<LnurlPaymentResult>;
+  ): Promise<LightningSendResult>;
   sendRoundOnchainPayment(
     destination: string,
     amountSat: number
@@ -292,6 +281,10 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   lightningReceiveStatus(
     paymentHash: string
   ): Promise<LightningReceive | undefined>;
+  checkLightningPayment(
+    paymentHash: string,
+    wait: boolean
+  ): Promise<string | null>;
   tryClaimLightningReceive(
     paymentHash: string,
     wait: boolean,

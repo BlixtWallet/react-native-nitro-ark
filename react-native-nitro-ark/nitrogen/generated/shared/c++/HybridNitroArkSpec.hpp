@@ -37,12 +37,8 @@ namespace margelo::nitro::nitroark { struct BarkSendManyOutput; }
 namespace margelo::nitro::nitroark { struct BoardResult; }
 // Forward declaration of `ArkoorPaymentResult` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct ArkoorPaymentResult; }
-// Forward declaration of `Bolt11PaymentResult` to properly resolve imports.
-namespace margelo::nitro::nitroark { struct Bolt11PaymentResult; }
-// Forward declaration of `Bolt12PaymentResult` to properly resolve imports.
-namespace margelo::nitro::nitroark { struct Bolt12PaymentResult; }
-// Forward declaration of `LnurlPaymentResult` to properly resolve imports.
-namespace margelo::nitro::nitroark { struct LnurlPaymentResult; }
+// Forward declaration of `LightningSendResult` to properly resolve imports.
+namespace margelo::nitro::nitroark { struct LightningSendResult; }
 // Forward declaration of `RoundStatus` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct RoundStatus; }
 // Forward declaration of `Bolt11Invoice` to properly resolve imports.
@@ -66,12 +62,12 @@ namespace margelo::nitro::nitroark { struct LightningReceive; }
 #include "BarkSendManyOutput.hpp"
 #include "BoardResult.hpp"
 #include "ArkoorPaymentResult.hpp"
-#include "Bolt11PaymentResult.hpp"
-#include "Bolt12PaymentResult.hpp"
-#include "LnurlPaymentResult.hpp"
+#include "LightningSendResult.hpp"
 #include "RoundStatus.hpp"
 #include "Bolt11Invoice.hpp"
 #include "LightningReceive.hpp"
+#include <NitroModules/Null.hpp>
+#include <variant>
 
 namespace margelo::nitro::nitroark {
 
@@ -145,12 +141,13 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<BoardResult>> boardAll() = 0;
       virtual std::shared_ptr<Promise<void>> validateArkoorAddress(const std::string& address) = 0;
       virtual std::shared_ptr<Promise<ArkoorPaymentResult>> sendArkoorPayment(const std::string& destination, double amountSat) = 0;
-      virtual std::shared_ptr<Promise<Bolt11PaymentResult>> payLightningInvoice(const std::string& destination, std::optional<double> amountSat) = 0;
-      virtual std::shared_ptr<Promise<Bolt12PaymentResult>> payLightningOffer(const std::string& offer, std::optional<double> amountSat) = 0;
-      virtual std::shared_ptr<Promise<LnurlPaymentResult>> payLightningAddress(const std::string& addr, double amountSat, const std::string& comment) = 0;
+      virtual std::shared_ptr<Promise<LightningSendResult>> payLightningInvoice(const std::string& destination, std::optional<double> amountSat) = 0;
+      virtual std::shared_ptr<Promise<LightningSendResult>> payLightningOffer(const std::string& offer, std::optional<double> amountSat) = 0;
+      virtual std::shared_ptr<Promise<LightningSendResult>> payLightningAddress(const std::string& addr, double amountSat, const std::string& comment) = 0;
       virtual std::shared_ptr<Promise<RoundStatus>> sendRoundOnchainPayment(const std::string& destination, double amountSat) = 0;
       virtual std::shared_ptr<Promise<Bolt11Invoice>> bolt11Invoice(double amountMsat) = 0;
       virtual std::shared_ptr<Promise<std::optional<LightningReceive>>> lightningReceiveStatus(const std::string& paymentHash) = 0;
+      virtual std::shared_ptr<Promise<std::variant<nitro::NullType, std::string>>> checkLightningPayment(const std::string& paymentHash, bool wait) = 0;
       virtual std::shared_ptr<Promise<void>> tryClaimLightningReceive(const std::string& paymentHash, bool wait, const std::optional<std::string>& token) = 0;
       virtual std::shared_ptr<Promise<void>> tryClaimAllLightningReceives(bool wait) = 0;
       virtual std::shared_ptr<Promise<RoundStatus>> offboardSpecific(const std::vector<std::string>& vtxoIds, const std::string& destinationAddress) = 0;
