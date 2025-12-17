@@ -274,16 +274,6 @@ public:
     });
   }
 
-  std::shared_ptr<Promise<void>> startSyncPastRounds() override {
-    return Promise<void>::async([]() {
-      try {
-        bark_cxx::start_sync_past_rounds();
-      } catch (const rust::Error& e) {
-        throw std::runtime_error(e.what());
-      }
-    });
-  }
-
   std::shared_ptr<Promise<void>> syncPendingRounds() override {
     return Promise<void>::async([]() {
       try {
@@ -480,6 +470,7 @@ public:
           for (const auto& dest_rs : movement_rs.sent_to) {
             BarkMovementDestination destination;
             destination.destination = std::string(dest_rs.destination.data(), dest_rs.destination.length());
+            destination.payment_method = std::string(dest_rs.payment_method.data(), dest_rs.payment_method.length());
             destination.amount_sat = static_cast<double>(dest_rs.amount_sat);
             movement.sent_to.push_back(std::move(destination));
           }
@@ -488,6 +479,7 @@ public:
           for (const auto& dest_rs : movement_rs.received_on) {
             BarkMovementDestination destination;
             destination.destination = std::string(dest_rs.destination.data(), dest_rs.destination.length());
+            destination.payment_method = std::string(dest_rs.payment_method.data(), dest_rs.payment_method.length());
             destination.amount_sat = static_cast<double>(dest_rs.amount_sat);
             movement.received_on.push_back(std::move(destination));
           }

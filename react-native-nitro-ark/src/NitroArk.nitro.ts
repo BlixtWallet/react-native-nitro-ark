@@ -141,6 +141,7 @@ export interface BarkMovementSubsystem {
 
 export interface BarkMovementDestination {
   destination: string;
+  payment_method: string;
   amount_sat: number;
 }
 
@@ -194,7 +195,6 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   maintenanceRefresh(): Promise<void>;
   sync(): Promise<void>;
   syncExits(): Promise<void>;
-  startSyncPastRounds(): Promise<void>;
   syncPendingRounds(): Promise<void>;
 
   // --- Wallet Info ---

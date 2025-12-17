@@ -168,6 +168,7 @@ pub(crate) mod ffi {
 
     pub struct BarkMovementDestination {
         pub destination: String,
+        pub payment_method: String,
         pub amount_sat: u64,
     }
 
@@ -267,7 +268,6 @@ pub(crate) mod ffi {
         ) -> Result<()>;
         fn try_claim_all_lightning_receives(wait: bool) -> Result<()>;
         fn sync_exits() -> Result<()>;
-        fn start_sync_past_rounds() -> Result<()>;
         fn sync_pending_rounds() -> Result<()>;
 
         // Onchain methods
@@ -813,10 +813,6 @@ pub(crate) fn check_lightning_payment(payment_hash: String, wait: bool) -> anyho
 
 pub(crate) fn sync_exits() -> anyhow::Result<()> {
     TOKIO_RUNTIME.block_on(crate::sync_exits())
-}
-
-pub(crate) fn start_sync_past_rounds() -> anyhow::Result<()> {
-    TOKIO_RUNTIME.block_on(crate::start_sync_past_rounds())
 }
 
 pub(crate) fn sync_pending_rounds() -> anyhow::Result<()> {

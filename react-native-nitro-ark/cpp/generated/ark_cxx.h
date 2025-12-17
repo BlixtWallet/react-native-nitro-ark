@@ -1065,6 +1065,7 @@ struct KeyPairResult final {
 #define CXXBRIDGE1_STRUCT_bark_cxx$BarkMovementDestination
 struct BarkMovementDestination final {
   ::rust::String destination;
+  ::rust::String payment_method;
   ::std::uint64_t amount_sat CXX_DEFAULT_VALUE(0);
 
   using IsRelocatable = ::std::true_type;
@@ -1194,8 +1195,6 @@ void try_claim_lightning_receive(::rust::String payment_hash, bool wait, ::rust:
 void try_claim_all_lightning_receives(bool wait);
 
 void sync_exits();
-
-void start_sync_past_rounds();
 
 void sync_pending_rounds();
 

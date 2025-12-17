@@ -35,11 +35,12 @@ namespace margelo::nitro::nitroark {
   struct BarkMovementDestination {
   public:
     std::string destination     SWIFT_PRIVATE;
+    std::string payment_method     SWIFT_PRIVATE;
     double amount_sat     SWIFT_PRIVATE;
 
   public:
     BarkMovementDestination() = default;
-    explicit BarkMovementDestination(std::string destination, double amount_sat): destination(destination), amount_sat(amount_sat) {}
+    explicit BarkMovementDestination(std::string destination, std::string payment_method, double amount_sat): destination(destination), payment_method(payment_method), amount_sat(amount_sat) {}
   };
 
 } // namespace margelo::nitro::nitroark
@@ -53,12 +54,14 @@ namespace margelo::nitro {
       jsi::Object obj = arg.asObject(runtime);
       return margelo::nitro::nitroark::BarkMovementDestination(
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "destination")),
+        JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "payment_method")),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "amount_sat"))
       );
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroark::BarkMovementDestination& arg) {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, "destination", JSIConverter<std::string>::toJSI(runtime, arg.destination));
+      obj.setProperty(runtime, "payment_method", JSIConverter<std::string>::toJSI(runtime, arg.payment_method));
       obj.setProperty(runtime, "amount_sat", JSIConverter<double>::toJSI(runtime, arg.amount_sat));
       return obj;
     }
@@ -71,6 +74,7 @@ namespace margelo::nitro {
         return false;
       }
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "destination"))) return false;
+      if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "payment_method"))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "amount_sat"))) return false;
       return true;
     }

@@ -10,6 +10,7 @@ use bark::{
     lnurllib::lightning_address::LightningAddress,
     movement::Movement,
     onchain::OnchainWallet,
+    payment_method::PaymentMethod,
     round::RoundStatus,
     vtxo::state::VtxoState,
     Config, SqliteClient, Wallet as BarkWallet, WalletVtxo,
@@ -306,24 +307,50 @@ pub fn vtxo_to_bark_vtxo(vtxo: &Vtxo) -> crate::cxx::ffi::BarkVtxo {
     }
 }
 
+fn payment_method_to_ffi(pm: &PaymentMethod) -> (String, String) {
+    match pm {
+        PaymentMethod::Ark(addr) => ("ark".to_string(), addr.to_string()),
+        PaymentMethod::Bitcoin(addr) => {
+            ("bitcoin".to_string(), addr.assume_checked_ref().to_string())
+        }
+        PaymentMethod::OutputScript(script) => {
+            ("output-script".to_string(), script.to_hex_string())
+        }
+        PaymentMethod::Invoice(invoice) => ("invoice".to_string(), invoice.to_string()),
+        PaymentMethod::Offer(offer) => ("offer".to_string(), offer.to_string()),
+        PaymentMethod::LightningAddress(addr) => {
+            ("lightning-address".to_string(), addr.to_string())
+        }
+        PaymentMethod::Custom(s) => ("custom".to_string(), s.clone()),
+    }
+}
+
 pub fn movement_to_bark_movement(
     movement: &Movement,
 ) -> anyhow::Result<crate::cxx::ffi::BarkMovement> {
     let sent_to: Vec<crate::cxx::ffi::BarkMovementDestination> = movement
         .sent_to
         .iter()
-        .map(|dest| crate::cxx::ffi::BarkMovementDestination {
-            destination: dest.destination.clone(),
-            amount_sat: dest.amount.to_sat(),
+        .map(|dest| {
+            let (payment_method, destination) = payment_method_to_ffi(&dest.destination);
+            crate::cxx::ffi::BarkMovementDestination {
+                destination,
+                payment_method,
+                amount_sat: dest.amount.to_sat(),
+            }
         })
         .collect();
 
     let received_on: Vec<crate::cxx::ffi::BarkMovementDestination> = movement
         .received_on
         .iter()
-        .map(|dest| crate::cxx::ffi::BarkMovementDestination {
-            destination: dest.destination.clone(),
-            amount_sat: dest.amount.to_sat(),
+        .map(|dest| {
+            let (payment_method, destination) = payment_method_to_ffi(&dest.destination);
+            crate::cxx::ffi::BarkMovementDestination {
+                destination,
+                payment_method,
+                amount_sat: dest.amount.to_sat(),
+            }
         })
         .collect();
 

@@ -14,6 +14,7 @@ import type {
   KeyPairResult,
   LightningReceive,
   BarkMovement as NitroBarkMovement,
+  BarkMovementDestination as NitroBarkMovementDestination,
   BoardResult,
   RoundStatus,
 } from './NitroArk.nitro';
@@ -30,8 +31,21 @@ export type BarkVtxo = {
 
 export type MovementStatus = 'pending' | 'finished' | 'failed' | 'cancelled';
 
+export type BarkMovementDestination = NitroBarkMovementDestination & {
+  payment_method:
+    | 'ark'
+    | 'bitcoin'
+    | 'output-script'
+    | 'invoice'
+    | 'offer'
+    | 'lightning-address'
+    | 'custom';
+};
+
 export type BarkMovement = NitroBarkMovement & {
   status: MovementStatus;
+  sent_to: BarkMovementDestination[];
+  received_on: BarkMovementDestination[];
 };
 
 // Create the hybrid object instance
@@ -147,14 +161,6 @@ export function sync(): Promise<void> {
  */
 export function syncExits(): Promise<void> {
   return NitroArkHybridObject.syncExits();
-}
-
-/**
- * Starts synchronizing past rounds.
- * @returns A promise that resolves on success.
- */
-export function startSyncPastRounds(): Promise<void> {
-  return NitroArkHybridObject.startSyncPastRounds();
 }
 
 /**
