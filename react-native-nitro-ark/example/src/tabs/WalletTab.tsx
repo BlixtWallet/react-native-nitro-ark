@@ -229,16 +229,6 @@ export const WalletTab = ({
     );
   };
 
-  const handleStartSyncPastRounds = () => {
-    runOperation(
-      'startSyncPastRounds',
-      () => NitroArk.startSyncPastRounds(),
-      'sync',
-      () =>
-        setResults((prev) => ({ ...prev, sync: 'Past rounds sync started!' }))
-    );
-  };
-
   const handleSyncPendingRounds = () => {
     runOperation(
       'syncPendingRounds',
@@ -324,8 +314,8 @@ export const WalletTab = ({
     );
   };
 
-  const handleGetMovements = () => {
-    runOperation('movements', () => NitroArk.movements(), 'info');
+  const handleGetHistory = () => {
+    runOperation('history', () => NitroArk.history(), 'info');
   };
 
   // --- Signing ---
@@ -518,12 +508,6 @@ export const WalletTab = ({
         </ButtonGrid>
         <ButtonGrid>
           <CustomButton
-            title="Sync Past Rounds"
-            onPress={handleStartSyncPastRounds}
-            disabled={walletOpsDisabled}
-            small
-          />
-          <CustomButton
             title="Sync Pending Rounds"
             onPress={handleSyncPendingRounds}
             disabled={walletOpsDisabled}
@@ -679,8 +663,8 @@ export const WalletTab = ({
             disabled={walletOpsDisabled}
           />
           <CustomButton
-            title="Movements"
-            onPress={handleGetMovements}
+            title="History"
+            onPress={handleGetHistory}
             disabled={walletOpsDisabled}
           />
         </ButtonGrid>

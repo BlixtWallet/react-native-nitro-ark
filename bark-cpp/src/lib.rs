@@ -501,9 +501,9 @@ pub async fn sync() -> anyhow::Result<()> {
         .await
 }
 
-pub async fn movements() -> anyhow::Result<Vec<Movement>> {
+pub async fn history() -> anyhow::Result<Vec<Movement>> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager.with_context(|ctx| ctx.wallet.movements())
+    manager.with_context(|ctx| ctx.wallet.history())
 }
 
 pub async fn vtxos() -> anyhow::Result<Vec<WalletVtxo>> {

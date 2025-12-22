@@ -123,7 +123,7 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<std::string>> signMesssageWithMnemonic(const std::string& message, const std::string& mnemonic, const std::string& network, double index) = 0;
       virtual std::shared_ptr<Promise<KeyPairResult>> deriveKeypairFromMnemonic(const std::string& mnemonic, const std::string& network, double index) = 0;
       virtual std::shared_ptr<Promise<bool>> verifyMessage(const std::string& message, const std::string& signature, const std::string& publicKey) = 0;
-      virtual std::shared_ptr<Promise<std::vector<BarkMovement>>> movements() = 0;
+      virtual std::shared_ptr<Promise<std::vector<BarkMovement>>> history() = 0;
       virtual std::shared_ptr<Promise<std::vector<BarkVtxo>>> vtxos() = 0;
       virtual std::shared_ptr<Promise<std::optional<double>>> getFirstExpiringVtxoBlockheight() = 0;
       virtual std::shared_ptr<Promise<std::optional<double>>> getNextRequiredRefreshBlockheight() = 0;

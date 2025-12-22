@@ -291,11 +291,11 @@ export function verifyMessage(
 }
 
 /**
- * Gets a paginated list of wallet movements (balance changes).
+ * Gets a paginated list of wallet history (balance changes).
  * @returns A promise resolving to an array of BarkMovement objects.
  */
-export function movements(): Promise<BarkMovement[]> {
-  return NitroArkHybridObject.movements() as Promise<BarkMovement[]>;
+export function history(): Promise<BarkMovement[]> {
+  return NitroArkHybridObject.history() as Promise<BarkMovement[]>;
 }
 
 /**

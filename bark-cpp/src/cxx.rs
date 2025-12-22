@@ -224,7 +224,7 @@ pub(crate) mod ffi {
             index: u32,
         ) -> Result<KeyPairResult>;
         fn verify_message(message: &str, signature: &str, public_key: &str) -> Result<bool>;
-        fn movements() -> Result<Vec<BarkMovement>>;
+        fn history() -> Result<Vec<BarkMovement>>;
         fn vtxos() -> Result<Vec<BarkVtxo>>;
         fn get_expiring_vtxos(threshold: u32) -> Result<Vec<BarkVtxo>>;
         fn get_first_expiring_vtxo_blockheight() -> Result<*const u32>;
@@ -434,13 +434,13 @@ pub(crate) fn verify_message(
     crate::TOKIO_RUNTIME.block_on(crate::verify_message(message, signature, &public_key))
 }
 
-pub(crate) fn movements() -> anyhow::Result<Vec<BarkMovement>> {
-    let movements = crate::TOKIO_RUNTIME.block_on(crate::movements())?;
+pub(crate) fn history() -> anyhow::Result<Vec<BarkMovement>> {
+    let history = crate::TOKIO_RUNTIME.block_on(crate::history())?;
     fn fun_name(m: &bark::movement::Movement) -> Result<BarkMovement, anyhow::Error> {
         utils::movement_to_bark_movement(m)
     }
 
-    movements.iter().map(fun_name).collect()
+    history.iter().map(fun_name).collect()
 }
 
 pub(crate) fn vtxos() -> anyhow::Result<Vec<BarkVtxo>> {

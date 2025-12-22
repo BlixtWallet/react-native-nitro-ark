@@ -1138,7 +1138,7 @@ void close_wallet();
 
 bool verify_message(::rust::Str message, ::rust::Str signature, ::rust::Str public_key);
 
-::rust::Vec<::bark_cxx::BarkMovement> movements();
+::rust::Vec<::bark_cxx::BarkMovement> history();
 
 ::rust::Vec<::bark_cxx::BarkVtxo> vtxos();
 

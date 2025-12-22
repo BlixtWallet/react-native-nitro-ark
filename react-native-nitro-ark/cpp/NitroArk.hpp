@@ -439,10 +439,10 @@ public:
     });
   }
 
-  std::shared_ptr<Promise<std::vector<BarkMovement>>> movements() override {
+  std::shared_ptr<Promise<std::vector<BarkMovement>>> history() override {
     return Promise<std::vector<BarkMovement>>::async([]() {
       try {
-        rust::Vec<bark_cxx::BarkMovement> movements_rs = bark_cxx::movements();
+        rust::Vec<bark_cxx::BarkMovement> movements_rs = bark_cxx::history();
 
         std::vector<BarkMovement> movements;
         movements.reserve(movements_rs.size());
