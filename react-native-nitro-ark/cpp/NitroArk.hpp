@@ -690,6 +690,7 @@ public:
 
         LightningSendResult result;
         result.invoice = std::string(rust_result.invoice.data(), rust_result.invoice.length());
+        result.payment_hash = std::string(rust_result.payment_hash.data(), rust_result.payment_hash.length());
         result.amount = static_cast<double>(rust_result.amount);
         result.htlc_vtxos = convertRustVtxosToVector(rust_result.htlc_vtxos);
         result.movement_id = static_cast<double>(rust_result.movement_id);
@@ -719,6 +720,7 @@ public:
 
         LightningSendResult result;
         result.invoice = std::string(rust_result.invoice.data(), rust_result.invoice.length());
+        result.payment_hash = std::string(rust_result.payment_hash.data(), rust_result.payment_hash.length());
         result.amount = static_cast<double>(rust_result.amount);
         result.htlc_vtxos = convertRustVtxosToVector(rust_result.htlc_vtxos);
         result.movement_id = static_cast<double>(rust_result.movement_id);
@@ -743,6 +745,7 @@ public:
 
         LightningSendResult result;
         result.invoice = std::string(rust_result.invoice.data(), rust_result.invoice.length());
+        result.payment_hash = std::string(rust_result.payment_hash.data(), rust_result.payment_hash.length());
         result.amount = static_cast<double>(rust_result.amount);
         result.htlc_vtxos = convertRustVtxosToVector(rust_result.htlc_vtxos);
         result.movement_id = static_cast<double>(rust_result.movement_id);

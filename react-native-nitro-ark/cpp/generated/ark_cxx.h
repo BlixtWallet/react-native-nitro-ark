@@ -876,6 +876,7 @@ struct Bolt11Invoice final {
 #define CXXBRIDGE1_STRUCT_bark_cxx$LightningSend
 struct LightningSend final {
   ::rust::String invoice;
+  ::rust::String payment_hash;
   ::std::uint64_t amount CXX_DEFAULT_VALUE(0);
   ::rust::Vec<::bark_cxx::BarkVtxo> htlc_vtxos;
   ::std::uint32_t movement_id CXX_DEFAULT_VALUE(0);

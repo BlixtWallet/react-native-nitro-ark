@@ -41,6 +41,7 @@ namespace margelo::nitro::nitroark {
   struct LightningSendResult {
   public:
     std::string invoice     SWIFT_PRIVATE;
+    std::string payment_hash     SWIFT_PRIVATE;
     double amount     SWIFT_PRIVATE;
     std::vector<BarkVtxo> htlc_vtxos     SWIFT_PRIVATE;
     double movement_id     SWIFT_PRIVATE;
@@ -48,7 +49,7 @@ namespace margelo::nitro::nitroark {
 
   public:
     LightningSendResult() = default;
-    explicit LightningSendResult(std::string invoice, double amount, std::vector<BarkVtxo> htlc_vtxos, double movement_id, std::optional<std::variant<nitro::NullType, std::string>> preimage): invoice(invoice), amount(amount), htlc_vtxos(htlc_vtxos), movement_id(movement_id), preimage(preimage) {}
+    explicit LightningSendResult(std::string invoice, std::string payment_hash, double amount, std::vector<BarkVtxo> htlc_vtxos, double movement_id, std::optional<std::variant<nitro::NullType, std::string>> preimage): invoice(invoice), payment_hash(payment_hash), amount(amount), htlc_vtxos(htlc_vtxos), movement_id(movement_id), preimage(preimage) {}
   };
 
 } // namespace margelo::nitro::nitroark
@@ -62,6 +63,7 @@ namespace margelo::nitro {
       jsi::Object obj = arg.asObject(runtime);
       return margelo::nitro::nitroark::LightningSendResult(
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "invoice")),
+        JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "payment_hash")),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "amount")),
         JSIConverter<std::vector<margelo::nitro::nitroark::BarkVtxo>>::fromJSI(runtime, obj.getProperty(runtime, "htlc_vtxos")),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "movement_id")),
@@ -71,6 +73,7 @@ namespace margelo::nitro {
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroark::LightningSendResult& arg) {
       jsi::Object obj(runtime);
       obj.setProperty(runtime, "invoice", JSIConverter<std::string>::toJSI(runtime, arg.invoice));
+      obj.setProperty(runtime, "payment_hash", JSIConverter<std::string>::toJSI(runtime, arg.payment_hash));
       obj.setProperty(runtime, "amount", JSIConverter<double>::toJSI(runtime, arg.amount));
       obj.setProperty(runtime, "htlc_vtxos", JSIConverter<std::vector<margelo::nitro::nitroark::BarkVtxo>>::toJSI(runtime, arg.htlc_vtxos));
       obj.setProperty(runtime, "movement_id", JSIConverter<double>::toJSI(runtime, arg.movement_id));
@@ -86,6 +89,7 @@ namespace margelo::nitro {
         return false;
       }
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "invoice"))) return false;
+      if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "payment_hash"))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "amount"))) return false;
       if (!JSIConverter<std::vector<margelo::nitro::nitroark::BarkVtxo>>::canConvert(runtime, obj.getProperty(runtime, "htlc_vtxos"))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "movement_id"))) return false;

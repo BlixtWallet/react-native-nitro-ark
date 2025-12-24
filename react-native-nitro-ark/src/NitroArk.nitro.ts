@@ -74,6 +74,7 @@ export interface ArkoorPaymentResult {
 
 export interface LightningSendResult {
   invoice: string;
+  payment_hash: string;
   amount: number; // u64
   htlc_vtxos: BarkVtxo[];
   movement_id: number; // u32
