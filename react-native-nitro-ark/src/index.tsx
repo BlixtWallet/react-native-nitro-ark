@@ -606,7 +606,6 @@ export type {
   ArkoorPaymentResult,
   LightningSendResult,
   OnchainPaymentResult,
-  PaymentTypes,
   OffchainBalanceResult,
   OnchainBalanceResult,
   NewAddressResult,

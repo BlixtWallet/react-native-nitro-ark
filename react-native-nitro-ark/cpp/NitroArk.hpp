@@ -12,24 +12,6 @@
 namespace margelo::nitro::nitroark {
 
 using namespace margelo::nitro;
-// Helper function to convert rust cxx payment type to nitrogen payment type
-inline PaymentTypes convertPaymentType(bark_cxx::PaymentTypes type) {
-  switch (type) {
-    case bark_cxx::PaymentTypes::Bolt11:
-      return PaymentTypes::BOLT11;
-    case bark_cxx::PaymentTypes::Bolt12:
-      return PaymentTypes::BOLT12;
-    case bark_cxx::PaymentTypes::Lnurl:
-      return PaymentTypes::LNURL;
-    case bark_cxx::PaymentTypes::Arkoor:
-      return PaymentTypes::ARKOOR;
-    case bark_cxx::PaymentTypes::Onchain:
-      return PaymentTypes::ONCHAIN;
-    default:
-      throw std::runtime_error("Invalid payment type");
-  }
-}
-
 // Helper function to convert rust vtxos vector to C++ vector
 inline std::vector<BarkVtxo> convertRustVtxosToVector(const rust::Vec<bark_cxx::BarkVtxo>& rust_vtxos) {
   std::vector<BarkVtxo> vtxos;
@@ -642,7 +624,6 @@ public:
         result.amount_sat = static_cast<double>(rust_result.amount_sat);
         result.destination_address =
             std::string(rust_result.destination_address.data(), rust_result.destination_address.length());
-        result.payment_type = convertPaymentType(rust_result.payment_type);
 
         return result;
       } catch (const rust::Error& e) {
@@ -921,7 +902,6 @@ public:
         result.amount_sat = static_cast<double>(rust_result.amount_sat);
         result.destination_pubkey =
             std::string(rust_result.destination_pubkey.data(), rust_result.destination_pubkey.length());
-        result.payment_type = convertPaymentType(rust_result.payment_type);
 
         result.vtxos = convertRustVtxosToVector(rust_result.vtxos);
 

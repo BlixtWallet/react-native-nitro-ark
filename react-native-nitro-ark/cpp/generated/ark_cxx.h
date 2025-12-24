@@ -803,7 +803,6 @@ std::size_t align_of() {
 
 namespace bark_cxx {
   struct BarkVtxo;
-  enum class PaymentTypes : ::std::uint8_t;
   struct BoardResult;
   struct NewAddressResult;
   struct Bolt11Invoice;
@@ -840,17 +839,6 @@ struct BarkVtxo final {
   using IsRelocatable = ::std::true_type;
 };
 #endif // CXXBRIDGE1_STRUCT_bark_cxx$BarkVtxo
-
-#ifndef CXXBRIDGE1_ENUM_bark_cxx$PaymentTypes
-#define CXXBRIDGE1_ENUM_bark_cxx$PaymentTypes
-enum class PaymentTypes : ::std::uint8_t {
-  Bolt11 = 0,
-  Bolt12 = 1,
-  Lnurl = 2,
-  Arkoor = 3,
-  Onchain = 4,
-};
-#endif // CXXBRIDGE1_ENUM_bark_cxx$PaymentTypes
 
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$BoardResult
 #define CXXBRIDGE1_STRUCT_bark_cxx$BoardResult
@@ -902,7 +890,6 @@ struct LightningSend final {
 struct ArkoorPaymentResult final {
   ::std::uint64_t amount_sat CXX_DEFAULT_VALUE(0);
   ::rust::String destination_pubkey;
-  ::bark_cxx::PaymentTypes payment_type;
   ::rust::Vec<::bark_cxx::BarkVtxo> vtxos;
 
   using IsRelocatable = ::std::true_type;
@@ -915,7 +902,6 @@ struct OnchainPaymentResult final {
   ::rust::String txid;
   ::std::uint64_t amount_sat CXX_DEFAULT_VALUE(0);
   ::rust::String destination_address;
-  ::bark_cxx::PaymentTypes payment_type;
 
   using IsRelocatable = ::std::true_type;
 };

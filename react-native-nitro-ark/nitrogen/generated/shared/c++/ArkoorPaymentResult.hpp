@@ -25,13 +25,10 @@
 
 // Forward declaration of `BarkVtxo` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct BarkVtxo; }
-// Forward declaration of `PaymentTypes` to properly resolve imports.
-namespace margelo::nitro::nitroark { enum class PaymentTypes; }
 
 #include <string>
 #include "BarkVtxo.hpp"
 #include <vector>
-#include "PaymentTypes.hpp"
 
 namespace margelo::nitro::nitroark {
 
@@ -43,11 +40,10 @@ namespace margelo::nitro::nitroark {
     double amount_sat     SWIFT_PRIVATE;
     std::string destination_pubkey     SWIFT_PRIVATE;
     std::vector<BarkVtxo> vtxos     SWIFT_PRIVATE;
-    PaymentTypes payment_type     SWIFT_PRIVATE;
 
   public:
     ArkoorPaymentResult() = default;
-    explicit ArkoorPaymentResult(double amount_sat, std::string destination_pubkey, std::vector<BarkVtxo> vtxos, PaymentTypes payment_type): amount_sat(amount_sat), destination_pubkey(destination_pubkey), vtxos(vtxos), payment_type(payment_type) {}
+    explicit ArkoorPaymentResult(double amount_sat, std::string destination_pubkey, std::vector<BarkVtxo> vtxos): amount_sat(amount_sat), destination_pubkey(destination_pubkey), vtxos(vtxos) {}
   };
 
 } // namespace margelo::nitro::nitroark
@@ -62,8 +58,7 @@ namespace margelo::nitro {
       return margelo::nitro::nitroark::ArkoorPaymentResult(
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "amount_sat")),
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "destination_pubkey")),
-        JSIConverter<std::vector<margelo::nitro::nitroark::BarkVtxo>>::fromJSI(runtime, obj.getProperty(runtime, "vtxos")),
-        JSIConverter<margelo::nitro::nitroark::PaymentTypes>::fromJSI(runtime, obj.getProperty(runtime, "payment_type"))
+        JSIConverter<std::vector<margelo::nitro::nitroark::BarkVtxo>>::fromJSI(runtime, obj.getProperty(runtime, "vtxos"))
       );
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroark::ArkoorPaymentResult& arg) {
@@ -71,7 +66,6 @@ namespace margelo::nitro {
       obj.setProperty(runtime, "amount_sat", JSIConverter<double>::toJSI(runtime, arg.amount_sat));
       obj.setProperty(runtime, "destination_pubkey", JSIConverter<std::string>::toJSI(runtime, arg.destination_pubkey));
       obj.setProperty(runtime, "vtxos", JSIConverter<std::vector<margelo::nitro::nitroark::BarkVtxo>>::toJSI(runtime, arg.vtxos));
-      obj.setProperty(runtime, "payment_type", JSIConverter<margelo::nitro::nitroark::PaymentTypes>::toJSI(runtime, arg.payment_type));
       return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -85,7 +79,6 @@ namespace margelo::nitro {
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "amount_sat"))) return false;
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "destination_pubkey"))) return false;
       if (!JSIConverter<std::vector<margelo::nitro::nitroark::BarkVtxo>>::canConvert(runtime, obj.getProperty(runtime, "vtxos"))) return false;
-      if (!JSIConverter<margelo::nitro::nitroark::PaymentTypes>::canConvert(runtime, obj.getProperty(runtime, "payment_type"))) return false;
       return true;
     }
   };

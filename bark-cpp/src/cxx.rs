@@ -1,5 +1,5 @@
 use crate::cxx::ffi::{
-    ArkoorPaymentResult, BarkMovement, BarkVtxo, OnchainPaymentResult, PaymentTypes, RoundStatus,
+    ArkoorPaymentResult, BarkMovement, BarkVtxo, OnchainPaymentResult, RoundStatus,
 };
 use crate::{utils, TOKIO_RUNTIME};
 use anyhow::{bail, Context, Ok};
@@ -27,14 +27,6 @@ pub(crate) mod ffi {
         state: String,
     }
 
-    pub enum PaymentTypes {
-        Bolt11,
-        Bolt12,
-        Lnurl,
-        Arkoor,
-        Onchain,
-    }
-
     pub struct BoardResult {
         vtxos: Vec<String>,
         funding_txid: String,
@@ -54,6 +46,7 @@ pub(crate) mod ffi {
 
     pub struct LightningSend {
         pub invoice: String,
+        pub payment_hash: String,
         pub amount: u64,
         pub htlc_vtxos: Vec<BarkVtxo>,
         pub movement_id: u32,
@@ -63,7 +56,6 @@ pub(crate) mod ffi {
     pub struct ArkoorPaymentResult {
         amount_sat: u64,
         destination_pubkey: String,
-        payment_type: PaymentTypes,
         vtxos: Vec<BarkVtxo>,
     }
 
@@ -71,7 +63,6 @@ pub(crate) mod ffi {
         txid: String,
         amount_sat: u64,
         destination_address: String,
-        payment_type: PaymentTypes,
     }
 
     pub struct CxxArkInfo {
@@ -599,7 +590,6 @@ pub(crate) fn send_arkoor_payment(
         vtxos: oor_result.iter().map(utils::vtxo_to_bark_vtxo).collect(),
         destination_pubkey: destination.to_string(),
         amount_sat,
-        payment_type: PaymentTypes::Arkoor,
     })
 }
 
@@ -623,6 +613,7 @@ pub(crate) fn pay_lightning_invoice(
             .collect(),
         amount: send_result.amount.to_sat(),
         invoice: send_result.invoice.to_string(),
+        payment_hash: send_result.invoice.payment_hash().to_string(),
         movement_id: send_result.movement_id.0,
         preimage: send_result
             .preimage
@@ -651,6 +642,7 @@ pub(crate) fn pay_lightning_offer(
             .collect(),
         amount: send_result.amount.to_sat(),
         invoice: send_result.invoice.to_string(),
+        payment_hash: send_result.invoice.payment_hash().to_string(),
         movement_id: send_result.movement_id.0,
         preimage: send_result
             .preimage
@@ -680,6 +672,7 @@ pub(crate) fn pay_lightning_address(
             .collect(),
         amount: send_result.amount.to_sat(),
         invoice: send_result.invoice.to_string(),
+        payment_hash: send_result.invoice.payment_hash().to_string(),
         movement_id: send_result.movement_id.0,
         preimage: send_result
             .preimage
@@ -907,7 +900,6 @@ pub(crate) fn onchain_send(
         txid: txid.to_string(),
         amount_sat,
         destination_address: destination_address.to_string(),
-        payment_type: PaymentTypes::Onchain,
     })
 }
 

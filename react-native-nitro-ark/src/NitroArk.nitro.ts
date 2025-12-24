@@ -66,13 +66,10 @@ export interface Bolt11Invoice {
   payment_hash: string;
 }
 
-export type PaymentTypes = 'Bolt11' | 'Bolt12' | 'Lnurl' | 'Arkoor' | 'Onchain';
-
 export interface ArkoorPaymentResult {
   amount_sat: number; // u64
   destination_pubkey: string;
   vtxos: BarkVtxo[];
-  payment_type: PaymentTypes; // 'Arkoor'
 }
 
 export interface LightningSendResult {
@@ -87,7 +84,6 @@ export interface OnchainPaymentResult {
   txid: string; // Transaction ID
   amount_sat: number; // Amount in satoshis
   destination_address: string; // Destination address
-  payment_type: PaymentTypes; // 'Onchain'
 }
 
 export interface LightningReceiveBalance {
