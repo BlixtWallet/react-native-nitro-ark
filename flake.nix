@@ -143,6 +143,7 @@
             iconv
             pkg-config
             jdk17
+            just
           ];
 
           darwinPackages = with pkgs; [
@@ -166,7 +167,7 @@
             unset SDKROOT
 
             rustup target add aarch64-linux-android x86_64-linux-android i686-linux-android
-            rustup target add aarch64-apple-ios x86_64-apple-ios aarch64-apple-darwin x86_64-apple-darwin
+            rustup target add aarch64-apple-ios aarch64-apple-darwin
 
             if [ -f "${darwinDerivations.xcode-wrapper pkgs}/bin/env.sh" ]; then
               source "${darwinDerivations.xcode-wrapper pkgs}/bin/env.sh"

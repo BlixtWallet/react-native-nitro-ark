@@ -807,9 +807,7 @@ namespace bark_cxx {
   struct BoardResult;
   struct NewAddressResult;
   struct Bolt11Invoice;
-  struct Bolt11PaymentResult;
-  struct Bolt12PaymentResult;
-  struct LnurlPaymentResult;
+  struct LightningSend;
   struct ArkoorPaymentResult;
   struct OnchainPaymentResult;
   struct CxxArkInfo;
@@ -857,7 +855,7 @@ enum class PaymentTypes : ::std::uint8_t {
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$BoardResult
 #define CXXBRIDGE1_STRUCT_bark_cxx$BoardResult
 struct BoardResult final {
-  ::rust::Vec<::bark_cxx::BarkVtxo> vtxos;
+  ::rust::Vec<::rust::String> vtxos;
   ::rust::String funding_txid;
 
   using IsRelocatable = ::std::true_type;
@@ -886,39 +884,18 @@ struct Bolt11Invoice final {
 };
 #endif // CXXBRIDGE1_STRUCT_bark_cxx$Bolt11Invoice
 
-#ifndef CXXBRIDGE1_STRUCT_bark_cxx$Bolt11PaymentResult
-#define CXXBRIDGE1_STRUCT_bark_cxx$Bolt11PaymentResult
-struct Bolt11PaymentResult final {
-  ::rust::String bolt11_invoice;
+#ifndef CXXBRIDGE1_STRUCT_bark_cxx$LightningSend
+#define CXXBRIDGE1_STRUCT_bark_cxx$LightningSend
+struct LightningSend final {
+  ::rust::String invoice;
+  ::std::uint64_t amount CXX_DEFAULT_VALUE(0);
+  ::rust::Vec<::bark_cxx::BarkVtxo> htlc_vtxos;
+  ::std::uint32_t movement_id CXX_DEFAULT_VALUE(0);
   ::rust::String preimage;
-  ::bark_cxx::PaymentTypes payment_type;
 
   using IsRelocatable = ::std::true_type;
 };
-#endif // CXXBRIDGE1_STRUCT_bark_cxx$Bolt11PaymentResult
-
-#ifndef CXXBRIDGE1_STRUCT_bark_cxx$Bolt12PaymentResult
-#define CXXBRIDGE1_STRUCT_bark_cxx$Bolt12PaymentResult
-struct Bolt12PaymentResult final {
-  ::rust::String bolt12_offer;
-  ::rust::String preimage;
-  ::bark_cxx::PaymentTypes payment_type;
-
-  using IsRelocatable = ::std::true_type;
-};
-#endif // CXXBRIDGE1_STRUCT_bark_cxx$Bolt12PaymentResult
-
-#ifndef CXXBRIDGE1_STRUCT_bark_cxx$LnurlPaymentResult
-#define CXXBRIDGE1_STRUCT_bark_cxx$LnurlPaymentResult
-struct LnurlPaymentResult final {
-  ::rust::String lnurl;
-  ::rust::String bolt11_invoice;
-  ::rust::String preimage;
-  ::bark_cxx::PaymentTypes payment_type;
-
-  using IsRelocatable = ::std::true_type;
-};
-#endif // CXXBRIDGE1_STRUCT_bark_cxx$LnurlPaymentResult
+#endif // CXXBRIDGE1_STRUCT_bark_cxx$LightningSend
 
 #ifndef CXXBRIDGE1_STRUCT_bark_cxx$ArkoorPaymentResult
 #define CXXBRIDGE1_STRUCT_bark_cxx$ArkoorPaymentResult
@@ -955,7 +932,6 @@ struct CxxArkInfo final {
   ::std::uint16_t vtxo_expiry_delta CXX_DEFAULT_VALUE(0);
   ::std::uint16_t htlc_send_expiry_delta CXX_DEFAULT_VALUE(0);
   ::std::uint64_t max_vtxo_amount CXX_DEFAULT_VALUE(0);
-  ::std::uint16_t max_arkoor_depth CXX_DEFAULT_VALUE(0);
   ::std::uint8_t required_board_confirmations CXX_DEFAULT_VALUE(0);
 
   using IsRelocatable = ::std::true_type;
@@ -1048,8 +1024,6 @@ struct OffchainBalance final {
   ::std::uint64_t spendable CXX_DEFAULT_VALUE(0);
   // Coins that are in the process of being sent over Lightning.
   ::std::uint64_t pending_lightning_send CXX_DEFAULT_VALUE(0);
-  // Coins that are in the process of being received over Lightning.
-  ::bark_cxx::LightningReceiveBalance pending_lightning_receive;
   // Coins locked in a round.
   ::std::uint64_t pending_in_round CXX_DEFAULT_VALUE(0);
   // Coins that are in the process of unilaterally exiting the Ark.
@@ -1091,6 +1065,7 @@ struct KeyPairResult final {
 #define CXXBRIDGE1_STRUCT_bark_cxx$BarkMovementDestination
 struct BarkMovementDestination final {
   ::rust::String destination;
+  ::rust::String payment_method;
   ::std::uint64_t amount_sat CXX_DEFAULT_VALUE(0);
 
   using IsRelocatable = ::std::true_type;
@@ -1163,7 +1138,7 @@ void close_wallet();
 
 bool verify_message(::rust::Str message, ::rust::Str signature, ::rust::Str public_key);
 
-::rust::Vec<::bark_cxx::BarkMovement> movements();
+::rust::Vec<::bark_cxx::BarkMovement> history();
 
 ::rust::Vec<::bark_cxx::BarkVtxo> vtxos();
 
@@ -1177,6 +1152,8 @@ bool verify_message(::rust::Str message, ::rust::Str signature, ::rust::Str publ
 
 ::bark_cxx::LightningReceive const *lightning_receive_status(::rust::String payment_hash);
 
+::rust::String check_lightning_payment(::rust::String payment_hash, bool wait);
+
 void sync_pending_boards();
 
 void maintenance();
@@ -1185,7 +1162,7 @@ void maintenance_with_onchain();
 
 void maintenance_refresh();
 
-void check_connection();
+void refresh_server();
 
 void sync();
 
@@ -1201,11 +1178,11 @@ void validate_arkoor_address(::rust::Str address);
 
 ::bark_cxx::ArkoorPaymentResult send_arkoor_payment(::rust::Str destination, ::std::uint64_t amount_sat);
 
-::bark_cxx::Bolt11PaymentResult pay_lightning_invoice(::rust::Str destination, ::std::uint64_t const *amount_sat);
+::bark_cxx::LightningSend pay_lightning_invoice(::rust::Str destination, ::std::uint64_t const *amount_sat);
 
-::bark_cxx::Bolt12PaymentResult pay_lightning_offer(::rust::Str offer, ::std::uint64_t const *amount_sat);
+::bark_cxx::LightningSend pay_lightning_offer(::rust::Str offer, ::std::uint64_t const *amount_sat);
 
-::bark_cxx::LnurlPaymentResult pay_lightning_address(::rust::Str addr, ::std::uint64_t amount_sat, ::rust::Str comment);
+::bark_cxx::LightningSend pay_lightning_address(::rust::Str addr, ::std::uint64_t amount_sat, ::rust::Str comment);
 
 ::bark_cxx::RoundStatus send_round_onchain_payment(::rust::Str destination, ::std::uint64_t amount_sat);
 
@@ -1218,6 +1195,8 @@ void try_claim_lightning_receive(::rust::String payment_hash, bool wait, ::rust:
 void try_claim_all_lightning_receives(bool wait);
 
 void sync_exits();
+
+void sync_pending_rounds();
 
 ::bark_cxx::OnChainBalance onchain_balance();
 

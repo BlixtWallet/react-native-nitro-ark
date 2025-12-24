@@ -42,12 +42,11 @@ namespace margelo::nitro::nitroark {
     double vtxo_expiry_delta     SWIFT_PRIVATE;
     double htlc_send_expiry_delta     SWIFT_PRIVATE;
     double max_vtxo_amount     SWIFT_PRIVATE;
-    double max_arkoor_depth     SWIFT_PRIVATE;
     double required_board_confirmations     SWIFT_PRIVATE;
 
   public:
     BarkArkInfo() = default;
-    explicit BarkArkInfo(std::string network, std::string server_pubkey, double round_interval, double nb_round_nonces, double vtxo_exit_delta, double vtxo_expiry_delta, double htlc_send_expiry_delta, double max_vtxo_amount, double max_arkoor_depth, double required_board_confirmations): network(network), server_pubkey(server_pubkey), round_interval(round_interval), nb_round_nonces(nb_round_nonces), vtxo_exit_delta(vtxo_exit_delta), vtxo_expiry_delta(vtxo_expiry_delta), htlc_send_expiry_delta(htlc_send_expiry_delta), max_vtxo_amount(max_vtxo_amount), max_arkoor_depth(max_arkoor_depth), required_board_confirmations(required_board_confirmations) {}
+    explicit BarkArkInfo(std::string network, std::string server_pubkey, double round_interval, double nb_round_nonces, double vtxo_exit_delta, double vtxo_expiry_delta, double htlc_send_expiry_delta, double max_vtxo_amount, double required_board_confirmations): network(network), server_pubkey(server_pubkey), round_interval(round_interval), nb_round_nonces(nb_round_nonces), vtxo_exit_delta(vtxo_exit_delta), vtxo_expiry_delta(vtxo_expiry_delta), htlc_send_expiry_delta(htlc_send_expiry_delta), max_vtxo_amount(max_vtxo_amount), required_board_confirmations(required_board_confirmations) {}
   };
 
 } // namespace margelo::nitro::nitroark
@@ -68,7 +67,6 @@ namespace margelo::nitro {
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "vtxo_expiry_delta")),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "htlc_send_expiry_delta")),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "max_vtxo_amount")),
-        JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "max_arkoor_depth")),
         JSIConverter<double>::fromJSI(runtime, obj.getProperty(runtime, "required_board_confirmations"))
       );
     }
@@ -82,7 +80,6 @@ namespace margelo::nitro {
       obj.setProperty(runtime, "vtxo_expiry_delta", JSIConverter<double>::toJSI(runtime, arg.vtxo_expiry_delta));
       obj.setProperty(runtime, "htlc_send_expiry_delta", JSIConverter<double>::toJSI(runtime, arg.htlc_send_expiry_delta));
       obj.setProperty(runtime, "max_vtxo_amount", JSIConverter<double>::toJSI(runtime, arg.max_vtxo_amount));
-      obj.setProperty(runtime, "max_arkoor_depth", JSIConverter<double>::toJSI(runtime, arg.max_arkoor_depth));
       obj.setProperty(runtime, "required_board_confirmations", JSIConverter<double>::toJSI(runtime, arg.required_board_confirmations));
       return obj;
     }
@@ -102,7 +99,6 @@ namespace margelo::nitro {
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "vtxo_expiry_delta"))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "htlc_send_expiry_delta"))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "max_vtxo_amount"))) return false;
-      if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "max_arkoor_depth"))) return false;
       if (!JSIConverter<double>::canConvert(runtime, obj.getProperty(runtime, "required_board_confirmations"))) return false;
       return true;
     }

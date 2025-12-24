@@ -36,7 +36,6 @@ export interface BarkArkInfo {
   vtxo_expiry_delta: number; // u16
   htlc_send_expiry_delta: number; // u16
   max_vtxo_amount: number; // u64
-  max_arkoor_depth: number; // u16
   required_board_confirmations: number; // u8
 }
 
@@ -58,7 +57,7 @@ interface BarkVtxo {
 
 export interface BoardResult {
   funding_txid: string;
-  vtxos: BarkVtxo[];
+  vtxos: string[];
 }
 
 export interface Bolt11Invoice {
@@ -76,23 +75,12 @@ export interface ArkoorPaymentResult {
   payment_type: PaymentTypes; // 'Arkoor'
 }
 
-export interface Bolt11PaymentResult {
-  bolt11_invoice: string;
-  preimage: string;
-  payment_type: PaymentTypes; // 'Lightning'
-}
-
-export interface Bolt12PaymentResult {
-  bolt12_offer: string;
-  preimage: string;
-  payment_type: PaymentTypes; // 'Bolt12'
-}
-
-export interface LnurlPaymentResult {
-  lnurl: string;
-  bolt11_invoice: string;
-  preimage: string;
-  payment_type: PaymentTypes; // 'Lnurl'
+export interface LightningSendResult {
+  invoice: string;
+  amount: number; // u64
+  htlc_vtxos: BarkVtxo[];
+  movement_id: number; // u32
+  preimage: string | null;
 }
 
 export interface OnchainPaymentResult {
@@ -112,7 +100,6 @@ export interface LightningReceiveBalance {
 export interface OffchainBalanceResult {
   spendable: number; // u64
   pending_lightning_send: number; // u64
-  pending_lightning_receive: LightningReceiveBalance;
   pending_in_round: number; // u64
   pending_exit: number; // u64
   pending_board: number; // u64
@@ -154,6 +141,7 @@ export interface BarkMovementSubsystem {
 
 export interface BarkMovementDestination {
   destination: string;
+  payment_method: string;
   amount_sat: number;
 }
 
@@ -200,13 +188,14 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   loadWallet(datadir: string, config: BarkCreateOpts): Promise<void>;
   isWalletLoaded(): Promise<boolean>;
   closeWallet(): Promise<void>;
-  checkConnection(): Promise<void>;
+  refreshServer(): Promise<void>;
   syncPendingBoards(): Promise<void>;
   maintenance(): Promise<void>;
   maintenanceWithOnchain(): Promise<void>;
   maintenanceRefresh(): Promise<void>;
   sync(): Promise<void>;
   syncExits(): Promise<void>;
+  syncPendingRounds(): Promise<void>;
 
   // --- Wallet Info ---
   getArkInfo(): Promise<BarkArkInfo>;
@@ -232,7 +221,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
     signature: string,
     publicKey: string
   ): Promise<boolean>;
-  movements(): Promise<BarkMovement[]>;
+  history(): Promise<BarkMovement[]>;
   vtxos(): Promise<BarkVtxo[]>;
   getFirstExpiringVtxoBlockheight(): Promise<number | undefined>;
   getNextRequiredRefreshBlockheight(): Promise<number | undefined>;
@@ -272,16 +261,16 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   payLightningInvoice(
     destination: string,
     amountSat?: number
-  ): Promise<Bolt11PaymentResult>;
+  ): Promise<LightningSendResult>;
   payLightningOffer(
     offer: string,
     amountSat?: number
-  ): Promise<Bolt12PaymentResult>;
+  ): Promise<LightningSendResult>;
   payLightningAddress(
     addr: string,
     amountSat: number,
     comment: string
-  ): Promise<LnurlPaymentResult>;
+  ): Promise<LightningSendResult>;
   sendRoundOnchainPayment(
     destination: string,
     amountSat: number
@@ -292,6 +281,10 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   lightningReceiveStatus(
     paymentHash: string
   ): Promise<LightningReceive | undefined>;
+  checkLightningPayment(
+    paymentHash: string,
+    wait: boolean
+  ): Promise<string | null>;
   tryClaimLightningReceive(
     paymentHash: string,
     wait: boolean,

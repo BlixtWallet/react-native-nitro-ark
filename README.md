@@ -1,6 +1,6 @@
 # React Native Nitro Ark Module
 
-This directory contains the React Native module that bridges your React Native application with the underlying Rust [Ark](https://codeberg.org/ark-bitcoin/bark) project by [Second](https://second.tech), facilitated by the C++ FFI layer in [`bark-cpp`](./bark-cpp). It leverages [React Native NitroModules](https://github.com/mrousavy/nitro) for efficient communication between JavaScript/TypeScript and native C++ code.
+This directory contains the React Native module that bridges your React Native application with the underlying [Bark](https://gitlab.com/ark-bitcoin/bark) API which is the Ark protocol implementation by [Second](https://second.tech), facilitated by the C++ FFI layer in [`bark-cpp`](./bark-cpp). It leverages [React Native NitroModules](https://github.com/mrousavy/nitro) for efficient communication between JavaScript/TypeScript and native C++ code.
 
 ## Installing the react-native-nitro-ark module
 
@@ -18,7 +18,7 @@ yarn add react-native-nitro-ark react-native-nitro-modules
 
 ## Purpose
 
-The primary goal of this module is to expose the rust functions of the "Ark" Rust project to your React Native application. It provides:
+The primary goal of this module is to expose the Rust API of bark for react native applications.
 
 1.  A TypeScript API ([`src/`](./react-native-nitro-ark/src/)) for easy consumption from your React Native JavaScript/TypeScript code.
 2.  Native C++ implementations ([`cpp/`](./react-native-nitro-ark/cpp/)) that utilize the [`bark-cpp`](./bark-cpp/) FFI to call into the Rust core logic.
@@ -27,7 +27,7 @@ This allows you to write high-performance core logic in Rust and seamlessly inte
 
 ## Directory Structure
 
--   **[`bark-cpp/`](./bark-cpp/)**: Contains the C++ FFI code that directly interfaces with the Rust "Ark" project. This code is compiled into a static library for Android and iOS.
+-   **[`bark-cpp/`](./bark-cpp/)**: Contains the C++ FFI code that directly interfaces with the Bark. This code is compiled into a static library for Android and iOS.
 -   **[`react-native-nitro-ark/cpp/`](./react-native-nitro-ark/cpp/)**: Contains the C++ code specific to this React Native Nitro module. This code:
     -   Includes the necessary headers from React Native Nitro.
     -   Links against the static library produced by `bark-cpp`.
@@ -45,7 +45,7 @@ The interaction flow is generally as follows:
 3.  **React Native Nitro Bridge:** Nitro efficiently marshals data and forwards the call from JavaScript to the native C++ environment.
 4.  **Nitro C++ Module ([`react-native-nitro-ark/cpp/`](./react-native-nitro-ark/cpp/))**: The C++ methods implemented here receive the call.
 5.  **FFI Call:** This C++ code then calls the relevant functions exposed by the [`bark-cpp`](./bark-cpp/) FFI layer. These [`bark-cpp`](./bark-cpp/) functions are available because the static library produced from [`bark-cpp`](./bark-cpp/) is linked into the application.
-6.  **Bark C++ FFI ([`react-native-nitro-ark/bark-cpp/`](./react-native-nitro-ark/bark-cpp/))**: This layer translates the C++ call into a call to the Rust "Ark" project's compiled code.
+6.  **Bark C++ FFI ([`react-native-nitro-ark/bark-cpp/`](./react-native-nitro-ark/bark-cpp/))**: This layer translates the C++ call into a call to the Bark project's compiled code.
 
 ## Building and Integration
 
@@ -55,8 +55,6 @@ The interaction flow is generally as follows:
     -   Compile and link the C++ code in [`react-native-nitro-ark/cpp/`](./react-native-nitro-ark/cpp/).
     -   Link the static libraries from `bark-cpp`.
     -   Integrate the React Native Nitro module correctly.
-
-Refer to the React Native Nitro documentation and the specific build configurations within the [`ios/`](./react-native-nitro-ark/ios/) and [`android/`](./react-native-nitro-ark/android/) directories for detailed integration steps.
 
 ## Dependencies
 
