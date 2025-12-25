@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bark-wallet = { git = "https://gitlab.com/ark-bitcoin/bark.git", tag = "bark-0.1.0-beta.5", features = [
+bark-wallet = { git = "https://gitlab.com/niteshbalusu11/bark.git", branch = "fix-lightning-claim-return", features = [
     "tls-webpki-roots",
     "onchain_bdk"
 ], default-features = false }

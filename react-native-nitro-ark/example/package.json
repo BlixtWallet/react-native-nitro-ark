@@ -16,7 +16,7 @@
     "@react-native/new-app-screen": "0.81.4",
     "react": "19.1.0",
     "react-native": "0.81.4",
-    "react-native-fs-turbo": "^0.4.1",
+    "react-native-fs-turbo": "^0.5.0",
     "react-native-nitro-modules": "^0.31.10"
   },
   "devDependencies": {

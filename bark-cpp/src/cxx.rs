@@ -256,7 +256,7 @@ pub(crate) mod ffi {
             payment_hash: String,
             wait: bool,
             token: *const String,
-        ) -> Result<()>;
+        ) -> Result<Vec<BarkVtxo>>;
         fn try_claim_all_lightning_receives(wait: bool) -> Result<()>;
         fn sync_exits() -> Result<()>;
         fn sync_pending_rounds() -> Result<()>;
@@ -781,15 +781,19 @@ pub(crate) fn try_claim_lightning_receive(
     payment_hash: String,
     wait: bool,
     token: *const String,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<Vec<ffi::BarkVtxo>> {
     let payment_hash = PaymentHash::from_str(&payment_hash)?;
     let token_opt = unsafe { token.as_ref().map(|s| s.clone()) };
 
-    TOKIO_RUNTIME.block_on(crate::try_claim_lightning_receive(
+    let result = TOKIO_RUNTIME.block_on(crate::try_claim_lightning_receive(
         payment_hash,
         wait,
         token_opt,
-    ))
+    ))?;
+
+    Ok(result
+        .map(|vtxos| vtxos.iter().map(crate::utils::vtxo_to_bark_vtxo).collect())
+        .unwrap_or_default())
 }
 
 pub(crate) fn try_claim_all_lightning_receives(wait: bool) -> anyhow::Result<()> {

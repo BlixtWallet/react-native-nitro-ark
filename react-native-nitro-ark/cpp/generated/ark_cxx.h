@@ -1177,7 +1177,7 @@ void validate_arkoor_address(::rust::Str address);
 
 ::bark_cxx::RoundStatus offboard_all(::rust::Str destination_address);
 
-void try_claim_lightning_receive(::rust::String payment_hash, bool wait, ::rust::String const *token);
+::rust::Vec<::bark_cxx::BarkVtxo> try_claim_lightning_receive(::rust::String payment_hash, bool wait, ::rust::String const *token);
 
 void try_claim_all_lightning_receives(bool wait);
 

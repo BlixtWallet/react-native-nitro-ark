@@ -774,16 +774,19 @@ public:
     });
   }
 
-  std::shared_ptr<Promise<void>> tryClaimLightningReceive(const std::string& paymentHash, bool wait,
-                                                          const std::optional<std::string>& token) override {
-    return Promise<void>::async([paymentHash, wait, token]() {
+  std::shared_ptr<Promise<std::vector<BarkVtxo>>>
+  tryClaimLightningReceive(const std::string& paymentHash, bool wait,
+                           const std::optional<std::string>& token) override {
+    return Promise<std::vector<BarkVtxo>>::async([paymentHash, wait, token]() -> std::vector<BarkVtxo> {
       try {
+        rust::Vec<bark_cxx::BarkVtxo> result;
         if (token.has_value()) {
           rust::String token_rs(token.value());
-          bark_cxx::try_claim_lightning_receive(paymentHash, wait, &token_rs);
+          result = bark_cxx::try_claim_lightning_receive(paymentHash, wait, &token_rs);
         } else {
-          bark_cxx::try_claim_lightning_receive(paymentHash, wait, nullptr);
+          result = bark_cxx::try_claim_lightning_receive(paymentHash, wait, nullptr);
         }
+        return convertRustVtxosToVector(result);
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }

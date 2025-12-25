@@ -286,7 +286,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
     paymentHash: string,
     wait: boolean,
     token?: string
-  ): Promise<void>; // Throws on error
+  ): Promise<BarkVtxo[]>; // Throws on error
   tryClaimAllLightningReceives(wait: boolean): Promise<void>; // Throws on error
 
   // --- Offboarding / Exiting ---

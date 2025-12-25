@@ -413,15 +413,14 @@ pub async fn try_claim_lightning_receive(
     payment_hash: PaymentHash,
     wait: bool,
     token: Option<String>,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<Option<Vec<Vtxo>>> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
             ctx.wallet
                 .try_claim_lightning_receive(payment_hash, wait, token.as_deref())
                 .await
-                .context("Failed to claim bolt11 payment")?;
-            Ok(())
+                .context("Failed to claim bolt11 payment")
         })
         .await
 }

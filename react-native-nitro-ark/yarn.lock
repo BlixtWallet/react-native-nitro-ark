@@ -10201,13 +10201,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-fs-turbo@npm:^0.4.1":
-  version: 0.4.1
-  resolution: "react-native-fs-turbo@npm:0.4.1"
+"react-native-fs-turbo@npm:^0.5.0":
+  version: 0.5.0
+  resolution: "react-native-fs-turbo@npm:0.5.0"
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: 8580c8f1647da2244f5d6bd7e00c74f102be3a47deff089ee44faec1057c28b17602f9c675843024525ca581b357d6eb92ba74c9bfd706a31099ff440284b2e8
+  checksum: 7d42850d69f85fb8bfb0e801786264bbb75029627fad3181f194b15cc9db165137a3c4fcfd52713f6941d1d787a958d84892d8e6ffb61f231c1c46897205e767
   languageName: node
   linkType: hard
 
@@ -10240,7 +10240,7 @@ __metadata:
     react: 19.1.0
     react-native: 0.81.4
     react-native-builder-bob: ^0.40.13
-    react-native-fs-turbo: ^0.4.1
+    react-native-fs-turbo: ^0.5.0
     react-native-nitro-modules: ^0.31.10
   languageName: unknown
   linkType: soft
