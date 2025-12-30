@@ -987,6 +987,7 @@ struct LightningReceive final {
   ::rust::String payment_preimage;
   ::rust::String invoice;
   ::std::uint64_t const *preimage_revealed_at CXX_DEFAULT_VALUE(nullptr);
+  ::std::uint64_t const *finished_at CXX_DEFAULT_VALUE(nullptr);
 
   using IsRelocatable = ::std::true_type;
 };
@@ -1177,7 +1178,7 @@ void validate_arkoor_address(::rust::Str address);
 
 ::bark_cxx::RoundStatus offboard_all(::rust::Str destination_address);
 
-::rust::Vec<::bark_cxx::BarkVtxo> try_claim_lightning_receive(::rust::String payment_hash, bool wait, ::rust::String const *token);
+::bark_cxx::LightningReceive try_claim_lightning_receive(::rust::String payment_hash, bool wait, ::rust::String const *token);
 
 void try_claim_all_lightning_receives(bool wait);
 

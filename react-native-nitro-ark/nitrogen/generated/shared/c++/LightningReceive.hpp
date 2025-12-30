@@ -39,10 +39,11 @@ namespace margelo::nitro::nitroark {
     std::string payment_preimage     SWIFT_PRIVATE;
     std::string invoice     SWIFT_PRIVATE;
     std::optional<double> preimage_revealed_at     SWIFT_PRIVATE;
+    std::optional<double> finished_at     SWIFT_PRIVATE;
 
   public:
     LightningReceive() = default;
-    explicit LightningReceive(std::string payment_hash, std::string payment_preimage, std::string invoice, std::optional<double> preimage_revealed_at): payment_hash(payment_hash), payment_preimage(payment_preimage), invoice(invoice), preimage_revealed_at(preimage_revealed_at) {}
+    explicit LightningReceive(std::string payment_hash, std::string payment_preimage, std::string invoice, std::optional<double> preimage_revealed_at, std::optional<double> finished_at): payment_hash(payment_hash), payment_preimage(payment_preimage), invoice(invoice), preimage_revealed_at(preimage_revealed_at), finished_at(finished_at) {}
   };
 
 } // namespace margelo::nitro::nitroark
@@ -58,7 +59,8 @@ namespace margelo::nitro {
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "payment_hash")),
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "payment_preimage")),
         JSIConverter<std::string>::fromJSI(runtime, obj.getProperty(runtime, "invoice")),
-        JSIConverter<std::optional<double>>::fromJSI(runtime, obj.getProperty(runtime, "preimage_revealed_at"))
+        JSIConverter<std::optional<double>>::fromJSI(runtime, obj.getProperty(runtime, "preimage_revealed_at")),
+        JSIConverter<std::optional<double>>::fromJSI(runtime, obj.getProperty(runtime, "finished_at"))
       );
     }
     static inline jsi::Value toJSI(jsi::Runtime& runtime, const margelo::nitro::nitroark::LightningReceive& arg) {
@@ -67,6 +69,7 @@ namespace margelo::nitro {
       obj.setProperty(runtime, "payment_preimage", JSIConverter<std::string>::toJSI(runtime, arg.payment_preimage));
       obj.setProperty(runtime, "invoice", JSIConverter<std::string>::toJSI(runtime, arg.invoice));
       obj.setProperty(runtime, "preimage_revealed_at", JSIConverter<std::optional<double>>::toJSI(runtime, arg.preimage_revealed_at));
+      obj.setProperty(runtime, "finished_at", JSIConverter<std::optional<double>>::toJSI(runtime, arg.finished_at));
       return obj;
     }
     static inline bool canConvert(jsi::Runtime& runtime, const jsi::Value& value) {
@@ -81,6 +84,7 @@ namespace margelo::nitro {
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "payment_preimage"))) return false;
       if (!JSIConverter<std::string>::canConvert(runtime, obj.getProperty(runtime, "invoice"))) return false;
       if (!JSIConverter<std::optional<double>>::canConvert(runtime, obj.getProperty(runtime, "preimage_revealed_at"))) return false;
+      if (!JSIConverter<std::optional<double>>::canConvert(runtime, obj.getProperty(runtime, "finished_at"))) return false;
       return true;
     }
   };

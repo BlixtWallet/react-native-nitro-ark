@@ -452,18 +452,18 @@ export function checkLightningPayment(
  * @param paymentHash The payment hash of the Lightning payment.
  * @param wait Whether to wait for the claim to complete.
  * @param token Optional claim token used when no spendable VTXOs are owned.
- * @returns A promise resolving to the claimed VTXO if successful, or null if not.
+ * @returns A promise resolving to the claimed LightningReceive if successful, or null if not.
  */
 export function tryClaimLightningReceive(
   paymentHash: string,
   wait: boolean,
   token?: string
-): Promise<BarkVtxo[]> {
+): Promise<LightningReceive> {
   return NitroArkHybridObject.tryClaimLightningReceive(
     paymentHash,
     wait,
     token
-  ) as Promise<BarkVtxo[]>;
+  );
 }
 
 /**

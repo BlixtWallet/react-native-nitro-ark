@@ -119,6 +119,7 @@ pub(crate) mod ffi {
         pub payment_preimage: String,
         pub invoice: String,
         pub preimage_revealed_at: *const u64,
+        pub finished_at: *const u64,
     }
 
     pub struct LightningReceiveBalance {
@@ -256,7 +257,7 @@ pub(crate) mod ffi {
             payment_hash: String,
             wait: bool,
             token: *const String,
-        ) -> Result<Vec<BarkVtxo>>;
+        ) -> Result<LightningReceive>;
         fn try_claim_all_lightning_receives(wait: bool) -> Result<()>;
         fn sync_exits() -> Result<()>;
         fn sync_pending_rounds() -> Result<()>;
@@ -493,6 +494,9 @@ pub(crate) fn lightning_receive_status(
         payment_preimage: status.payment_preimage.to_string(),
         invoice: status.invoice.to_string(),
         preimage_revealed_at: status.preimage_revealed_at.map_or(std::ptr::null(), |v| {
+            Box::into_raw(Box::new(v.timestamp() as u64))
+        }),
+        finished_at: status.finished_at.map_or(std::ptr::null(), |v| {
             Box::into_raw(Box::new(v.timestamp() as u64))
         }),
     });
@@ -781,19 +785,27 @@ pub(crate) fn try_claim_lightning_receive(
     payment_hash: String,
     wait: bool,
     token: *const String,
-) -> anyhow::Result<Vec<ffi::BarkVtxo>> {
+) -> anyhow::Result<ffi::LightningReceive> {
     let payment_hash = PaymentHash::from_str(&payment_hash)?;
     let token_opt = unsafe { token.as_ref().map(|s| s.clone()) };
 
-    let result = TOKIO_RUNTIME.block_on(crate::try_claim_lightning_receive(
+    let status = TOKIO_RUNTIME.block_on(crate::try_claim_lightning_receive(
         payment_hash,
         wait,
         token_opt,
     ))?;
 
-    Ok(result
-        .map(|vtxos| vtxos.iter().map(crate::utils::vtxo_to_bark_vtxo).collect())
-        .unwrap_or_default())
+    Ok(ffi::LightningReceive {
+        payment_hash: status.payment_hash.to_string(),
+        payment_preimage: status.payment_preimage.to_string(),
+        invoice: status.invoice.to_string(),
+        preimage_revealed_at: status.preimage_revealed_at.map_or(std::ptr::null(), |v| {
+            Box::into_raw(Box::new(v.timestamp() as u64))
+        }),
+        finished_at: status.finished_at.map_or(std::ptr::null(), |v| {
+            Box::into_raw(Box::new(v.timestamp() as u64))
+        }),
+    })
 }
 
 pub(crate) fn try_claim_all_lightning_receives(wait: bool) -> anyhow::Result<()> {

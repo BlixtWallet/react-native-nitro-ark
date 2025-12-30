@@ -774,19 +774,37 @@ public:
     });
   }
 
-  std::shared_ptr<Promise<std::vector<BarkVtxo>>>
+  std::shared_ptr<Promise<LightningReceive>>
   tryClaimLightningReceive(const std::string& paymentHash, bool wait,
                            const std::optional<std::string>& token) override {
-    return Promise<std::vector<BarkVtxo>>::async([paymentHash, wait, token]() -> std::vector<BarkVtxo> {
+    return Promise<LightningReceive>::async([paymentHash, wait, token]() -> LightningReceive {
       try {
-        rust::Vec<bark_cxx::BarkVtxo> result;
+        bark_cxx::LightningReceive result;
         if (token.has_value()) {
           rust::String token_rs(token.value());
           result = bark_cxx::try_claim_lightning_receive(paymentHash, wait, &token_rs);
         } else {
           result = bark_cxx::try_claim_lightning_receive(paymentHash, wait, nullptr);
         }
-        return convertRustVtxosToVector(result);
+
+        LightningReceive lr;
+        lr.payment_hash = std::string(result.payment_hash.data(), result.payment_hash.length());
+        lr.payment_preimage = std::string(result.payment_preimage.data(), result.payment_preimage.length());
+        lr.invoice = std::string(result.invoice.data(), result.invoice.length());
+
+        if (result.preimage_revealed_at != nullptr) {
+          lr.preimage_revealed_at = static_cast<double>(*result.preimage_revealed_at);
+        } else {
+          lr.preimage_revealed_at = std::nullopt;
+        }
+
+        if (result.finished_at != nullptr) {
+          lr.finished_at = static_cast<double>(*result.finished_at);
+        } else {
+          lr.finished_at = std::nullopt;
+        }
+
+        return lr;
       } catch (const rust::Error& e) {
         throw std::runtime_error(e.what());
       }
@@ -822,9 +840,14 @@ public:
 
         if (status->preimage_revealed_at != nullptr) {
           result.preimage_revealed_at = static_cast<double>(*status->preimage_revealed_at);
-          delete status->preimage_revealed_at; // Free the heap-allocated memory from Rust
         } else {
           result.preimage_revealed_at = std::nullopt;
+        }
+
+        if (status->finished_at != nullptr) {
+          result.finished_at = static_cast<double>(*status->finished_at);
+        } else {
+          result.finished_at = std::nullopt;
         }
 
         return std::optional<LightningReceive>(result);

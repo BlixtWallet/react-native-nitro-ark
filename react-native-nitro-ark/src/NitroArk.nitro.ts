@@ -129,6 +129,7 @@ export interface LightningReceive {
   payment_preimage: string;
   invoice: string;
   preimage_revealed_at?: number;
+  finished_at?: number;
 }
 
 export interface BarkMovementSubsystem {
@@ -286,7 +287,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
     paymentHash: string,
     wait: boolean,
     token?: string
-  ): Promise<BarkVtxo[]>; // Throws on error
+  ): Promise<LightningReceive>; // Throws on error
   tryClaimAllLightningReceives(wait: boolean): Promise<void>; // Throws on error
 
   // --- Offboarding / Exiting ---

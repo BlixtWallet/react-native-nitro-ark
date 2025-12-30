@@ -413,7 +413,7 @@ pub async fn try_claim_lightning_receive(
     payment_hash: PaymentHash,
     wait: bool,
     token: Option<String>,
-) -> anyhow::Result<Option<Vec<Vtxo>>> {
+) -> anyhow::Result<LightningReceive> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async {
