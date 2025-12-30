@@ -122,13 +122,6 @@ pub(crate) mod ffi {
         pub finished_at: *const u64,
     }
 
-    pub struct LightningReceiveBalance {
-        /// Sum of all pending lightning invoices
-        pub total: u64,
-        /// Sum of all invoices for which we received the HTLC VTXOs
-        pub claimable: u64,
-    }
-
     pub struct OffchainBalance {
         /// Coins that are spendable in the Ark, either in-round or out-of-round.
         pub spendable: u64,

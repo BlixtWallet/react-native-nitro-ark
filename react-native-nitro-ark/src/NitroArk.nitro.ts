@@ -87,13 +87,6 @@ export interface OnchainPaymentResult {
   destination_address: string; // Destination address
 }
 
-export interface LightningReceiveBalance {
-  /// Sum of all pending lightning invoices
-  total: number;
-  /// Sum of all invoices for which we received the HTLC VTXOs
-  claimable: number;
-}
-
 export interface OffchainBalanceResult {
   spendable: number; // u64
   pending_lightning_send: number; // u64
