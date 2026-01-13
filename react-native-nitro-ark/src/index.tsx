@@ -557,19 +557,6 @@ export function sendArkoorPayment(
   return NitroArkHybridObject.sendArkoorPayment(destination, amountSat);
 }
 
-/**
- * Sends an onchain payment via an Ark round.
- * @param destination The destination Bitcoin address.
- * @param amountSat The amount in satoshis to send.
- * @returns A promise resolving to the round status.
- */
-export function sendRoundOnchainPayment(
-  destination: string,
-  amountSat: number
-): Promise<RoundStatus> {
-  return NitroArkHybridObject.sendRoundOnchainPayment(destination, amountSat);
-}
-
 // --- Offboarding / Exiting ---
 
 /**

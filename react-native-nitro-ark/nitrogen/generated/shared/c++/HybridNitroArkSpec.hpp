@@ -39,12 +39,12 @@ namespace margelo::nitro::nitroark { struct BoardResult; }
 namespace margelo::nitro::nitroark { struct ArkoorPaymentResult; }
 // Forward declaration of `LightningSendResult` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct LightningSendResult; }
-// Forward declaration of `RoundStatus` to properly resolve imports.
-namespace margelo::nitro::nitroark { struct RoundStatus; }
 // Forward declaration of `Bolt11Invoice` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct Bolt11Invoice; }
 // Forward declaration of `LightningReceive` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct LightningReceive; }
+// Forward declaration of `RoundStatus` to properly resolve imports.
+namespace margelo::nitro::nitroark { struct RoundStatus; }
 
 #include <string>
 #include <NitroModules/Promise.hpp>
@@ -63,11 +63,11 @@ namespace margelo::nitro::nitroark { struct LightningReceive; }
 #include "BoardResult.hpp"
 #include "ArkoorPaymentResult.hpp"
 #include "LightningSendResult.hpp"
-#include "RoundStatus.hpp"
 #include "Bolt11Invoice.hpp"
 #include "LightningReceive.hpp"
 #include <NitroModules/Null.hpp>
 #include <variant>
+#include "RoundStatus.hpp"
 
 namespace margelo::nitro::nitroark {
 
@@ -143,7 +143,6 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<LightningSendResult>> payLightningInvoice(const std::string& destination, std::optional<double> amountSat) = 0;
       virtual std::shared_ptr<Promise<LightningSendResult>> payLightningOffer(const std::string& offer, std::optional<double> amountSat) = 0;
       virtual std::shared_ptr<Promise<LightningSendResult>> payLightningAddress(const std::string& addr, double amountSat, const std::string& comment) = 0;
-      virtual std::shared_ptr<Promise<RoundStatus>> sendRoundOnchainPayment(const std::string& destination, double amountSat) = 0;
       virtual std::shared_ptr<Promise<Bolt11Invoice>> bolt11Invoice(double amountMsat) = 0;
       virtual std::shared_ptr<Promise<std::optional<LightningReceive>>> lightningReceiveStatus(const std::string& paymentHash) = 0;
       virtual std::shared_ptr<Promise<std::variant<nitro::NullType, std::string>>> checkLightningPayment(const std::string& paymentHash, bool wait) = 0;

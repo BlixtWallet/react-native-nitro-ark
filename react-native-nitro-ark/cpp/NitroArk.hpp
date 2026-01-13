@@ -941,19 +941,6 @@ public:
     });
   }
 
-  std::shared_ptr<Promise<RoundStatus>> sendRoundOnchainPayment(const std::string& destination,
-                                                                double amountSat) override {
-    return Promise<RoundStatus>::async([destination, amountSat]() {
-      try {
-        bark_cxx::RoundStatus status_rs =
-            bark_cxx::send_round_onchain_payment(destination, static_cast<uint64_t>(amountSat));
-        return convertRoundStatus(status_rs);
-      } catch (const rust::Error& e) {
-        throw std::runtime_error(e.what());
-      }
-    });
-  }
-
   // --- Offboarding / Exiting ---
 
   std::shared_ptr<Promise<RoundStatus>> offboardSpecific(const std::vector<std::string>& vtxoIds,

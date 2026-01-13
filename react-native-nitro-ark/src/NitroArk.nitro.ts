@@ -262,10 +262,6 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
     amountSat: number,
     comment: string
   ): Promise<LightningSendResult>;
-  sendRoundOnchainPayment(
-    destination: string,
-    amountSat: number
-  ): Promise<RoundStatus>;
 
   // --- Lightning Invoicing ---
   bolt11Invoice(amountMsat: number): Promise<Bolt11Invoice>;
