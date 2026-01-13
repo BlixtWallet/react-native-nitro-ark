@@ -344,7 +344,7 @@ pub async fn sign_message(
                 .context("Failed to peak keypair")?;
             let hash = bark::ark::bitcoin::sign_message::signed_msg_hash(message);
             let secp = bark::ark::bitcoin::secp256k1::Secp256k1::new();
-            let msg = bark::ark::bitcoin::secp256k1::Message::from_digest_slice(&hash[..]).unwrap();
+            let msg = bark::ark::bitcoin::secp256k1::Message::from_digest_slice(&hash[..])?;
             let ecdsa_sig = secp.sign_ecdsa(&msg, &keypair.secret_key());
 
             Ok(ecdsa_sig)

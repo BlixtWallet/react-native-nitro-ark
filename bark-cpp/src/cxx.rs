@@ -888,7 +888,7 @@ pub(crate) fn onchain_drain(destination: &str, fee_rate: *const u64) -> anyhow::
         let mut manager = crate::GLOBAL_WALLET_MANAGER.lock().await;
         let (address, fee_rate) = manager
             .with_context_async(|ctx| async {
-                let net = ctx.wallet.properties().await.unwrap().network;
+                let net = ctx.wallet.properties().await?.network;
                 let address = Address::from_str(destination)?
                     .require_network(net)
                     .context("Address on wrong network")?;
@@ -915,7 +915,7 @@ pub(crate) fn onchain_send_many(
         let (destinations, fee_rate) = manager
             .with_context_async(|ctx| async {
                 let mut destinations = Vec::new();
-                let net = ctx.wallet.properties().await.unwrap().network;
+                let net = ctx.wallet.properties().await?.network;
                 for output in outputs {
                     let address = Address::from_str(&output.destination)
                         .context("Invalid address format")?
