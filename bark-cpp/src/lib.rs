@@ -23,8 +23,8 @@ use bark::Config;
 use bark::SqliteClient;
 use bark::Wallet;
 use bark::WalletVtxo;
-use bdk_wallet::bitcoin::bip32;
 use bdk_wallet::bitcoin::key::Keypair;
+use bdk_wallet::bitcoin::{bip32, Txid};
 use bitcoin_ext::BlockHeight;
 use tokio::runtime::Runtime;
 use tokio::sync::Mutex;
@@ -684,17 +684,14 @@ pub async fn pay_lightning_address(
         .await
 }
 
-pub async fn offboard_specific(
-    vtxo_ids: Vec<VtxoId>,
-    address: Address,
-) -> anyhow::Result<RoundStatus> {
+pub async fn offboard_specific(vtxo_ids: Vec<VtxoId>, address: Address) -> anyhow::Result<Txid> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async { ctx.wallet.offboard_vtxos(vtxo_ids, address).await })
         .await
 }
 
-pub async fn offboard_all(address: Address) -> anyhow::Result<RoundStatus> {
+pub async fn offboard_all(address: Address) -> anyhow::Result<Txid> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async { ctx.wallet.offboard_all(address).await })

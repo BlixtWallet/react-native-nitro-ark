@@ -43,8 +43,6 @@ namespace margelo::nitro::nitroark { struct LightningSendResult; }
 namespace margelo::nitro::nitroark { struct Bolt11Invoice; }
 // Forward declaration of `LightningReceive` to properly resolve imports.
 namespace margelo::nitro::nitroark { struct LightningReceive; }
-// Forward declaration of `RoundStatus` to properly resolve imports.
-namespace margelo::nitro::nitroark { struct RoundStatus; }
 
 #include <string>
 #include <NitroModules/Promise.hpp>
@@ -67,7 +65,6 @@ namespace margelo::nitro::nitroark { struct RoundStatus; }
 #include "LightningReceive.hpp"
 #include <NitroModules/Null.hpp>
 #include <variant>
-#include "RoundStatus.hpp"
 
 namespace margelo::nitro::nitroark {
 
@@ -148,8 +145,8 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<std::variant<nitro::NullType, std::string>>> checkLightningPayment(const std::string& paymentHash, bool wait) = 0;
       virtual std::shared_ptr<Promise<LightningReceive>> tryClaimLightningReceive(const std::string& paymentHash, bool wait, const std::optional<std::string>& token) = 0;
       virtual std::shared_ptr<Promise<void>> tryClaimAllLightningReceives(bool wait) = 0;
-      virtual std::shared_ptr<Promise<RoundStatus>> offboardSpecific(const std::vector<std::string>& vtxoIds, const std::string& destinationAddress) = 0;
-      virtual std::shared_ptr<Promise<RoundStatus>> offboardAll(const std::string& destinationAddress) = 0;
+      virtual std::shared_ptr<Promise<std::string>> offboardSpecific(const std::vector<std::string>& vtxoIds, const std::string& destinationAddress) = 0;
+      virtual std::shared_ptr<Promise<std::string>> offboardAll(const std::string& destinationAddress) = 0;
 
     protected:
       // Hybrid Setup
