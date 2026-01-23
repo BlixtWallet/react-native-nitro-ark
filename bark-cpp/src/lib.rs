@@ -666,6 +666,13 @@ pub async fn pay_lightning_offer(
         .await
 }
 
+pub async fn send_onchain(addr: Address, amount: Amount) -> anyhow::Result<Txid> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async { ctx.wallet.send_onchain(addr, amount).await })
+        .await
+}
+
 pub async fn pay_lightning_address(
     addr: &str,
     amount: Amount,

@@ -136,8 +136,8 @@ dependencies = [
 
 [[package]]
 name = "ark-lib"
-version = "0.1.0-beta.5"
-source = "git+https://gitlab.com/ark-bitcoin/bark.git?branch=master#ad16f33c3f4dd6bb9db70404f828220d1c918ec4"
+version = "0.1.0-beta.6"
+source = "git+https://gitlab.com/ark-bitcoin/bark.git?tag=bark-0.1.0-beta.6#d81f5d744a71153187bd63efb41c120c351f3225"
 dependencies = [
  "async-trait",
  "bark-bitcoin-ext",
@@ -249,8 +249,8 @@ dependencies = [
 
 [[package]]
 name = "bark-bitcoin-ext"
-version = "0.1.0-beta.5"
-source = "git+https://gitlab.com/ark-bitcoin/bark.git?branch=master#ad16f33c3f4dd6bb9db70404f828220d1c918ec4"
+version = "0.1.0-beta.6"
+source = "git+https://gitlab.com/ark-bitcoin/bark.git?tag=bark-0.1.0-beta.6#d81f5d744a71153187bd63efb41c120c351f3225"
 dependencies = [
  "async-trait",
  "bdk_bitcoind_rpc 0.22.0",
@@ -288,14 +288,15 @@ dependencies = [
 
 [[package]]
 name = "bark-server-rpc"
-version = "0.1.0-beta.5"
-source = "git+https://gitlab.com/ark-bitcoin/bark.git?branch=master#ad16f33c3f4dd6bb9db70404f828220d1c918ec4"
+version = "0.1.0-beta.6"
+source = "git+https://gitlab.com/ark-bitcoin/bark.git?tag=bark-0.1.0-beta.6#d81f5d744a71153187bd63efb41c120c351f3225"
 dependencies = [
  "ark-lib",
  "bitcoin",
  "http",
  "log",
  "prost 0.14.3",
+ "prost-types",
  "thiserror",
  "tokio",
  "tonic 0.14.2",
@@ -305,8 +306,8 @@ dependencies = [
 
 [[package]]
 name = "bark-wallet"
-version = "0.1.0-beta.5"
-source = "git+https://gitlab.com/ark-bitcoin/bark.git?branch=master#ad16f33c3f4dd6bb9db70404f828220d1c918ec4"
+version = "0.1.0-beta.6"
+source = "git+https://gitlab.com/ark-bitcoin/bark.git?tag=bark-0.1.0-beta.6#d81f5d744a71153187bd63efb41c120c351f3225"
 dependencies = [
  "anyhow",
  "ark-lib",

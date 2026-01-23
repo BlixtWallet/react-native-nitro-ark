@@ -895,6 +895,17 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<std::string>> sendOnchain(const std::string& destination, double amountSat) override {
+    return Promise<std::string>::async([destination, amountSat]() {
+      try {
+        rust::String result = bark_cxx::send_onchain(destination, static_cast<uint64_t>(amountSat));
+        return std::string(result);
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   // --- Offboarding / Exiting ---
 
   std::shared_ptr<Promise<std::string>> offboardSpecific(const std::vector<std::string>& vtxoIds,

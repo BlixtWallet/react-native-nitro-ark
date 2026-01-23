@@ -4,7 +4,7 @@ use anyhow::{bail, Context, Ok};
 use bark::ark::bitcoin::hex::DisplayHex;
 use bark::ark::bitcoin::{address, Address};
 use bark::ark::lightning::{self, PaymentHash};
-use bdk_wallet::bitcoin::{network, FeeRate};
+use bdk_wallet::bitcoin::{self, network, FeeRate};
 use bip39::Mnemonic;
 use hex::ToHex;
 use logger::log::{self, info};
@@ -239,6 +239,7 @@ pub(crate) mod ffi {
             amount_sat: u64,
             comment: &str,
         ) -> Result<LightningSend>;
+        fn send_onchain(destination: &str, amount_sat: u64) -> Result<String>;
         fn offboard_specific(vtxo_ids: Vec<String>, destination_address: &str) -> Result<String>;
         fn offboard_all(destination_address: &str) -> Result<String>;
         unsafe fn try_claim_lightning_receive(
@@ -670,6 +671,28 @@ pub(crate) fn pay_lightning_address(
             .preimage
             .map_or(String::new(), |p| p.to_lower_hex_string()),
     })
+}
+
+pub(crate) fn send_onchain(destination: &str, amount_sat: u64) -> anyhow::Result<String> {
+    let amount = bark::ark::bitcoin::Amount::from_sat(amount_sat);
+    let address_unchecked = bitcoin::Address::from_str(destination)
+        .with_context(|| format!("Invalid destination address format: '{}'", destination))?;
+
+    let ark_info = crate::TOKIO_RUNTIME.block_on(crate::get_ark_info())?;
+
+    // Now require the network to match the wallet's network
+    let destination_address = address_unchecked
+        .require_network(ark_info.network)
+        .with_context(|| {
+            format!(
+                "address '{}' is not valid for configured network {}",
+                destination, ark_info.network
+            )
+        })?;
+
+    let result = crate::TOKIO_RUNTIME.block_on(crate::send_onchain(destination_address, amount))?;
+
+    Ok(result.to_string())
 }
 
 pub(crate) fn offboard_specific(

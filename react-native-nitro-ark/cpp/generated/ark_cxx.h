@@ -1159,6 +1159,8 @@ void validate_arkoor_address(::rust::Str address);
 
 ::bark_cxx::LightningSend pay_lightning_address(::rust::Str addr, ::std::uint64_t amount_sat, ::rust::Str comment);
 
+::rust::String send_onchain(::rust::Str destination, ::std::uint64_t amount_sat);
+
 ::rust::String offboard_specific(::rust::Vec<::rust::String> vtxo_ids, ::rust::Str destination_address);
 
 ::rust::String offboard_all(::rust::Str destination_address);
