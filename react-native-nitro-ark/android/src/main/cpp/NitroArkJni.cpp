@@ -119,77 +119,6 @@ jobject MakeArrayList(JNIEnv* env, const std::vector<std::string>& elements) {
   return arrayListObj;
 }
 
-jobject MakeRoundStatusResult(JNIEnv* env, const bark_cxx::RoundStatus& status) {
-  jclass cls = env->FindClass("com/margelo/nitro/nitroark/RoundStatusResult");
-  if (cls == nullptr)
-    return nullptr;
-  jmethodID ctor =
-      env->GetMethodID(cls, "<init>", "(Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Ljava/lang/String;ZZ)V");
-  if (ctor == nullptr) {
-    env->DeleteLocalRef(cls);
-    return nullptr;
-  }
-
-  std::string statusStr(status.status.data(), status.status.length());
-  std::string fundingTxid(status.funding_txid.data(), status.funding_txid.length());
-  std::string error(status.error.data(), status.error.length());
-
-  // Convert unsigned txids
-  std::vector<std::string> txids;
-  txids.reserve(status.unsigned_funding_txids.size());
-  for (const auto& tx : status.unsigned_funding_txids) {
-    txids.emplace_back(std::string(tx.data(), tx.length()));
-  }
-  jobject txidList = MakeArrayList(env, txids);
-
-  jstring jStatus = env->NewStringUTF(statusStr.c_str());
-  if (jStatus == nullptr) {
-    if (txidList)
-      env->DeleteLocalRef(txidList);
-    env->DeleteLocalRef(cls);
-    return nullptr;
-  }
-
-  jstring jFundingTxid = nullptr;
-  if (!fundingTxid.empty()) {
-    jFundingTxid = env->NewStringUTF(fundingTxid.c_str());
-    if (jFundingTxid == nullptr) {
-      env->DeleteLocalRef(jStatus);
-      if (txidList)
-        env->DeleteLocalRef(txidList);
-      env->DeleteLocalRef(cls);
-      return nullptr;
-    }
-  }
-
-  jstring jError = nullptr;
-  if (!error.empty()) {
-    jError = env->NewStringUTF(error.c_str());
-    if (jError == nullptr) {
-      env->DeleteLocalRef(jStatus);
-      if (jFundingTxid)
-        env->DeleteLocalRef(jFundingTxid);
-      if (txidList)
-        env->DeleteLocalRef(txidList);
-      env->DeleteLocalRef(cls);
-      return nullptr;
-    }
-  }
-
-  jobject result =
-      env->NewObject(cls, ctor, jStatus, jFundingTxid, txidList, jError, status.is_final, status.is_success);
-
-  env->DeleteLocalRef(jStatus);
-  if (jFundingTxid)
-    env->DeleteLocalRef(jFundingTxid);
-  if (jError)
-    env->DeleteLocalRef(jError);
-  if (txidList)
-    env->DeleteLocalRef(txidList);
-  env->DeleteLocalRef(cls);
-  return result;
-}
-
 jobject MakeKeyPairResult(JNIEnv* env, const bark_cxx::KeyPairResult& keypair) {
   jclass cls = env->FindClass("com/margelo/nitro/nitroark/KeyPairResultAndroid");
   if (cls == nullptr)
@@ -391,21 +320,6 @@ JNIEXPORT void JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_tryClaimLi
     HandleException(env, e);
   } catch (...) {
     HandleUnknownException(env);
-  }
-}
-
-JNIEXPORT jobject JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_offboardAll(JNIEnv* env, jobject /*thiz*/,
-                                                                                     jstring jDestination) {
-  try {
-    const std::string destination = JStringToString(env, jDestination);
-    bark_cxx::RoundStatus status = bark_cxx::offboard_all(destination);
-    return MakeRoundStatusResult(env, status);
-  } catch (const std::exception& e) {
-    HandleException(env, e);
-    return nullptr;
-  } catch (...) {
-    HandleUnknownException(env);
-    return nullptr;
   }
 }
 
