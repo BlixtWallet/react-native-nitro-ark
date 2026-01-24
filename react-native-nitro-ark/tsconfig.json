@@ -1,8 +1,6 @@
 {
   "compilerOptions": {
-    "compilerOptions": {
-       "types": ["jest"],
-     },
+    "types": ["jest"],
     "rootDir": ".",
     "paths": {
       "react-native-nitro-ark": ["./src/index"]
