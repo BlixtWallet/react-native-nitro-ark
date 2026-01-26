@@ -8,11 +8,10 @@ use bark::{
     },
     lightning_invoice::Bolt11Invoice,
     lnurllib::lightning_address::LightningAddress,
-    movement::Movement,
+    movement::{Movement, PaymentMethod},
     onchain::OnchainWallet,
-    payment_method::PaymentMethod,
     round::RoundStatus,
-    vtxo::state::VtxoState,
+    vtxo::VtxoState,
     Config, SqliteClient, Wallet as BarkWallet, WalletVtxo,
 };
 
@@ -152,7 +151,7 @@ pub(crate) async fn try_create_wallet(
     // open db
     let db = Arc::new(SqliteClient::open(datadir.join(DB_FILE))?);
 
-    let bdk_wallet = OnchainWallet::load_or_create(net, seed, db.clone())?;
+    let bdk_wallet = OnchainWallet::load_or_create(net, seed, db.clone()).await?;
     BarkWallet::create_with_onchain(&mnemonic, net, config, db, &bdk_wallet, false)
         .await
         .context("error creating wallet")?;
@@ -413,15 +412,10 @@ pub fn round_status_to_ffi(status: RoundStatus) -> crate::cxx::ffi::RoundStatus 
             Vec::new(),
             String::new(),
         ),
-        RoundStatus::Pending {
-            unsigned_funding_txids,
-        } => (
+        RoundStatus::Pending => (
             "pending".to_string(),
             String::new(),
-            unsigned_funding_txids
-                .iter()
-                .map(|txid| txid.to_string())
-                .collect(),
+            Vec::new(),
             String::new(),
         ),
         RoundStatus::Failed { error } => (

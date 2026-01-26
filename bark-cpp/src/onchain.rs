@@ -12,7 +12,9 @@ pub async fn onchain_balance() -> anyhow::Result<bdk_wallet::Balance> {
 /// Get a new address
 pub async fn address() -> anyhow::Result<Address> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager.with_context(|ctx| ctx.onchain_wallet.address())
+    manager
+        .with_context_async(|ctx| async { ctx.onchain_wallet.address().await })
+        .await
 }
 
 /// Get unspent outputs

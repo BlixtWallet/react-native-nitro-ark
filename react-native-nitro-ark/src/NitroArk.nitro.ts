@@ -154,22 +154,6 @@ export interface BarkMovement {
   completed_at?: string;
 }
 
-export type RoundStatusType =
-  | 'confirmed'
-  | 'unconfirmed'
-  | 'pending'
-  | 'failed'
-  | 'canceled';
-
-export interface RoundStatus {
-  status: RoundStatusType;
-  funding_txid?: string;
-  unsigned_funding_txids?: string[];
-  error?: string;
-  is_final: boolean;
-  is_success: boolean;
-}
-
 // --- Nitro Module Interface ---
 
 export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
@@ -262,10 +246,7 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
     amountSat: number,
     comment: string
   ): Promise<LightningSendResult>;
-  sendRoundOnchainPayment(
-    destination: string,
-    amountSat: number
-  ): Promise<RoundStatus>;
+  sendOnchain(destination: string, amountSat: number): Promise<string>;
 
   // --- Lightning Invoicing ---
   bolt11Invoice(amountMsat: number): Promise<Bolt11Invoice>;
@@ -287,6 +268,6 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   offboardSpecific(
     vtxoIds: string[],
     destinationAddress: string
-  ): Promise<RoundStatus>;
-  offboardAll(destinationAddress: string): Promise<RoundStatus>;
+  ): Promise<string>;
+  offboardAll(destinationAddress: string): Promise<string>;
 }

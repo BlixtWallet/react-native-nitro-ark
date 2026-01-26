@@ -4,28 +4,24 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bark-wallet = { git = "https://gitlab.com/ark-bitcoin/bark.git", branch = "bugfix-try-claim-ln-receive", ref = "8879066e", features = [
-    "tls-webpki-roots",
-    "onchain_bdk"
+bark-wallet = { git = "https://gitlab.com/ark-bitcoin/bark.git", commit = "2086da7e", features = [
+  "tls-webpki-roots",
+  "onchain_bdk",
 ], default-features = false }
 
-bark-bitcoin-ext = { git = "https://gitlab.com/ark-bitcoin/bark.git", tag = "bark-0.1.0-beta.5", default-features = false }
+bark-bitcoin-ext = { git = "https://gitlab.com/ark-bitcoin/bark.git", commit = "2086da7e", default-features = false }
 bdk_wallet = { version = "2.1.0" }
 bdk_bitcoind_rpc = { version = "0.21.0" }
 
-tokio = { version = "1", default-features = false, features = [
-    "rt-multi-thread",
-    "macros",
-    "fs",
-] }
+tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "macros", "fs"] }
 bip39 = { version = "2.2.0", default-features = false }
 anyhow = "1.0.100"
 logger = { path = "../logger" }
 serde = "1.0.228"
 tonic = { version = "0.13.1", default-features = false, features = [
-    "transport",
-    "codegen",
-    "prost",
+  "transport",
+  "codegen",
+  "prost",
 ] }
 serde_json = "1.0.145"
 cxx = "1.0.186"
@@ -41,11 +37,11 @@ path = "src/lib.rs"
 
 # Add these profile configurations
 [profile.release]
-opt-level = 's'   # Optimize for size
-lto = true        # Enable Link Time Optimization
+opt-level = 's' # Optimize for size
+lto = true # Enable Link Time Optimization
 codegen-units = 1 # Reduce parallel code generation units
-panic = 'abort'   # Remove panic unwinding code
-strip = true      # Strip symbols from binary
+panic = 'abort' # Remove panic unwinding code
+strip = true # Strip symbols from binary
 
 [dev-dependencies]
 tempfile = "3.23.0"

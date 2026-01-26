@@ -245,7 +245,7 @@ export const SendTab = ({
     );
   };
 
-  const handleSendRoundOnchainPayment = () => {
+  const handleSendOnchainPayment = () => {
     if (!arkDestination || !arkAmount) {
       setError((prev) => ({
         ...prev,
@@ -259,8 +259,8 @@ export const SendTab = ({
       return;
     }
     runOperation(
-      'sendRoundOnchainPayment',
-      () => NitroArk.sendRoundOnchainPayment(arkDestination, amount),
+      'sendOnchain',
+      () => NitroArk.sendOnchain(arkDestination, amount),
       'ark'
     );
   };
@@ -400,7 +400,7 @@ export const SendTab = ({
           />
           <CustomButton
             title="Round Onchain"
-            onPress={handleSendRoundOnchainPayment}
+            onPress={handleSendOnchainPayment}
             disabled={walletOpsDisabled}
           />
         </ButtonGrid>

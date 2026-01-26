@@ -23,8 +23,8 @@ use bark::Config;
 use bark::SqliteClient;
 use bark::Wallet;
 use bark::WalletVtxo;
-use bdk_wallet::bitcoin::bip32;
 use bdk_wallet::bitcoin::key::Keypair;
+use bdk_wallet::bitcoin::{bip32, Txid};
 use bitcoin_ext::BlockHeight;
 use tokio::runtime::Runtime;
 use tokio::sync::Mutex;
@@ -185,11 +185,13 @@ impl WalletManager {
 
         let db = Arc::new(SqliteClient::open(datadir.join(DB_FILE))?);
         let properties = db
-            .read_properties()?
+            .read_properties()
+            .await?
             .context("Failed to read properties from db for opening wallet")?;
 
         let onchain_wallet =
-            OnchainWallet::load_or_create(properties.network, mnemonic.to_seed(""), db.clone())?;
+            OnchainWallet::load_or_create(properties.network, mnemonic.to_seed(""), db.clone())
+                .await?;
         let wallet =
             Wallet::open_with_onchain(&mnemonic, db.clone(), &onchain_wallet, config).await?;
 
@@ -240,7 +242,9 @@ pub async fn is_wallet_loaded() -> bool {
 
 pub async fn balance() -> anyhow::Result<bark::Balance> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager.with_context(|ctx| ctx.wallet.balance())
+    manager
+        .with_context_async(|ctx| async { ctx.wallet.balance().await })
+        .await
 }
 
 pub async fn get_ark_info() -> anyhow::Result<ArkInfo> {
@@ -268,20 +272,26 @@ pub async fn get_ark_info() -> anyhow::Result<ArkInfo> {
 
 pub async fn derive_store_next_keypair() -> anyhow::Result<Keypair> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager.with_context(|ctx| {
-        ctx.wallet
-            .derive_store_next_keypair()
-            .map(|(keypair, _)| keypair)
-    })
+    manager
+        .with_context_async(|ctx| async {
+            ctx.wallet
+                .derive_store_next_keypair()
+                .await
+                .map(|(keypair, _)| keypair)
+        })
+        .await
 }
 
 pub async fn peak_keypair(index: u32) -> anyhow::Result<Keypair> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager.with_context(|ctx| {
-        ctx.wallet
-            .peak_keypair(index)
-            .context("Failed to peak keypair")
-    })
+    manager
+        .with_context_async(|ctx| async {
+            ctx.wallet
+                .peak_keypair(index)
+                .await
+                .context("Failed to peak keypair")
+        })
+        .await
 }
 
 pub async fn new_address() -> anyhow::Result<bark::ark::Address> {
@@ -325,18 +335,21 @@ pub async fn sign_message(
     index: u32,
 ) -> anyhow::Result<bark::ark::bitcoin::secp256k1::ecdsa::Signature> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager.with_context(|ctx| {
-        let wallet = &ctx.wallet;
-        let keypair = wallet
-            .peak_keypair(index)
-            .context("Failed to peak keypair")?;
-        let hash = bark::ark::bitcoin::sign_message::signed_msg_hash(message);
-        let secp = bark::ark::bitcoin::secp256k1::Secp256k1::new();
-        let msg = bark::ark::bitcoin::secp256k1::Message::from_digest_slice(&hash[..]).unwrap();
-        let ecdsa_sig = secp.sign_ecdsa(&msg, &keypair.secret_key());
+    manager
+        .with_context_async(|ctx| async {
+            let wallet = &ctx.wallet;
+            let keypair = wallet
+                .peak_keypair(index)
+                .await
+                .context("Failed to peak keypair")?;
+            let hash = bark::ark::bitcoin::sign_message::signed_msg_hash(message);
+            let secp = bark::ark::bitcoin::secp256k1::Secp256k1::new();
+            let msg = bark::ark::bitcoin::secp256k1::Message::from_digest_slice(&hash[..])?;
+            let ecdsa_sig = secp.sign_ecdsa(&msg, &keypair.secret_key());
 
-        Ok(ecdsa_sig)
-    })
+            Ok(ecdsa_sig)
+        })
+        .await
 }
 
 pub async fn sign_messsage_with_mnemonic(
@@ -400,13 +413,14 @@ pub async fn lightning_receive_status(
     payment: PaymentHash,
 ) -> anyhow::Result<Option<LightningReceive>> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager.with_context(|ctx| {
-        let status = ctx
-            .wallet
-            .lightning_receive_status(payment)
-            .context("Failed to get lightning receive status")?;
-        Ok(status)
-    })
+    manager
+        .with_context_async(|ctx| async {
+            ctx.wallet
+                .lightning_receive_status(payment)
+                .await
+                .context("Failed to get lightning receive status")
+        })
+        .await
 }
 
 pub async fn try_claim_lightning_receive(
@@ -502,12 +516,16 @@ pub async fn sync() -> anyhow::Result<()> {
 
 pub async fn history() -> anyhow::Result<Vec<Movement>> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager.with_context(|ctx| ctx.wallet.history())
+    manager
+        .with_context_async(|ctx| async { ctx.wallet.history().await })
+        .await
 }
 
 pub async fn vtxos() -> anyhow::Result<Vec<WalletVtxo>> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager.with_context(|ctx| ctx.wallet.vtxos())
+    manager
+        .with_context_async(|ctx| async { ctx.wallet.vtxos().await })
+        .await
 }
 
 pub async fn get_expiring_vtxos(threshold: BlockHeight) -> anyhow::Result<Vec<WalletVtxo>> {
@@ -538,22 +556,28 @@ pub async fn refresh_vtxos(vtxos: Vec<Vtxo>) -> anyhow::Result<Option<RoundStatu
 /// Returns the block height at which the first VTXO will expire
 pub async fn get_first_expiring_vtxo_blockheight() -> anyhow::Result<Option<BlockHeight>> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager.with_context(|ctx| {
-        ctx.wallet
-            .get_first_expiring_vtxo_blockheight()
-            .context("Failed to get first expiring vtxo blockheight")
-    })
+    manager
+        .with_context_async(|ctx| async {
+            ctx.wallet
+                .get_first_expiring_vtxo_blockheight()
+                .await
+                .context("Failed to get first expiring vtxo blockheight")
+        })
+        .await
 }
 
 /// Returns the next block height at which we have a VTXO that we
 /// want to refresh
 pub async fn get_next_required_refresh_blockheight() -> anyhow::Result<Option<BlockHeight>> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
-    manager.with_context(|ctx| {
-        ctx.wallet
-            .get_next_required_refresh_blockheight()
-            .context("Failed to get next required refresh blockheight")
-    })
+    manager
+        .with_context_async(|ctx| async {
+            ctx.wallet
+                .get_next_required_refresh_blockheight()
+                .await
+                .context("Failed to get next required refresh blockheight")
+        })
+        .await
 }
 
 pub async fn board_amount(amount: Amount) -> anyhow::Result<PendingBoard> {
@@ -642,15 +666,10 @@ pub async fn pay_lightning_offer(
         .await
 }
 
-pub async fn send_round_onchain_payment(
-    addr: Address,
-    amount: Amount,
-) -> anyhow::Result<RoundStatus> {
+pub async fn send_onchain(addr: Address, amount: Amount) -> anyhow::Result<Txid> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
-        .with_context_async(|ctx| async {
-            ctx.wallet.send_round_onchain_payment(addr, amount).await
-        })
+        .with_context_async(|ctx| async { ctx.wallet.send_onchain(addr, amount).await })
         .await
 }
 
@@ -672,17 +691,14 @@ pub async fn pay_lightning_address(
         .await
 }
 
-pub async fn offboard_specific(
-    vtxo_ids: Vec<VtxoId>,
-    address: Address,
-) -> anyhow::Result<RoundStatus> {
+pub async fn offboard_specific(vtxo_ids: Vec<VtxoId>, address: Address) -> anyhow::Result<Txid> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async { ctx.wallet.offboard_vtxos(vtxo_ids, address).await })
         .await
 }
 
-pub async fn offboard_all(address: Address) -> anyhow::Result<RoundStatus> {
+pub async fn offboard_all(address: Address) -> anyhow::Result<Txid> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
         .with_context_async(|ctx| async { ctx.wallet.offboard_all(address).await })
