@@ -106,6 +106,8 @@ namespace margelo::nitro::nitroark {
       virtual std::shared_ptr<Promise<void>> syncPendingBoards() = 0;
       virtual std::shared_ptr<Promise<void>> maintenance() = 0;
       virtual std::shared_ptr<Promise<void>> maintenanceWithOnchain() = 0;
+      virtual std::shared_ptr<Promise<void>> maintenanceDelegated() = 0;
+      virtual std::shared_ptr<Promise<void>> maintenanceWithOnchainDelegated() = 0;
       virtual std::shared_ptr<Promise<void>> maintenanceRefresh() = 0;
       virtual std::shared_ptr<Promise<void>> sync() = 0;
       virtual std::shared_ptr<Promise<void>> syncExits() = 0;

@@ -478,6 +478,19 @@ pub async fn maintenance() -> anyhow::Result<()> {
         .await
 }
 
+pub async fn maintenance_delegated() -> anyhow::Result<()> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async {
+            ctx.wallet
+                .maintenance_delegated()
+                .await
+                .context("Failed to perform wallet maintenance delegated")?;
+            Ok(())
+        })
+        .await
+}
+
 pub async fn maintenance_with_onchain() -> anyhow::Result<()> {
     let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
     manager
@@ -486,6 +499,19 @@ pub async fn maintenance_with_onchain() -> anyhow::Result<()> {
                 .maintenance_with_onchain(&mut ctx.onchain_wallet)
                 .await
                 .context("Failed to perform wallet maintenance with onchain")?;
+            Ok(())
+        })
+        .await
+}
+
+pub async fn maintenance_with_onchain_delegated() -> anyhow::Result<()> {
+    let mut manager = GLOBAL_WALLET_MANAGER.lock().await;
+    manager
+        .with_context_async(|ctx| async {
+            ctx.wallet
+                .maintenance_with_onchain_delegated(&mut ctx.onchain_wallet)
+                .await
+                .context("Failed to perform wallet maintenance with onchain delegated")?;
             Ok(())
         })
         .await

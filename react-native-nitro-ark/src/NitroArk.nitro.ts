@@ -167,6 +167,8 @@ export interface NitroArk extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
   syncPendingBoards(): Promise<void>;
   maintenance(): Promise<void>;
   maintenanceWithOnchain(): Promise<void>;
+  maintenanceDelegated(): Promise<void>;
+  maintenanceWithOnchainDelegated(): Promise<void>;
   maintenanceRefresh(): Promise<void>;
   sync(): Promise<void>;
   syncExits(): Promise<void>;

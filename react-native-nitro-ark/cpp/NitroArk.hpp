@@ -180,6 +180,26 @@ public:
     });
   }
 
+  std::shared_ptr<Promise<void>> maintenanceDelegated() override {
+    return Promise<void>::async([]() {
+      try {
+        bark_cxx::maintenance_delegated();
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
+  std::shared_ptr<Promise<void>> maintenanceWithOnchainDelegated() override {
+    return Promise<void>::async([]() {
+      try {
+        bark_cxx::maintenance_with_onchain_delegated();
+      } catch (const rust::Error& e) {
+        throw std::runtime_error(e.what());
+      }
+    });
+  }
+
   std::shared_ptr<Promise<void>> maintenanceRefresh() override {
     return Promise<void>::async([]() {
       try {

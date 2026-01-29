@@ -1133,7 +1133,11 @@ void sync_pending_boards();
 
 void maintenance();
 
+void maintenance_delegated();
+
 void maintenance_with_onchain();
+
+void maintenance_with_onchain_delegated();
 
 void maintenance_refresh();
 

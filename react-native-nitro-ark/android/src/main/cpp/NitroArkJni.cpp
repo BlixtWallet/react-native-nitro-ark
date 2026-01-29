@@ -284,9 +284,10 @@ JNIEXPORT void JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_loadWallet
   }
 }
 
-JNIEXPORT void JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_maintenance(JNIEnv* env, jobject /*thiz*/) {
+JNIEXPORT void JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_maintenanceDelegated(JNIEnv* env,
+                                                                                           jobject /*thiz*/) {
   try {
-    bark_cxx::maintenance();
+    bark_cxx::maintenance_delegated();
   } catch (const std::exception& e) {
     HandleException(env, e);
   } catch (...) {
@@ -294,10 +295,10 @@ JNIEXPORT void JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_maintenanc
   }
 }
 
-JNIEXPORT void JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_maintenanceRefresh(JNIEnv* env,
-                                                                                         jobject /*thiz*/) {
+JNIEXPORT void JNICALL Java_com_margelo_nitro_nitroark_NitroArkNative_maintenanceWithOnchainDelegated(
+    JNIEnv* env, jobject /*thiz*/) {
   try {
-    bark_cxx::maintenance_refresh();
+    bark_cxx::maintenance_with_onchain_delegated();
   } catch (const std::exception& e) {
     HandleException(env, e);
   } catch (...) {

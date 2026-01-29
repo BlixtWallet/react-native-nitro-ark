@@ -139,6 +139,24 @@ export function maintenanceWithOnchain(): Promise<void> {
 }
 
 /**
+ * Runs delegated wallet maintenance tasks for offchain.
+ * This includes refreshing vtxos that need to be refreshed using delegated signing.
+ * @returns A promise that resolves on success.
+ */
+export function maintenanceDelegated(): Promise<void> {
+  return NitroArkHybridObject.maintenanceDelegated();
+}
+
+/**
+ * Runs delegated wallet maintenance tasks for both offchain and onchain.
+ * This includes refreshing vtxos that need to be refreshed using delegated signing.
+ * @returns A promise that resolves on success.
+ */
+export function maintenanceWithOnchainDelegated(): Promise<void> {
+  return NitroArkHybridObject.maintenanceWithOnchainDelegated();
+}
+
+/**
  * Refreshes vtxos that need to be refreshed.
  * @returns A promise that resolves on success.
  */

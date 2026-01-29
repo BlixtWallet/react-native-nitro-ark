@@ -211,6 +211,32 @@ export const WalletTab = ({
     );
   };
 
+  const handleMaintenanceDelegated = () => {
+    runOperation(
+      'maintenanceDelegated',
+      () => NitroArk.maintenanceDelegated(),
+      'sync',
+      () =>
+        setResults((prev) => ({
+          ...prev,
+          sync: 'Maintenance delegated done!',
+        }))
+    );
+  };
+
+  const handleMaintenanceWithOnchainDelegated = () => {
+    runOperation(
+      'maintenanceWithOnchainDelegated',
+      () => NitroArk.maintenanceWithOnchainDelegated(),
+      'sync',
+      () =>
+        setResults((prev) => ({
+          ...prev,
+          sync: 'Maintenance with onchain delegated done!',
+        }))
+    );
+  };
+
   const handleSyncPendingBoards = () => {
     runOperation(
       'syncPendingBoards',
@@ -293,7 +319,7 @@ export const WalletTab = ({
   const handleGetExpiringVtxos = () => {
     runOperation(
       'getExpiringVtxos',
-      () => NitroArk.getExpiringVtxos(5000),
+      () => NitroArk.getExpiringVtxos(50),
       'info'
     );
   };
@@ -488,6 +514,20 @@ export const WalletTab = ({
           <CustomButton
             title="Maint. + Onchain"
             onPress={handleMaintenanceWithOnchain}
+            disabled={walletOpsDisabled}
+            small
+          />
+        </ButtonGrid>
+        <ButtonGrid>
+          <CustomButton
+            title="Maint. Delegated"
+            onPress={handleMaintenanceDelegated}
+            disabled={walletOpsDisabled}
+            small
+          />
+          <CustomButton
+            title="Maint. + Onchain Deleg."
+            onPress={handleMaintenanceWithOnchainDelegated}
             disabled={walletOpsDisabled}
             small
           />

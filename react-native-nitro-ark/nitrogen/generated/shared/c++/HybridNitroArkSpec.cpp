@@ -23,6 +23,8 @@ namespace margelo::nitro::nitroark {
       prototype.registerHybridMethod("syncPendingBoards", &HybridNitroArkSpec::syncPendingBoards);
       prototype.registerHybridMethod("maintenance", &HybridNitroArkSpec::maintenance);
       prototype.registerHybridMethod("maintenanceWithOnchain", &HybridNitroArkSpec::maintenanceWithOnchain);
+      prototype.registerHybridMethod("maintenanceDelegated", &HybridNitroArkSpec::maintenanceDelegated);
+      prototype.registerHybridMethod("maintenanceWithOnchainDelegated", &HybridNitroArkSpec::maintenanceWithOnchainDelegated);
       prototype.registerHybridMethod("maintenanceRefresh", &HybridNitroArkSpec::maintenanceRefresh);
       prototype.registerHybridMethod("sync", &HybridNitroArkSpec::sync);
       prototype.registerHybridMethod("syncExits", &HybridNitroArkSpec::syncExits);

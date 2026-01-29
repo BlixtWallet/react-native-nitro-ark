@@ -218,7 +218,9 @@ pub(crate) mod ffi {
         fn check_lightning_payment(payment_hash: String, wait: bool) -> Result<String>;
         fn sync_pending_boards() -> Result<()>;
         fn maintenance() -> Result<()>;
+        fn maintenance_delegated() -> Result<()>;
         fn maintenance_with_onchain() -> Result<()>;
+        fn maintenance_with_onchain_delegated() -> Result<()>;
         fn maintenance_refresh() -> Result<()>;
         fn refresh_server() -> Result<()>;
         fn sync() -> Result<()>;
@@ -500,8 +502,16 @@ pub(crate) fn maintenance() -> anyhow::Result<()> {
     crate::TOKIO_RUNTIME.block_on(crate::maintenance())
 }
 
+pub(crate) fn maintenance_delegated() -> anyhow::Result<()> {
+    crate::TOKIO_RUNTIME.block_on(crate::maintenance_delegated())
+}
+
 pub(crate) fn maintenance_with_onchain() -> anyhow::Result<()> {
     crate::TOKIO_RUNTIME.block_on(crate::maintenance_with_onchain())
+}
+
+pub(crate) fn maintenance_with_onchain_delegated() -> anyhow::Result<()> {
+    crate::TOKIO_RUNTIME.block_on(crate::maintenance_with_onchain_delegated())
 }
 
 pub(crate) fn maintenance_refresh() -> anyhow::Result<()> {
