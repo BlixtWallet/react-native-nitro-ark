@@ -17,6 +17,9 @@ sync_manager_block_poll_interval = "100ms"
 forfeit_watcher_min_balance = "1 btc"
 transaction_rebroadcast_interval = "1m"
 otel_deployment_name = "my_regtest"
+# The maximum number of items we return to mailbox queries
+read_mailbox_max_items = 100
+
 
 ##########
 # ROUNDS #
