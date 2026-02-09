@@ -1,10 +1,10 @@
 use crate::cxx::ffi::{ArkoorPaymentResult, BarkMovement, BarkVtxo, OnchainPaymentResult};
-use crate::{utils, TOKIO_RUNTIME};
-use anyhow::{bail, Context, Ok};
+use crate::{TOKIO_RUNTIME, utils};
+use anyhow::{Context, Ok, bail};
 use bark::ark::bitcoin::hex::DisplayHex;
-use bark::ark::bitcoin::{address, Address};
+use bark::ark::bitcoin::{Address, address};
 use bark::ark::lightning::{self, PaymentHash};
-use bdk_wallet::bitcoin::{self, network, FeeRate};
+use bdk_wallet::bitcoin::{self, FeeRate, network};
 use bip39::Mnemonic;
 use hex::ToHex;
 use logger::log::{self, info};
@@ -235,7 +235,7 @@ pub(crate) mod ffi {
             amount_sat: *const u64,
         ) -> Result<LightningSend>;
         unsafe fn pay_lightning_offer(offer: &str, amount_sat: *const u64)
-            -> Result<LightningSend>;
+        -> Result<LightningSend>;
         fn pay_lightning_address(
             addr: &str,
             amount_sat: u64,
