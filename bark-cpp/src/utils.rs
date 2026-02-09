@@ -1,10 +1,11 @@
 use std::{path::Path, str::FromStr, sync::Arc};
 
-use anyhow::{self, bail, Context};
+use anyhow::{self, Context, bail};
 use bark::{
+    Config, SqliteClient, Wallet as BarkWallet, WalletVtxo,
     ark::{
-        bitcoin::{secp256k1::PublicKey, FeeRate, Network},
         Vtxo, VtxoId,
+        bitcoin::{FeeRate, Network, secp256k1::PublicKey},
     },
     lightning_invoice::Bolt11Invoice,
     lnurllib::lightning_address::LightningAddress,
@@ -12,7 +13,6 @@ use bark::{
     onchain::OnchainWallet,
     round::RoundStatus,
     vtxo::VtxoState,
-    Config, SqliteClient, Wallet as BarkWallet, WalletVtxo,
 };
 
 use bitcoin_ext::FeeRateExt;
