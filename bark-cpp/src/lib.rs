@@ -7,7 +7,6 @@ use bark::ark::bitcoin::Amount;
 use bark::ark::bitcoin::Network;
 
 use bark::Config;
-use bark::SqliteClient;
 use bark::Wallet;
 use bark::WalletVtxo;
 use bark::ark::ArkInfo;
@@ -22,6 +21,7 @@ use bark::movement::Movement;
 use bark::onchain::OnchainWallet;
 use bark::persist::BarkPersister;
 use bark::persist::models::{LightningReceive, PendingBoard};
+use bark::persist::sqlite::SqliteClient;
 use bark::round::RoundStatus;
 use bdk_wallet::bitcoin::key::Keypair;
 use bdk_wallet::bitcoin::{Txid, bip32};

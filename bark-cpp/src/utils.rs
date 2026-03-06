@@ -2,7 +2,7 @@ use std::{path::Path, str::FromStr, sync::Arc};
 
 use anyhow::{self, Context, bail};
 use bark::{
-    Config, SqliteClient, Wallet as BarkWallet, WalletVtxo,
+    Config, Wallet as BarkWallet, WalletVtxo,
     ark::{
         Vtxo, VtxoId,
         bitcoin::{FeeRate, Network, secp256k1::PublicKey},
@@ -11,6 +11,7 @@ use bark::{
     lnurllib::lightning_address::LightningAddress,
     movement::{Movement, PaymentMethod},
     onchain::OnchainWallet,
+    persist::sqlite::SqliteClient,
     round::RoundStatus,
     vtxo::VtxoState,
 };
